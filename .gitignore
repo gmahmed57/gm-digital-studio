@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Internal files
+GM_Digital_Studio_Internship_Project_Plan.md
+.env.example
+worked_done.md
+.env  
+ 
