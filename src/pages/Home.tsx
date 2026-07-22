@@ -1,14 +1,21 @@
-
+import HeroSection from '../components/home/HeroSection';
+import TrustedLogosBar from '../components/home/TrustedLogosBar';
+import ServicesPreviewSection from '../components/home/ServicesPreviewSection';
+import StatsSection from '../components/home/StatsSection';
+import FeaturedProjectsSection from '../components/home/FeaturedProjectsSection';
+import TestimonialsSection from '../components/home/TestimonialsSection';
+import CTASection from '../components/home/CTASection';
 
 const Home = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh]">
-      <h1 className="text-4xl font-heading font-bold text-gray-900 dark:text-white mb-4">
-        Welcome to GM Digital Studio
-      </h1>
-      <p className="text-lg text-gray-600 dark:text-gray-400">
-        This is the homepage placeholder.
-      </p>
+    <div className="w-full space-y-0">
+      <HeroSection />
+      <TrustedLogosBar />
+      <ServicesPreviewSection />
+      <StatsSection />
+      <FeaturedProjectsSection />
+      <TestimonialsSection />
+      <CTASection />
     </div>
   );
 };

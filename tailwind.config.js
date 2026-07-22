@@ -9,22 +9,23 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: '#f4f6fb',
-          100: '#e7ecf5',
-          200: '#cdd7ea',
-          300: '#a3b9db',
-          400: '#7392c6',
-          500: '#5174b1',
-          600: '#3e5b92',
-          700: '#334976',
-          800: '#2d3e62',
-          900: '#283652',
-          950: '#1b2236',
+          50: '#fff7ed',
+          100: '#ffedd5',
+          200: '#fed7aa',
+          300: '#fdba74',
+          400: '#fb923c',
+          500: '#f94a00', // Signature Logo Orange
+          600: '#ea3900',
+          700: '#c22b00',
+          800: '#9a2404',
+          900: '#7c2108',
+          950: '#430d03',
         },
         dark: {
           bg: '#0a0a0b',
-          surface: '#121214',
-          border: '#27272a'
+          surface: '#131316',
+          border: '#242429',
+          card: '#18181b'
         }
       },
       fontFamily: {
@@ -32,8 +33,9 @@ export default {
         heading: ['Outfit', 'sans-serif'],
       },
       boxShadow: {
-        'premium': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-        'premium-dark': '0 4px 20px -2px rgba(0, 0, 0, 0.5)',
+        'brand-glow': '0 0 25px -5px rgba(249, 74, 0, 0.35)',
+        'premium': '0 4px 25px -2px rgba(0, 0, 0, 0.08)',
+        'premium-dark': '0 4px 25px -2px rgba(0, 0, 0, 0.7)',
       }
     },
   },

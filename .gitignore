@@ -23,9 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 
-# Internal files
-GM_Digital_Studio_Internship_Project_Plan.md
+# Environment & credentials
+.env
 .env.example
+.env*.local
+
+# Internal files & documentation
+.agents/
 worked_done.md
-.env  
- 
+daily_plan.md
+GM_Digital_Studio_Internship_Project_Plan.md
+*.md
+!README.md
