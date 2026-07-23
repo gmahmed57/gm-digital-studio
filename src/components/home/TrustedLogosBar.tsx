@@ -15,7 +15,7 @@ const TrustedLogosBar: React.FC = () => {
         </div>
 
         {/* Cohesive Logos Cluster (Icon + Name) */}
-        <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 opacity-80 hover:opacity-100 transition-opacity">
+        <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 opacity-85 hover:opacity-100 transition-opacity">
           {COMPANY_LOGOS.map((company, index) => (
             <motion.div
               key={company.id}
@@ -23,12 +23,12 @@ const TrustedLogosBar: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.05, duration: 0.3 }}
-              className="flex items-center gap-2.5 px-3 py-1.5 grayscale dark:invert hover:grayscale-0 transition-all duration-300"
+              className="flex items-center gap-2.5 px-3 py-1.5 transition-all duration-300"
             >
               <img
                 src={company.logoUrl}
                 alt={`${company.name} Logo`}
-                className="h-5 w-5 object-contain"
+                className="h-5 w-5 object-contain dark:brightness-0 dark:invert"
               />
               <span className="font-heading font-bold text-base tracking-tight text-gray-900 dark:text-white">
                 {company.name}

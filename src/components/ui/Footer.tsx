@@ -8,9 +8,9 @@ const Footer = () => {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div className="md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <img src={logo} alt="GM Studio Logo" className="h-8 w-auto object-contain dark:invert" />
+              <img src={logo} alt="GM Digital Studio Logo" className="h-8 w-auto object-contain" />
               <span className="text-xl font-heading font-bold text-white">
-                GM <span className="text-brand-500">Studio</span>
+                GM Digital <span className="text-brand-500">Studio</span>
               </span>
             </Link>
             <p className="text-sm text-gray-400">
@@ -46,7 +46,7 @@ const Footer = () => {
         </div>
         <div className="mt-12 border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm text-gray-400">
-            &copy; {new Date().getFullYear()} GM Studio. All rights reserved.
+            &copy; {new Date().getFullYear()} GM Digital Studio. All rights reserved.
           </p>
         </div>
       </div>

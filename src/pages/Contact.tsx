@@ -1,14 +1,386 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Mail, Phone, MapPin, Clock, Send, CheckCircle2, AlertCircle, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { sendContactEmail } from '../services/resendService';
+import contactBgVideo from '../assets/videos/contact-bg.mp4';
+import TrustedLogosBar from '../components/home/TrustedLogosBar';
 
+// Zod Validation Schema
+const contactSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters.'),
+  email: z.string().email('Please enter a valid email address.'),
+  company: z.string().optional(),
+  service: z.string().min(1, 'Please select a service.'),
+  budget: z.string().optional(),
+  message: z.string().min(10, 'Message must be at least 10 characters.'),
+});
 
-const Contact = () => {
+type ContactFormInputs = z.infer<typeof contactSchema>;
+
+const FAQS = [
+  {
+    question: 'What is your typical project timeline?',
+    answer: 'Standard web application and product design sprints typically range between 3 to 8 weeks depending on scope, custom features, and backend integrations.',
+  },
+  {
+    question: 'How do you handle project pricing & payment milestones?',
+    answer: 'We operate on milestone-based billing (e.g., 50% deposit, 25% mid-sprint, 25% final delivery) or flexible sprint-based contracts.',
+  },
+  {
+    question: 'Can you work with our existing design system or codebase?',
+    answer: 'Yes! We frequently integrate with existing React, Next.js, and Figma design tokens, extending component architecture cleanly.',
+  },
+  {
+    question: 'What happens after the product is deployed?',
+    answer: 'We provide post-launch support, performance monitoring, database backup audits, and SLA maintenance packages.',
+  },
+];
+
+const Contact: React.FC = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ContactFormInputs>({
+    resolver: zodResolver(contactSchema),
+    defaultValues: {
+      service: 'Web Development',
+    },
+  });
+
+  const onSubmit = async (data: ContactFormInputs) => {
+    setIsSubmitting(true);
+    setFeedback(null);
+
+    const res = await sendContactEmail(data);
+    setIsSubmitting(false);
+
+    if (res.success) {
+      setFeedback({ type: 'success', message: res.message });
+      reset();
+    } else {
+      setFeedback({ type: 'error', message: res.message });
+    }
+  };
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-      <h1 className="mb-8 text-4xl font-heading font-bold text-gray-900 dark:text-white">
-        Contact Us
-      </h1>
-      <p className="text-lg text-gray-600 dark:text-gray-400">
-        This is the Contact page placeholder.
-      </p>
+    <div className="w-full bg-white dark:bg-dark-bg text-gray-900 dark:text-white">
+      
+      {/* Hero Header with Relevant Ambient Video Loop */}
+      <section className="py-24 bg-gray-950 text-white relative overflow-hidden">
+        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover opacity-45 scale-105"
+          >
+            <source src={contactBgVideo} type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-gradient-to-b from-gray-950/75 via-gray-950/65 to-gray-950 z-10" />
+        </div>
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-20">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-4xl sm:text-6xl font-heading font-black tracking-tight mb-6"
+          >
+            Let's Build Something <br />
+            <span className="text-brand-500">Extraordinary Together</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-lg sm:text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto font-normal"
+          >
+            Have a project in mind or need technical guidance? Reach out to our solutions team and let's turn your concept into production software.
+          </motion.p>
+        </div>
+      </section>
+
+      {/* Main Contact Grid */}
+      <section className="py-24 bg-white dark:bg-dark-bg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+            
+            {/* Contact Details Column */}
+            <div className="lg:col-span-5 space-y-8">
+              <div>
+                <h2 className="text-3xl font-heading font-black text-gray-900 dark:text-white mb-4">
+                  Get in Touch
+                </h2>
+                <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+                  Fill out the form or reach out directly using our official communication channels.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-start gap-4 p-5 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border">
+                  <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900">
+                    <Mail className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Email Us</h4>
+                    <a href="mailto:contact@gmdigitalstudio.com" className="text-sm text-brand-600 dark:text-brand-400 font-semibold hover:underline">
+                      contact@gmdigitalstudio.com
+                    </a>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 p-5 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border">
+                  <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900">
+                    <Phone className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Call Us</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">+1 (800) 555-0199</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 p-5 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border">
+                  <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Studio Location</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">100 Tech Plaza, Suite 400<br />San Francisco, CA 94107</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 p-5 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border">
+                  <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Operating Hours</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Monday - Friday: 9:00 AM - 6:00 PM EST</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Form Column */}
+            <div className="lg:col-span-7">
+              <div className="p-8 sm:p-10 rounded-3xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border shadow-lg">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                  Project Inquiry Form
+                </h3>
+
+                {feedback && (
+                  <div className={`p-4 rounded-xl mb-6 flex items-start gap-3 text-sm font-medium ${
+                    feedback.type === 'success'
+                      ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900'
+                      : 'bg-rose-50 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200 dark:border-rose-900'
+                  }`}>
+                    {feedback.type === 'success' ? (
+                      <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                    )}
+                    <span>{feedback.message}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {/* Name */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+                        Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        {...register('name')}
+                        placeholder="John Doe"
+                        className="w-full px-4 py-3 rounded-xl bg-white dark:bg-dark-bg border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-brand-500 transition-colors"
+                      />
+                      {errors.name && (
+                        <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                          {errors.name.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        {...register('email')}
+                        placeholder="john@company.com"
+                        className="w-full px-4 py-3 rounded-xl bg-white dark:bg-dark-bg border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-brand-500 transition-colors"
+                      />
+                      {errors.email && (
+                        <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                          {errors.email.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {/* Company */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+                        Company Name
+                      </label>
+                      <input
+                        type="text"
+                        {...register('company')}
+                        placeholder="Acme Corp"
+                        className="w-full px-4 py-3 rounded-xl bg-white dark:bg-dark-bg border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-brand-500 transition-colors"
+                      />
+                    </div>
+
+                    {/* Service */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+                        Requested Service *
+                      </label>
+                      <select
+                        {...register('service')}
+                        className="w-full px-4 py-3 rounded-xl bg-white dark:bg-dark-bg border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-brand-500 transition-colors"
+                      >
+                        <option value="Web Development">Web Development</option>
+                        <option value="UI/UX Design">UI/UX & Product Design</option>
+                        <option value="AI Automation">Workflow & AI Automation</option>
+                        <option value="Brand Identity">Brand Strategy & Identity</option>
+                        <option value="Mobile Applications">Mobile Applications</option>
+                        <option value="Cloud Architecture">Cloud & Database Architecture</option>
+                      </select>
+                      {errors.service && (
+                        <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                          {errors.service.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Budget */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+                      Estimated Budget Range
+                    </label>
+                    <select
+                      {...register('budget')}
+                      className="w-full px-4 py-3 rounded-xl bg-white dark:bg-dark-bg border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-brand-500 transition-colors"
+                    >
+                      <option value="">Select a range</option>
+                      <option value="$5,000 - $10,000">$5,000 - $10,000</option>
+                      <option value="$10,000 - $25,000">$10,000 - $25,000</option>
+                      <option value="$25,000 - $50,000">$25,000 - $50,000</option>
+                      <option value="$50,000+">$50,000+</option>
+                    </select>
+                  </div>
+
+                  {/* Message */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+                      Project Details *
+                    </label>
+                    <textarea
+                      rows={5}
+                      {...register('message')}
+                      placeholder="Tell us about your project requirements, goals, and timeline..."
+                      className="w-full px-4 py-3 rounded-xl bg-white dark:bg-dark-bg border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-brand-500 transition-colors"
+                    />
+                    {errors.message && (
+                      <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                        {errors.message.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-base shadow-lg shadow-brand-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? (
+                      <span>Sending Message...</span>
+                    ) : (
+                      <>
+                        <span>Submit Inquiry</span>
+                        <Send className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* Client Logos Bar placed AFTER Contact Form & BEFORE FAQs */}
+      <div className="border-t border-b border-gray-200/80 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/30">
+        <TrustedLogosBar />
+      </div>
+
+      {/* FAQ Accordion Section */}
+      <section className="py-24 bg-white dark:bg-dark-bg">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-heading font-black text-gray-900 dark:text-white tracking-tight mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 text-base">
+              Got questions before reaching out? Here are quick answers to common client inquiries.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {FAQS.map((faq, index) => {
+              const isOpen = openFaq === index;
+
+              return (
+                <div
+                  key={index}
+                  className="rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border overflow-hidden transition-all"
+                >
+                  <button
+                    onClick={() => setOpenFaq(isOpen ? null : index)}
+                    className="w-full p-6 text-left flex items-center justify-between font-bold text-gray-900 dark:text-white text-base hover:text-brand-600 transition-colors"
+                  >
+                    <span className="flex items-center gap-3">
+                      <HelpCircle className="w-5 h-5 text-brand-600 dark:text-brand-500 flex-shrink-0" />
+                      <span>{faq.question}</span>
+                    </span>
+                    {isOpen ? (
+                      <ChevronUp className="w-5 h-5 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-500" />
+                    )}
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-6 pb-6 text-sm text-gray-600 dark:text-gray-300 leading-relaxed border-t border-gray-100 dark:border-gray-800 pt-4">
+                      {faq.answer}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 };

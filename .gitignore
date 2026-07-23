@@ -28,8 +28,9 @@ dist-ssr
 .env.example
 .env*.local
 
-# Internal files & documentation
+# Internal files, scratch scripts & documentation
 .agents/
+scratch/
 worked_done.md
 daily_plan.md
 GM_Digital_Studio_Internship_Project_Plan.md

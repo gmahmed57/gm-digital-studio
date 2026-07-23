@@ -4,6 +4,13 @@ import { FEATURED_SERVICES } from '../../constants/homeData';
 import { Code2, Layout, Cpu, Sparkles, Smartphone, Database, ArrowRight, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import webDevImg from '../../assets/images/web-dev.jpg';
+import uiUxImg from '../../assets/images/ui-ux.jpg';
+import aiAutomationImg from '../../assets/images/ai-automation.jpg';
+import brandIdentityImg from '../../assets/images/brand-identity.jpg';
+import mobileAppsImg from '../../assets/images/mobile-apps.jpg';
+import cloudInfrastructureImg from '../../assets/images/cloud-infrastructure.jpg';
+
 const iconMap: Record<string, React.ReactNode> = {
   Code2: <Code2 className="w-6 h-6 text-brand-600 dark:text-brand-500" />,
   Layout: <Layout className="w-6 h-6 text-brand-600 dark:text-brand-500" />,
@@ -14,12 +21,12 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 const serviceImages: Record<string, string> = {
-  'web-dev': 'https://images.pexels.com/photos/326514/pexels-photo-326514.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=300&w=500',
-  'ui-ux': 'https://images.pexels.com/photos/39559/ipad-mockup-apple-business-39559.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=300&w=500',
-  'ai-automation': 'https://images.pexels.com/photos/461073/pexels-photo-461073.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=300&w=500',
-  'brand-identity': 'https://images.pexels.com/photos/7667442/pexels-photo-7667442.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=300&w=500',
-  'mobile-dev': 'https://images.pexels.com/photos/4158/apple-iphone-smartphone-desk.jpg?auto=compress&cs=tinysrgb&fit=crop&h=300&w=500',
-  'cloud-devops': 'https://images.pexels.com/photos/226172/pexels-photo-226172.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=300&w=500',
+  'web-dev': webDevImg,
+  'ui-ux': uiUxImg,
+  'ai-automation': aiAutomationImg,
+  'brand-identity': brandIdentityImg,
+  'mobile-dev': mobileAppsImg,
+  'cloud-devops': cloudInfrastructureImg,
 };
 
 const ServicesPreviewSection: React.FC = () => {
@@ -68,7 +75,7 @@ const ServicesPreviewSection: React.FC = () => {
                       ? 'bg-slate-900/90 border-brand-500/50 text-brand-400' 
                       : 'bg-white/90 dark:bg-slate-900/90 border-gray-200/80 dark:border-slate-800'
                   }`}>
-                    {isLast ? <Database className="w-5 h-5 text-brand-400" /> : (iconMap[service.iconName] || <Code2 className="w-5 h-5 text-brand-500" />)}
+                    {isLast ? <Database className="w-5 h-5 text-brand-400" /> : ((service.iconName && iconMap[service.iconName]) || <Code2 className="w-5 h-5 text-brand-500" />)}
                   </div>
                 </div>
 
