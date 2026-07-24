@@ -107,15 +107,22 @@ const ServicesPreviewSection: React.FC = () => {
                     </ul>
                   </div>
 
-                  <Link
-                    to="/services"
-                    className={`inline-flex items-center text-sm font-bold group-hover:translate-x-1 transition-transform ${
-                      isLast ? 'text-brand-400 hover:text-brand-300' : 'text-brand-600 dark:text-brand-400'
-                    }`}
-                  >
-                    <span>Learn More</span>
-                    <ArrowRight className="w-4 h-4 ml-1.5" />
-                  </Link>
+                  <div className="pt-4 border-t border-gray-100 dark:border-dark-border/80 flex items-center justify-between">
+                    <span className={`text-xs font-bold ${isLast ? 'text-slate-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                      {service.title.split(' ')[0]} Service
+                    </span>
+                    <Link
+                      to="/services"
+                      className={`inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 shadow-sm ${
+                        isLast
+                          ? 'bg-brand-600 hover:bg-brand-500 text-white shadow-brand-600/30'
+                          : 'bg-brand-50 dark:bg-brand-950/60 group-hover:bg-brand-600 text-brand-600 dark:text-brand-400 group-hover:text-white border border-brand-200/80 dark:border-brand-900/80'
+                      }`}
+                    >
+                      <span>Explore Service</span>
+                      <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </div>
                 </div>
               </motion.div>
             );

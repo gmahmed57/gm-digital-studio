@@ -32,3 +32,6 @@ export interface TestimonialItem {
   rating: number;
   content: string;
 }
+
+export * from './portfolio';
+

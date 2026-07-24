@@ -19,19 +19,21 @@ const Footer = () => {
           </div>
           
           <div>
-            <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Services</h3>
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Services & Pricing</h3>
             <ul className="space-y-3 text-sm text-gray-400">
               <li><Link to="/services" className="hover:text-brand-400 transition-colors">Web Development</Link></li>
               <li><Link to="/services" className="hover:text-brand-400 transition-colors">UI/UX Design</Link></li>
-              <li><Link to="/services" className="hover:text-brand-400 transition-colors">SEO Optimization</Link></li>
+              <li><Link to="/pricing" className="hover:text-brand-400 transition-colors">Pricing Packages</Link></li>
+              <li><Link to="/faq" className="hover:text-brand-400 transition-colors">FAQ & Support</Link></li>
             </ul>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Company</h3>
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Company & Work</h3>
             <ul className="space-y-3 text-sm text-gray-400">
               <li><Link to="/about" className="hover:text-brand-400 transition-colors">About Us</Link></li>
-              <li><Link to="/services" className="hover:text-brand-400 transition-colors">Services</Link></li>
+              <li><Link to="/portfolio" className="hover:text-brand-400 transition-colors">Portfolio & Case Studies</Link></li>
+              <li><Link to="/blog" className="hover:text-brand-400 transition-colors">Blog & Insights</Link></li>
               <li><Link to="/contact" className="hover:text-brand-400 transition-colors">Contact</Link></li>
             </ul>
           </div>

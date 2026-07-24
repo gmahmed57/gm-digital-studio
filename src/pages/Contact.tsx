@@ -3,10 +3,12 @@ import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Phone, MapPin, Clock, Send, CheckCircle2, AlertCircle, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, Send, CheckCircle2, AlertCircle, ChevronDown } from 'lucide-react';
 import { sendContactEmail } from '../services/resendService';
 import contactBgVideo from '../assets/videos/contact-bg.mp4';
+import contactGif from '../assets/animation/contact us.gif';
 import TrustedLogosBar from '../components/home/TrustedLogosBar';
+import SEO from '../components/common/SEO';
 
 // Zod Validation Schema
 const contactSchema = z.object({
@@ -22,20 +24,20 @@ type ContactFormInputs = z.infer<typeof contactSchema>;
 
 const FAQS = [
   {
-    question: 'What is your typical project timeline?',
-    answer: 'Standard web application and product design sprints typically range between 3 to 8 weeks depending on scope, custom features, and backend integrations.',
+    question: 'What is your typical project timeline across your core services?',
+    answer: 'Product timelines vary by service: UI/UX design systems and brand identity projects launch within 2 to 4 weeks, custom web platforms and AI automation pipelines take 3 to 6 weeks, while cross-platform mobile apps take 8 to 12 weeks from discovery to deployment.',
   },
   {
-    question: 'How do you handle project pricing & payment milestones?',
-    answer: 'We operate on milestone-based billing (e.g., 50% deposit, 25% mid-sprint, 25% final delivery) or flexible sprint-based contracts.',
+    question: 'How do you structure project pricing & milestone contracts?',
+    answer: 'We offer transparent, milestone-based contracts across all services (e.g., 50% deposit, 25% mid-sprint, 25% final delivery) as well as flexible monthly retainers for ongoing digital engineering.',
   },
   {
-    question: 'Can you work with our existing design system or codebase?',
-    answer: 'Yes! We frequently integrate with existing React, Next.js, and Figma design tokens, extending component architecture cleanly.',
+    question: 'Can you work with our existing brand guidelines, design files, or software stack?',
+    answer: 'Yes! Whether you need a UI/UX audit of an existing design file, integration with your current software workflow, or a complete digital brand modernization, our team seamlessly aligns with your existing team assets.',
   },
   {
-    question: 'What happens after the product is deployed?',
-    answer: 'We provide post-launch support, performance monitoring, database backup audits, and SLA maintenance packages.',
+    question: 'What support and post-launch guarantees do you provide?',
+    answer: 'Every GM Digital Studio project includes 2 to 4 weeks of post-launch warranty support across all deliverables. We also provide ongoing SLA maintenance, security audits, and performance optimization retainers.',
   },
 ];
 
@@ -72,8 +74,12 @@ const Contact: React.FC = () => {
   };
 
   return (
-    <div className="w-full bg-white dark:bg-dark-bg text-gray-900 dark:text-white">
-      
+    <div className="w-full bg-white dark:bg-dark-bg text-gray-900 dark:text-white font-sans">
+      <SEO
+        title="Contact Solutions Team & Estimate Request"
+        description="Get in touch with GM Digital Studio's solutions team for a custom project estimate, software roadmap, or consultation."
+      />
+
       {/* Hero Header with Relevant Ambient Video Loop */}
       <section className="py-24 bg-gray-950 text-white relative overflow-hidden">
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
@@ -112,69 +118,78 @@ const Contact: React.FC = () => {
       </section>
 
       {/* Main Contact Grid */}
-      <section className="py-24 bg-white dark:bg-dark-bg">
+      <section className="py-24 bg-white dark:bg-dark-bg border-b border-gray-100 dark:border-dark-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
             
-            {/* Contact Details Column */}
-            <div className="lg:col-span-5 space-y-8">
+            {/* Contact Details Column with Animated GIF Showcase */}
+            <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
               <div>
-                <h2 className="text-3xl font-heading font-black text-gray-900 dark:text-white mb-4">
+                <h2 className="text-3xl font-heading font-black text-gray-900 dark:text-white mb-3">
                   Get in Touch
                 </h2>
-                <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Fill out the form or reach out directly using our official communication channels.
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  Fill out the project form or connect directly through our studio communication channels.
                 </p>
               </div>
 
-              <div className="space-y-6">
-                <div className="flex items-start gap-4 p-5 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border">
-                  <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900">
-                    <Mail className="w-6 h-6" />
+              {/* Animated Contact GIF Card */}
+              <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-md">
+                <img
+                  src={contactGif}
+                  alt="Contact Solutions Team"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="p-4 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border flex flex-col justify-between">
+                  <div className="p-2.5 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900 w-fit mb-2">
+                    <Mail className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Email Us</h4>
-                    <a href="mailto:contact@gmdigitalstudio.com" className="text-sm text-brand-600 dark:text-brand-400 font-semibold hover:underline">
+                    <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-0.5">Email Us</h4>
+                    <a href="mailto:contact@gmdigitalstudio.com" className="text-xs text-gray-900 dark:text-white font-bold hover:text-brand-600 transition-colors break-all">
                       contact@gmdigitalstudio.com
                     </a>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 p-5 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border">
-                  <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900">
-                    <Phone className="w-6 h-6" />
+                <div className="p-4 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border flex flex-col justify-between">
+                  <div className="p-2.5 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900 w-fit mb-2">
+                    <Phone className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Call Us</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">+1 (800) 555-0199</p>
+                    <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-0.5">Call Us</h4>
+                    <p className="text-xs text-gray-900 dark:text-white font-bold">+1 (800) 555-0199</p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 p-5 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border">
-                  <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900">
-                    <MapPin className="w-6 h-6" />
+                <div className="p-4 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border flex flex-col justify-between">
+                  <div className="p-2.5 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900 w-fit mb-2">
+                    <MapPin className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Studio Location</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">100 Tech Plaza, Suite 400<br />San Francisco, CA 94107</p>
+                    <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-0.5">Studio Location</h4>
+                    <p className="text-xs text-gray-900 dark:text-white font-bold leading-tight">100 Tech Plaza, Suite 400<br />San Francisco, CA</p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 p-5 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border">
-                  <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900">
-                    <Clock className="w-6 h-6" />
+                <div className="p-4 rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border flex flex-col justify-between">
+                  <div className="p-2.5 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-500 border border-brand-100 dark:border-brand-900 w-fit mb-2">
+                    <Clock className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Operating Hours</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Monday - Friday: 9:00 AM - 6:00 PM EST</p>
+                    <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-0.5">Operating Hours</h4>
+                    <p className="text-xs text-gray-900 dark:text-white font-bold leading-tight">Mon - Fri: 9:00 AM - 6:00 PM EST</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Contact Form Column */}
-            <div className="lg:col-span-7">
-              <div className="p-8 sm:p-10 rounded-3xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border shadow-lg">
+            <div className="lg:col-span-7 h-full flex flex-col">
+              <div className="p-8 sm:p-10 rounded-3xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border shadow-lg h-full flex flex-col justify-between">
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
                   Project Inquiry Form
                 </h3>
@@ -306,17 +321,18 @@ const Contact: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-base shadow-lg shadow-brand-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-gray-400 text-white font-bold text-base shadow-lg shadow-brand-600/30 transition-all hover:scale-[1.02]"
                   >
                     {isSubmitting ? (
                       <span>Sending Message...</span>
                     ) : (
                       <>
-                        <span>Submit Inquiry</span>
-                        <Send className="w-4 h-4" />
+                        <span>Submit Project Inquiry</span>
+                        <Send className="w-5 h-5" />
                       </>
                     )}
                   </button>
@@ -328,49 +344,40 @@ const Contact: React.FC = () => {
         </div>
       </section>
 
-      {/* Client Logos Bar placed AFTER Contact Form & BEFORE FAQs */}
-      <div className="border-t border-b border-gray-200/80 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/30">
-        <TrustedLogosBar />
-      </div>
+      {/* Trusted Client Logos Bar */}
+      <TrustedLogosBar />
 
-      {/* FAQ Accordion Section */}
-      <section className="py-24 bg-white dark:bg-dark-bg">
+      {/* Frequently Asked Questions Preview */}
+      <section className="py-20 bg-gray-50/70 dark:bg-dark-surface/30">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-heading font-black text-gray-900 dark:text-white tracking-tight mb-4">
-              Frequently Asked Questions
+          
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <h2 className="text-2xl sm:text-3xl font-heading font-black text-gray-900 dark:text-white mb-2">
+              Common Contact Questions
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 text-base">
-              Got questions before reaching out? Here are quick answers to common client inquiries.
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Quick answers about project kickoffs, milestone contracts, and response times.
             </p>
           </div>
 
           <div className="space-y-4">
             {FAQS.map((faq, index) => {
               const isOpen = openFaq === index;
-
               return (
                 <div
                   key={index}
-                  className="rounded-2xl bg-gray-50/80 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border overflow-hidden transition-all"
+                  className="rounded-2xl bg-white dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border overflow-hidden shadow-sm"
                 >
                   <button
                     onClick={() => setOpenFaq(isOpen ? null : index)}
-                    className="w-full p-6 text-left flex items-center justify-between font-bold text-gray-900 dark:text-white text-base hover:text-brand-600 transition-colors"
+                    className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-sm text-gray-900 dark:text-white hover:text-brand-600 transition-colors"
                   >
-                    <span className="flex items-center gap-3">
-                      <HelpCircle className="w-5 h-5 text-brand-600 dark:text-brand-500 flex-shrink-0" />
-                      <span>{faq.question}</span>
-                    </span>
-                    {isOpen ? (
-                      <ChevronUp className="w-5 h-5 text-gray-500" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-gray-500" />
-                    )}
+                    <span>{faq.question}</span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-brand-600' : ''}`} />
                   </button>
 
                   {isOpen && (
-                    <div className="px-6 pb-6 text-sm text-gray-600 dark:text-gray-300 leading-relaxed border-t border-gray-100 dark:border-gray-800 pt-4">
+                    <div className="px-5 pb-5 text-xs leading-relaxed text-gray-600 dark:text-gray-300 border-t border-gray-100 dark:border-gray-800/60 pt-3">
                       {faq.answer}
                     </div>
                   )}
@@ -378,6 +385,7 @@ const Contact: React.FC = () => {
               );
             })}
           </div>
+
         </div>
       </section>
 

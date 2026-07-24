@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Target, ShieldCheck, Zap, Users, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import TrustedLogosBar from '../components/home/TrustedLogosBar';
 
 import aboutBgVideo from '../assets/videos/about-bg.mp4';
 import aboutTeamImg from '../assets/images/about-team.jpg';
@@ -62,7 +63,7 @@ const TEAM_MEMBERS = [
 
 const About: React.FC = () => {
   return (
-    <div className="w-full bg-white dark:bg-dark-bg text-gray-900 dark:text-white">
+    <div className="w-full bg-white dark:bg-dark-bg text-gray-900 dark:text-white font-sans">
       
       {/* Hero Header with Relevant Ambient Video Loop */}
       <section className="py-24 bg-gray-950 text-white relative overflow-hidden">
@@ -158,7 +159,10 @@ const About: React.FC = () => {
         </div>
       </section>
 
-      {/* Core Values */}
+      {/* Trusted Client Logos Bar (Before Core Principles) */}
+      <TrustedLogosBar />
+
+      {/* Core Principles */}
       <section className="py-24 bg-gray-50/80 dark:bg-dark-surface/40 border-b border-gray-200/80 dark:border-dark-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
@@ -258,7 +262,7 @@ const About: React.FC = () => {
             </p>
             <Link
               to="/contact"
-              className="inline-flex items-center gap-2.5 px-8 py-4 rounded-xl bg-slate-950 hover:bg-black text-white font-bold text-base shadow-xl border border-white/20 transition-all hover:scale-105"
+              className="inline-flex items-center gap-2.5 px-8 py-4 rounded-xl bg-white hover:bg-gray-100 text-gray-950 font-bold text-base shadow-xl transition-all hover:scale-105"
             >
               <span>Start a Project</span>
               <ArrowRight className="w-5 h-5" />

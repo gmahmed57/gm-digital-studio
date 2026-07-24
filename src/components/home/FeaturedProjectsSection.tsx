@@ -52,10 +52,10 @@ const FeaturedProjectsSection: React.FC = () => {
                   <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                     {project.category}
                   </span>
-                  <div className="inline-flex items-center text-xs font-bold text-brand-600 dark:text-brand-400 group-hover:underline">
-                    <span>View Details</span>
-                    <ExternalLink className="w-3.5 h-3.5 ml-1" />
-                  </div>
+                  <span className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-brand-50 dark:bg-brand-950/60 group-hover:bg-brand-600 text-brand-600 dark:text-brand-400 group-hover:text-white border border-brand-200/80 dark:border-brand-900/80 text-xs font-bold transition-all duration-300 shadow-sm cursor-pointer">
+                    <span>View Case Study</span>
+                    <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
+                  </span>
                 </div>
               </div>
             </motion.div>

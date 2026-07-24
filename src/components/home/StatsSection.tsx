@@ -1,6 +1,57 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState, useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
 import { COMPANY_STATS } from '../../constants/homeData';
+
+interface CountUpProps {
+  rawTarget: string;
+}
+
+const CountUpNumber: React.FC<CountUpProps> = ({ rawTarget }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true, margin: '-50px' });
+  const [displayValue, setDisplayValue] = useState('1');
+
+  // Parse numeric target, decimals, prefix, suffix
+  const match = rawTarget.match(/^([^\d.]*)(\d+(?:\.\d+)?)(.*)$/);
+  const prefix = match ? match[1] : '';
+  const numTarget = match ? parseFloat(match[2]) : 0;
+  const suffix = match ? match[3] : rawTarget;
+  const decimals = match && match[2].includes('.') ? match[2].split('.')[1].length : 0;
+
+  useEffect(() => {
+    if (!isInView || numTarget === 0) return;
+
+    let startTimestamp: number | null = null;
+    const startVal = 1;
+    const durationMs = 2000; // 2 seconds
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / durationMs, 1);
+      // Ease out cubic
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      const current = startVal + (numTarget - startVal) * easeProgress;
+
+      setDisplayValue(current.toFixed(decimals));
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        setDisplayValue(numTarget.toFixed(decimals));
+      }
+    };
+
+    requestAnimationFrame(step);
+  }, [isInView, numTarget, decimals]);
+
+  return (
+    <span ref={ref}>
+      {prefix}
+      {displayValue}
+      {suffix}
+    </span>
+  );
+};
 
 const StatsSection: React.FC = () => {
   return (
@@ -19,7 +70,7 @@ const StatsSection: React.FC = () => {
               className="flex flex-col space-y-2 p-7 rounded-2xl bg-white text-gray-900 border border-white/40 shadow-2xl hover:scale-[1.03] transition-all duration-300"
             >
               <span className="text-4xl sm:text-5xl font-heading font-black text-brand-600 tracking-tight">
-                {stat.value}
+                <CountUpNumber rawTarget={stat.value} />
               </span>
               <h4 className="text-lg font-bold text-gray-900">
                 {stat.label}
