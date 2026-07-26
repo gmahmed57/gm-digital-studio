@@ -8,9 +8,9 @@ import framerLogo from '../assets/logos/framer.svg';
 import linearLogo from '../assets/logos/linear.svg';
 import figmaLogo from '../assets/logos/figma.svg';
 
-import webDevImg from '../assets/images/web-dev.jpg';
-import uiUxImg from '../assets/images/ui-ux.jpg';
-import aiAutomationImg from '../assets/images/ai-automation.jpg';
+import nexusAnalyticsImg from '../assets/images/portfolio/nexus-analytics.jpg';
+import aetheriaDesignImg from '../assets/images/portfolio/aetheria-design.jpg';
+import omniflowAutomationImg from '../assets/images/portfolio/omniflow-automation.jpg';
 
 import avatar1 from '../assets/avatars/avatar-3.jpg';
 import avatar2 from '../assets/avatars/avatar-2.jpg';
@@ -112,31 +112,31 @@ export const COMPANY_STATS = [
 
 export const PORTFOLIO_PROJECTS: PortfolioItem[] = [
   {
-    id: '1',
+    id: 'nexus-analytics',
     title: 'Nexus SaaS Analytics Dashboard',
     category: 'Web Development',
     description: 'Real-time analytics engine and React data visualization dashboard processing high-frequency data streams.',
-    imageUrl: webDevImg,
+    imageUrl: nexusAnalyticsImg,
     tags: ['React', 'Next.js', 'TypeScript', 'Tailwind CSS'],
-    liveUrl: '/services',
+    liveUrl: '/portfolio/nexus-analytics',
   },
   {
-    id: '2',
+    id: 'aetheria-design',
     title: 'Aetheria Cloud Design System',
     category: 'UI/UX Design',
     description: 'Full tokenized Figma design system and component library built for rapid cross-platform deployment.',
-    imageUrl: uiUxImg,
+    imageUrl: aetheriaDesignImg,
     tags: ['Figma', 'Design Systems', 'UI/UX', 'Tailwind CSS'],
-    liveUrl: '/services',
+    liveUrl: '/portfolio/aetheria-design',
   },
   {
-    id: '3',
+    id: 'omniflow-automation',
     title: 'OmniFlow API & Workflow Automation',
     category: 'Workflow & AI Automation',
     description: 'Automated data integration pipeline connecting CRM platforms, transactional email, and webhooks.',
-    imageUrl: aiAutomationImg,
+    imageUrl: omniflowAutomationImg,
     tags: ['Python', 'Node.js', 'Webhooks', 'Supabase'],
-    liveUrl: '/services',
+    liveUrl: '/portfolio/omniflow-automation',
   },
 ];
 
