@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
-import { Moon, Sun, Menu, X } from 'lucide-react';
+import { Moon, Sun, Menu, X, User } from 'lucide-react';
 import logo from '../../assets/icon-logo.png';
 
 const Navbar = () => {
@@ -45,18 +45,25 @@ const Navbar = () => {
           ))}
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="rounded-full p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors"
             aria-label="Toggle theme"
           >
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {theme === 'dark' ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5" />}
           </button>
 
           <Link
+            to="/login"
+            className="hidden md:inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-gray-300 dark:border-dark-border bg-gray-50 dark:bg-dark-surface px-3.5 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <User className="w-3.5 h-3.5 text-brand-600" /> Client Portal
+          </Link>
+
+          <Link
             to="/contact"
-            className="hidden md:inline-flex h-9 items-center justify-center rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 transition-colors"
+            className="hidden md:inline-flex h-9 items-center justify-center rounded-md bg-brand-600 px-4 text-xs font-semibold text-white shadow-xs hover:bg-brand-700 transition-colors"
           >
             Get Started
           </Link>
@@ -90,11 +97,18 @@ const Navbar = () => {
                 {link.name}
               </NavLink>
             ))}
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
+              <Link
+                to="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-dark-border bg-gray-50 dark:bg-dark-surface px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200"
+              >
+                <User className="w-4 h-4 text-brand-600" /> Client Portal
+              </Link>
               <Link
                 to="/contact"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex w-full items-center justify-center rounded-md bg-brand-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-brand-700"
+                className="flex w-full items-center justify-center rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-brand-700"
               >
                 Get Started
               </Link>

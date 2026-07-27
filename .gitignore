@@ -23,16 +23,18 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment & credentials
+# Environment variables
 .env
 .env.example
 .env*.local
 
-# Internal files, scratch scripts & documentation
+# Private AI/Agent Scratch & Internal Directories
 .agents/
+.gemini/
 scratch/
-worked_done.md
-daily_plan.md
-GM_Digital_Studio_Internship_Project_Plan.md
+
+# Project Documentation Tracking
 *.md
 !README.md
+!worked_done.md
+!daily_plan.md

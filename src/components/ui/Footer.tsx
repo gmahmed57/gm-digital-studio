@@ -3,7 +3,7 @@ import logo from '../../assets/icon-logo.png';
 
 const Footer = () => {
   return (
-    <footer className="border-t border-gray-200/80 bg-gray-900 text-white dark:border-dark-border dark:bg-slate-950">
+    <footer className="border-t border-gray-200/80 bg-gray-900 text-white dark:border-dark-border dark:bg-slate-950 font-sans">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div className="md:col-span-1">
@@ -29,8 +29,9 @@ const Footer = () => {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Company & Work</h3>
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Company & Client Portal</h3>
             <ul className="space-y-3 text-sm text-gray-400">
+              <li><Link to="/login" className="hover:text-brand-400 font-semibold text-brand-400 transition-colors">Client Portal Login</Link></li>
               <li><Link to="/about" className="hover:text-brand-400 transition-colors">About Us</Link></li>
               <li><Link to="/portfolio" className="hover:text-brand-400 transition-colors">Portfolio & Case Studies</Link></li>
               <li><Link to="/blog" className="hover:text-brand-400 transition-colors">Blog & Insights</Link></li>

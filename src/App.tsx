@@ -1,5 +1,10 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import RootLayout from './layouts/RootLayout';
+import DashboardLayout from './layouts/DashboardLayout';
+
+// Public Web Pages
 import Home from './pages/Home';
 import About from './pages/About';
 import Services from './pages/Services';
@@ -14,27 +19,81 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import NotFound from './pages/NotFound';
 
+// Auth Pages
+import Login from './pages/auth/Login';
+import ForgotPassword from './pages/auth/ForgotPassword';
+
+// Dashboard Overview Pages
+import AdminOverview from './pages/dashboard/AdminOverview';
+import ClientOverview from './pages/dashboard/ClientOverview';
+
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<RootLayout />}>
-          <Route index element={<Home />} />
-          <Route path="about" element={<About />} />
-          <Route path="services" element={<Services />} />
-          <Route path="portfolio" element={<Portfolio />} />
-          <Route path="portfolio/:id" element={<CaseStudyDetail />} />
-          <Route path="pricing" element={<Pricing />} />
-          <Route path="faq" element={<FAQ />} />
-          <Route path="blog" element={<Blog />} />
-          <Route path="blog/:id" element={<BlogPostDetail />} />
-          <Route path="contact" element={<Contact />} />
-          <Route path="privacy" element={<PrivacyPolicy />} />
-          <Route path="terms" element={<Terms />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Website Routes */}
+          <Route path="/" element={<RootLayout />}>
+            <Route index element={<Home />} />
+            <Route path="about" element={<About />} />
+            <Route path="services" element={<Services />} />
+            <Route path="portfolio" element={<Portfolio />} />
+            <Route path="portfolio/:id" element={<CaseStudyDetail />} />
+            <Route path="pricing" element={<Pricing />} />
+            <Route path="faq" element={<FAQ />} />
+            <Route path="blog" element={<Blog />} />
+            <Route path="blog/:id" element={<BlogPostDetail />} />
+            <Route path="contact" element={<Contact />} />
+            <Route path="privacy" element={<PrivacyPolicy />} />
+            <Route path="terms" element={<Terms />} />
+          </Route>
+
+          {/* Public Auth Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+
+          {/* Admin Protected Dashboard Routes */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminOverview />} />
+            <Route path="clients" element={<AdminOverview />} />
+            <Route path="projects" element={<AdminOverview />} />
+            <Route path="invoices" element={<AdminOverview />} />
+            <Route path="analytics" element={<AdminOverview />} />
+            <Route path="cms" element={<AdminOverview />} />
+            <Route path="settings" element={<AdminOverview />} />
+          </Route>
+
+          {/* Client Protected Dashboard Routes */}
+          <Route
+            path="/client"
+            element={
+              <ProtectedRoute allowedRoles={['client']}>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/client/dashboard" replace />} />
+            <Route path="dashboard" element={<ClientOverview />} />
+            <Route path="projects" element={<ClientOverview />} />
+            <Route path="invoices" element={<ClientOverview />} />
+            <Route path="files" element={<ClientOverview />} />
+            <Route path="messages" element={<ClientOverview />} />
+            <Route path="support" element={<ClientOverview />} />
+          </Route>
+
+          {/* Fallback 404 Route */}
           <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

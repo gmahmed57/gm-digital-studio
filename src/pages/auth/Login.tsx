@@ -1,0 +1,317 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import type { UserRole } from '../../types/auth';
+import { Lock, Mail, Eye, EyeOff, ArrowRight, ShieldCheck, User } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import SEO from '../../components/common/SEO';
+import logo from '../../assets/icon-logo.png';
+
+// Clean headline slides
+const SLIDES = [
+  {
+    id: 1,
+    heading: 'Streamlining Products, Delivering Excellence.',
+    subtext: 'Track real-time engineering milestones, review sprint deliverables, and collaborate with senior studio engineers.',
+  },
+  {
+    id: 2,
+    heading: 'Real-Time Visibility & Code Deployments.',
+    subtext: 'Stay synchronized with live staging builds, automated QA checks, and direct technical updates.',
+  },
+  {
+    id: 3,
+    heading: 'Transparent Financials & Instant Billing.',
+    subtext: 'Access detailed milestone breakdowns, invoice history, and instant PDF exports with zero friction.',
+  },
+];
+
+export function Login() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Active slide index for text rotation
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  // Auto-rotate text slides
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % SLIDES.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent, roleOverride?: UserRole) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setIsSubmitting(true);
+
+    try {
+      const targetEmail = roleOverride
+        ? roleOverride === 'admin'
+          ? 'admin@gmdigitalstudio.com'
+          : 'alex.morgan@nexus.tech'
+        : email || 'alex.morgan@nexus.tech';
+
+      await login(targetEmail, roleOverride);
+      
+      const targetRole = roleOverride || (targetEmail.includes('admin') ? 'admin' : 'client');
+      if (targetRole === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/client/dashboard');
+      }
+    } catch (err) {
+      setErrorMsg('Invalid login credentials. Please check your email and password.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const currentSlide = SLIDES[activeSlide];
+
+  return (
+    <>
+      <SEO 
+        title="Client Portal Login - GM Digital Studio"
+        description="Access your GM Digital Studio client portal to track project progress, view deliverables, and download invoices."
+      />
+
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-dark-bg text-gray-900 dark:text-white p-4 sm:p-6 md:p-10 font-sans">
+        
+        {/* Outer Container Card Matching Reference Layout */}
+        <div className="w-full max-w-5xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-3 md:p-4 shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[620px]">
+          
+          {/* Left Panel: Visual Panel with Brand Gradient (#f94a00 / #ea3900) & Smooth Ambient Movement */}
+          <div className="lg:col-span-6 rounded-2xl bg-[#0a0a0b] text-white p-6 md:p-8 flex flex-col justify-between relative overflow-hidden border border-gray-800/80 min-h-[380px] lg:min-h-[580px]">
+            
+            {/* Ambient Brand Orange Gradient Movement Orbs */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              {/* Brand Orange Orb 1 */}
+              <motion.div
+                animate={{
+                  scale: [1, 1.2, 1],
+                  rotate: [0, 180, 360],
+                  x: [-30, 30, -30],
+                  y: [-30, 20, -30],
+                }}
+                transition={{
+                  duration: 20,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+                className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-brand-500/20 blur-3xl"
+              />
+
+              {/* Brand Orange Orb 2 */}
+              <motion.div
+                animate={{
+                  scale: [1.2, 1, 1.2],
+                  rotate: [360, 180, 0],
+                  x: [30, -20, 30],
+                  y: [20, -30, 20],
+                }}
+                transition={{
+                  duration: 24,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+                className="absolute -bottom-28 -right-28 w-96 h-96 rounded-full bg-brand-700/20 blur-3xl"
+              />
+
+              {/* Grid pattern overlay */}
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:2rem_2rem]" />
+            </div>
+
+            {/* Top Bar: Official Logo Image & Studio Name */}
+            <div className="relative z-10 flex items-center justify-between">
+              <Link to="/" className="flex items-center gap-2.5 group">
+                <img src={logo} alt="GM Digital Studio Logo" className="h-8 w-auto object-contain" />
+                <span className="font-heading font-bold text-lg tracking-tight text-white">
+                  GM Digital <span className="text-brand-500">Studio</span>
+                </span>
+              </Link>
+            </div>
+
+            {/* Bottom Content & Text Slideshow overlay */}
+            <div className="relative z-10 mt-auto pt-12 space-y-6">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentSlide.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.4 }}
+                  className="space-y-3"
+                >
+                  <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-white leading-tight">
+                    {currentSlide.heading}
+                  </h2>
+                  <p className="text-gray-300 text-xs sm:text-sm leading-relaxed max-w-md">
+                    {currentSlide.subtext}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Horizontal Progress Bar Indicators strictly styled in Signature Brand Orange */}
+              <div className="flex items-center gap-2 pt-2">
+                {SLIDES.map((slide, idx) => (
+                  <button
+                    key={slide.id}
+                    onClick={() => setActiveSlide(idx)}
+                    className={`h-1.5 rounded-full transition-all duration-500 cursor-pointer ${
+                      activeSlide === idx ? 'w-10 bg-brand-500' : 'w-4 bg-white/30 hover:bg-white/50'
+                    }`}
+                    title={`Slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Right Panel: Clean Client Portal Login Form (Matches Light/Dark Theme) */}
+          <div className="lg:col-span-6 p-6 sm:p-8 md:p-10 flex flex-col justify-between">
+            <div>
+              <div className="mb-6">
+                <h1 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-white mb-1.5">
+                  Client Portal Sign In
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
+                  Enter your assigned credentials to view live project updates.
+                </p>
+              </div>
+
+              {/* Quick Demo Switcher */}
+              <div className="mb-6 p-3.5 rounded-2xl bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    Quick Demo Access
+                  </span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Select role to login</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => handleLogin(e, 'client')}
+                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                  >
+                    <User className="w-3.5 h-3.5" /> Client Portal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleLogin(e, 'admin')}
+                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-gray-900 hover:bg-gray-800 dark:bg-white dark:text-gray-950 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-brand-600" /> Admin Console
+                  </button>
+                </div>
+              </div>
+
+              {errorMsg && (
+                <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/60 text-red-600 dark:text-red-400 text-xs font-medium">
+                  {errorMsg}
+                </div>
+              )}
+
+              {/* Login Form */}
+              <form onSubmit={(e) => handleLogin(e)} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="alex.morgan@nexus.tech"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-600 text-sm transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Password
+                    </label>
+                    <Link
+                      to="/forgot-password"
+                      className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-600 text-sm transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      defaultChecked
+                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-600"
+                    />
+                    Remember me for 30 days
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 group cursor-pointer"
+                >
+                  {isSubmitting ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      Sign In to Client Portal <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-gray-100 dark:border-dark-border text-center text-xs text-gray-500 dark:text-gray-400">
+              Need assistance? Contact support at{' '}
+              <a href="mailto:support@gmdigitalstudio.com" className="text-brand-600 dark:text-brand-400 font-semibold hover:underline">
+                support@gmdigitalstudio.com
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </>
+  );
+}
+
+export default Login;
