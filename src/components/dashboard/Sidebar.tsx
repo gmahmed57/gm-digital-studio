@@ -15,7 +15,8 @@ import {
   FileCheck2,
   LogOut,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Wrench
 } from 'lucide-react';
 import logo from '../../assets/icon-logo.png';
 
@@ -44,6 +45,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
 
   const clientNavItems = [
     { label: 'Dashboard', path: '/client/dashboard', icon: LayoutDashboard },
+    { label: 'Studio Tools', path: '/client/tools', icon: Wrench },
     { label: 'My Projects', path: '/client/projects', icon: FolderKanban },
     { label: 'Invoices', path: '/client/invoices', icon: FileText },
     { label: 'Shared Files', path: '/client/files', icon: FolderOpen },
@@ -72,8 +74,8 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
         }`}
       >
         {/* Top Header & Official Brand Logo PNG */}
-        <div>
-          <div className="h-16 px-4 flex items-center justify-between border-b border-gray-100 dark:border-dark-border">
+        <div className="flex-1 overflow-y-auto">
+          <div className="h-16 px-4 flex items-center justify-between border-b border-gray-100 dark:border-dark-border sticky top-0 bg-white dark:bg-dark-card z-10">
             <Link to="/" className="flex items-center gap-2.5 overflow-hidden">
               <img src={logo} alt="GM Digital Studio Logo" className="h-8 w-auto object-contain flex-shrink-0" />
               {!isCollapsed && (
@@ -116,7 +118,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
             </div>
           )}
 
-          {/* Navigation Links (Matching User Reference Image 1 Layout) */}
+          {/* Navigation Links */}
           <nav className="p-3 space-y-1.5 mt-2">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
@@ -142,15 +144,15 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
           </nav>
         </div>
 
-        {/* Bottom Support Button & Sign Out */}
-        <div className="p-3 border-t border-gray-100 dark:border-dark-border space-y-2">
+        {/* Pinned Bottom Footer Section: Support & Sign Out (Always Visible) */}
+        <div className="p-3 border-t border-gray-100 dark:border-dark-border space-y-2 flex-shrink-0 bg-white dark:bg-dark-card">
           {!isCollapsed ? (
-            <div className="p-3 rounded-xl bg-gray-50 dark:bg-dark-surface border border-gray-100 dark:border-dark-border text-center">
+            <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-dark-surface border border-gray-100 dark:border-dark-border text-center">
               <p className="text-xs font-bold text-gray-900 dark:text-white">Need Support?</p>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">24/7 Priority Desk</p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1.5">24/7 Priority Desk</p>
               <a
                 href="mailto:support@gmdigitalstudio.com"
-                className="inline-block w-full py-1.5 px-3 rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white border border-gray-200 dark:border-dark-border text-xs font-bold hover:bg-gray-100 dark:hover:bg-dark-surface transition-colors"
+                className="inline-block w-full py-1 px-2.5 rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white border border-gray-200 dark:border-dark-border text-xs font-bold hover:bg-gray-100 dark:hover:bg-dark-surface transition-colors"
               >
                 Contact Helpdesk
               </a>
@@ -159,18 +161,19 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
             <a
               href="mailto:support@gmdigitalstudio.com"
               className="flex items-center justify-center p-2.5 rounded-xl bg-gray-100 dark:bg-dark-surface text-gray-600 dark:text-gray-300 hover:text-brand-600"
-              title="Support"
+              title="Support Helpdesk"
             >
               <HelpCircle className="w-5 h-5" />
             </a>
           )}
 
+          {/* Prominent Red Sign Out Button (Always Visible in both Expanded and Collapsed Modes) */}
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 text-xs font-bold transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 text-xs font-bold transition-colors cursor-pointer"
             title="Log Out"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4 flex-shrink-0 text-red-600 dark:text-red-400" />
             {!isCollapsed && <span>Sign Out</span>}
           </button>
         </div>

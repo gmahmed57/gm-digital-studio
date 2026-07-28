@@ -1,0 +1,408 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { clientService } from '../../services/clientService';
+import type { ClientItem } from '../../types/client';
+import { MASTER_STUDIO_TOOLS } from '../../constants/toolsData';
+import {
+  ArrowLeft,
+  User,
+  Building,
+  Mail,
+  Phone,
+  Package,
+  Wrench,
+  CheckCircle2,
+  Save,
+  Power,
+  Key,
+} from 'lucide-react';
+import SEO from '../../components/common/SEO';
+
+export function ClientEditPage() {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEditing = Boolean(id && id !== 'new');
+
+  const [fullName, setFullName] = useState('');
+  const [company, setCompany] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [portalPassword, setPortalPassword] = useState(''); // Empty by default (no pre-filled fallback)
+  const [assignedPackage, setAssignedPackage] = useState('Enterprise Web Development');
+  const [status, setStatus] = useState<'active' | 'inactive'>('active');
+  const [allowedToolIds, setAllowedToolIds] = useState<string[]>([]); // All tools locked by default
+  const [clientItem, setClientItem] = useState<ClientItem | null>(null);
+  const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    const loadClient = async () => {
+      if (isEditing && id) {
+        const clients = await clientService.getClients();
+        const found = clients.find((c) => c.id === id);
+        if (found) {
+          setClientItem(found);
+          setFullName(found.fullName);
+          setCompany(found.company);
+          setEmail(found.email);
+          setPhone(found.phone);
+          setPortalPassword(found.portalPassword || '');
+          setAssignedPackage(found.assignedPackage);
+          setStatus(found.status);
+          setAllowedToolIds(found.allowedToolIds || []);
+        }
+      }
+    };
+    loadClient();
+  }, [id, isEditing]);
+
+  const toggleTool = (toolId: string) => {
+    if (allowedToolIds.includes(toolId)) {
+      setAllowedToolIds(allowedToolIds.filter((item) => item !== toolId));
+    } else {
+      setAllowedToolIds([...allowedToolIds, toolId]);
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    // Strict validation: password must be at least 6 characters
+    if (!isEditing && (!portalPassword || portalPassword.length < 6)) {
+      setFormError('Initial Portal Password must be at least 6 characters long.');
+      return;
+    }
+
+    if (isEditing && portalPassword && portalPassword.length < 6) {
+      setFormError('Portal Password must be at least 6 characters long.');
+      return;
+    }
+
+    try {
+      await clientService.saveClient({
+        id: isEditing ? id : undefined,
+        fullName,
+        company,
+        email,
+        phone,
+        portalPassword,
+        assignedPackage,
+        status,
+        allowedToolIds,
+      });
+      navigate('/admin/clients');
+    } catch (err: any) {
+      setFormError(err.message || 'Failed to save client details.');
+    }
+  };
+
+  const handleToggleActiveStatus = async () => {
+    if (id && isEditing) {
+      await clientService.toggleClientStatus(id);
+      setStatus(status === 'active' ? 'inactive' : 'active');
+    }
+  };
+
+  return (
+    <>
+      <SEO
+        title={isEditing ? `Edit ${fullName || 'Client'} - GM Admin` : 'Provision New Client - GM Admin'}
+        description="Configure client account profile, portal access password, assigned packages, and studio tool access permissions."
+      />
+
+      <div className="space-y-6 font-sans">
+        
+        {/* Top Header & Navigation Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link
+              to="/admin/clients"
+              className="w-9 h-9 rounded-xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-white flex items-center justify-center transition-colors shadow-xs"
+              title="Back to Client Directory"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-white">
+                {isEditing ? `Manage Account: ${clientItem?.fullName || fullName}` : 'Provision New Client Account'}
+              </h1>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                Configure profile details, portal password, assigned service packages, and granted studio tool permissions.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {isEditing && (
+              <button
+                type="button"
+                onClick={handleToggleActiveStatus}
+                className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                  status === 'active'
+                    ? 'border-gray-300 dark:border-dark-border text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface'
+                    : 'border-emerald-300 bg-emerald-50 text-emerald-700 font-bold'
+                }`}
+              >
+                <Power className="w-4 h-4" />
+                {status === 'active' ? 'Deactivate Account' : 'Activate Account'}
+              </button>
+            )}
+
+            <button
+              type="submit"
+              form="client-edit-form"
+              className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Save className="w-4 h-4" />
+              {isEditing ? 'Save Changes' : 'Provision Client'}
+            </button>
+          </div>
+        </div>
+
+        {/* Validation Error Banner */}
+        {formError && (
+          <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/60 text-red-600 dark:text-red-400 text-xs font-semibold">
+            ⚠️ {formError}
+          </div>
+        )}
+
+        {/* Edit Form Main Layout */}
+        <form id="client-edit-form" onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Left Column: Client Profile & Account Information Card */}
+          <div className="lg:col-span-6 space-y-6">
+            <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6">
+              <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-dark-border">
+                <div className="w-10 h-10 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold">
+                  <User className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-white">
+                    Client Profile & Access Credentials
+                  </h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Primary company contact details and portal password assignment.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                    <input
+                      type="text"
+                      required
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="e.g. Sarah Jenkins"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-brand-600 text-sm transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                    Company Name
+                  </label>
+                  <div className="relative">
+                    <Building className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                    <input
+                      type="text"
+                      required
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                      placeholder="e.g. Aetheria Design Co."
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-brand-600 text-sm transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                    Portal Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="sarah@aetheria.design"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-brand-600 text-sm transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                    Initial Portal Password (Min. 6 characters)
+                  </label>
+                  <div className="relative">
+                    <Key className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                    <input
+                      type="text"
+                      required={!isEditing}
+                      value={portalPassword}
+                      onChange={(e) => setPortalPassword(e.target.value)}
+                      placeholder="Enter minimum 6 character password"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-brand-600 transition-all"
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Clients will use this password to log in via the Client Portal.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                    Phone Number
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                    <input
+                      type="text"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+1 (555) 000-0000"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-brand-600 text-sm transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                    Assigned Service Package
+                  </label>
+                  <div className="relative">
+                    <Package className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                    <select
+                      value={assignedPackage}
+                      onChange={(e) => setAssignedPackage(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-600 text-sm transition-all appearance-none"
+                    >
+                      <option value="Enterprise Development">Enterprise Web Development</option>
+                      <option value="UI/UX & Product Design">UI/UX & Product Design</option>
+                      <option value="AI Automation Suite">AI Automation Suite</option>
+                      <option value="Brand Identity Strategy">Brand Identity Strategy</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                    Account Status
+                  </label>
+                  <div className="flex items-center gap-4 py-2">
+                    <label className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="editStatus"
+                        checked={status === 'active'}
+                        onChange={() => setStatus('active')}
+                        className="text-brand-600 focus:ring-brand-600"
+                      />
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400">
+                        Active Account
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="editStatus"
+                        checked={status === 'inactive'}
+                        onChange={() => setStatus('inactive')}
+                        className="text-brand-600 focus:ring-brand-600"
+                      />
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                        Deactivated
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Granted Studio Tools & Add-ons Access Matrix Card */}
+          <div className="lg:col-span-6 space-y-6">
+            <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-dark-border">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold">
+                    <Wrench className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-white">
+                      Granted Studio Tools Access
+                    </h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Enable or revoke client tool permissions for SaaS monetization.
+                    </p>
+                  </div>
+                </div>
+
+                <span className="text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-3 py-1.5 rounded-xl border border-brand-500/20">
+                  {allowedToolIds.length} of {MASTER_STUDIO_TOOLS.length} Active
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {MASTER_STUDIO_TOOLS.map((tool) => {
+                  const isEnabled = allowedToolIds.includes(tool.id);
+                  return (
+                    <div
+                      key={tool.id}
+                      onClick={() => toggleTool(tool.id)}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                        isEnabled
+                          ? 'border-brand-500/50 bg-brand-500/5 dark:bg-brand-500/10'
+                          : 'border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/50 opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="pr-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-bold text-gray-900 dark:text-white">
+                            {tool.name}
+                          </span>
+                          {tool.isPremium && (
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-600 dark:text-amber-400 uppercase">
+                              PREMIUM
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                          {tool.description}
+                        </p>
+                      </div>
+
+                      <div className="flex-shrink-0">
+                        {isEnabled ? (
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-3 py-1.5 rounded-xl">
+                            <CheckCircle2 className="w-4 h-4 fill-brand-600/10" /> Enabled
+                          </div>
+                        ) : (
+                          <div className="text-xs font-semibold text-gray-400 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-xl">
+                            Locked
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+        </form>
+
+      </div>
+    </>
+  );
+}
+
+export default ClientEditPage;

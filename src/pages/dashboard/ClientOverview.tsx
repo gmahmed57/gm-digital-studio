@@ -46,11 +46,11 @@ export function ClientOverview() {
 
       <div className="space-y-6 font-sans">
         
-        {/* Redesigned Premium Client Welcome Card (Sleek, Clean & Professional) */}
-        <div className="p-6 md:p-8 rounded-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
+        {/* Consistent Top Client Header Card (Clean, Professional, Zero Emojis & Badges) */}
+        <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-heading font-extrabold text-gray-900 dark:text-white">
-              Welcome back, {user?.fullName || 'Valued Client'}! 👋
+              Welcome back, {user?.fullName || 'Valued Client'}
             </h1>
             <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-2xl leading-relaxed">
               Here is your active engineering overview, sprint milestone progress, and billing history for <span className="font-semibold text-gray-900 dark:text-white">{user?.company || 'Nexus Tech Global'}</span>.
@@ -60,7 +60,7 @@ export function ClientOverview() {
           <div className="flex items-center gap-3 flex-shrink-0">
             <a
               href="mailto:support@gmdigitalstudio.com"
-              className="py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-sm flex items-center gap-2"
+              className="py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-2 cursor-pointer"
             >
               <MessageSquare className="w-4 h-4" /> Support Desk
             </a>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -15,17 +15,39 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Sync isDarkMode with document root class
+  useEffect(() => {
+    const checkDark = () => {
+      const root = window.document.documentElement;
+      setIsDarkMode(root.classList.contains('dark'));
+    };
+    checkDark();
+    // Micro delay to ensure DOM update
+    const timeout = setTimeout(checkDark, 50);
+    return () => clearTimeout(timeout);
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    const root = window.document.documentElement;
+    const currentlyDark = root.classList.contains('dark');
+    const nextTheme = currentlyDark ? 'light' : 'dark';
+    setTheme(nextTheme);
+  };
 
   // Derive route breadcrumbs
   const getBreadcrumb = () => {
     const path = location.pathname;
     if (path.includes('/admin/dashboard')) return 'Admin Overview';
-    if (path.includes('/admin/clients')) return 'Client Management';
+    if (path.includes('/admin/clients/edit')) return 'Client Account Management';
+    if (path.includes('/admin/clients')) return 'Client Directory';
     if (path.includes('/admin/projects')) return 'Project Management';
     if (path.includes('/admin/invoices')) return 'Invoices & Financials';
     if (path.includes('/admin/analytics')) return 'Analytics & Metrics';
     if (path.includes('/admin/cms')) return 'Content Management';
-    if (path.includes('/client/dashboard')) return 'Client Dashboard';
+    if (path.includes('/client/dashboard')) return 'Client Workspace';
+    if (path.includes('/client/tools')) return 'Studio Tools Suite';
     if (path.includes('/client/projects')) return 'Assigned Projects';
     if (path.includes('/client/invoices')) return 'Invoices & Billing';
     if (path.includes('/client/files')) return 'Shared Files & Assets';
@@ -40,7 +62,7 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleMobileSidebar}
-          className="lg:hidden p-2 rounded-xl bg-gray-100 dark:bg-dark-surface text-gray-600 dark:text-gray-300"
+          className="lg:hidden p-2 rounded-xl bg-gray-100 dark:bg-dark-surface text-gray-600 dark:text-gray-300 cursor-pointer"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -54,10 +76,10 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
         </div>
       </div>
 
-      {/* Right: Search, Notifications, Theme Toggle & User Avatar (Matching User Sample 1) */}
+      {/* Right: Search, Notifications, Theme Toggle & User Avatar */}
       <div className="flex items-center gap-3">
         
-        {/* Search Bar (Inspired by sample 1 top header) */}
+        {/* Search Bar */}
         <div className="relative hidden md:block w-64">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
             <Search className="w-4 h-4" />
@@ -69,20 +91,20 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
           />
         </div>
 
-        {/* Theme Switcher */}
+        {/* Working Theme Switcher Button */}
         <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-dark-surface flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-brand-500 dark:hover:text-brand-400 transition-colors"
-          title="Toggle Dark / Light Theme"
+          onClick={handleToggleTheme}
+          className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-dark-surface flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-brand-500 dark:hover:text-brand-400 transition-colors cursor-pointer"
+          title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
         >
-          {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-gray-700" />}
+          {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-gray-700" />}
         </button>
 
         {/* Notifications Dropdown Trigger */}
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-dark-surface flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-brand-500 transition-colors relative"
+            className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-dark-surface flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-brand-500 transition-colors relative cursor-pointer"
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
@@ -111,11 +133,11 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
           )}
         </div>
 
-        {/* User Profile Avatar Dropdown (Matching Sample 1) */}
+        {/* User Profile Avatar Dropdown */}
         <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-2.5 p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-dark-surface transition-colors"
+            className="flex items-center gap-2.5 p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-dark-surface transition-colors cursor-pointer"
           >
             {user?.avatarUrl ? (
               <img
@@ -153,7 +175,7 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
               <div className="pt-1 border-t border-gray-100 dark:border-dark-border">
                 <button
                   onClick={logout}
-                  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" /> Sign Out
                 </button>

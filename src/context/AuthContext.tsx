@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { UserProfile, UserRole, AuthContextType } from '../types/auth';
-import { authService, DEMO_PROFILES } from '../services/authService';
+import { authService } from '../services/authService';
 
 const STORAGE_KEY = 'gm_auth_user';
 
@@ -30,10 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const login = async (email: string, rolePreference?: UserRole) => {
+  const login = async (email: string, password?: string) => {
     setIsLoading(true);
     try {
-      const profile = await authService.signIn(email, rolePreference);
+      const profile = await authService.signIn(email, password);
       setUser(profile);
     } finally {
       setIsLoading(false);
@@ -53,8 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setRole = (role: UserRole) => {
     if (user) {
       setUser({ ...user, role });
-    } else {
-      setUser(DEMO_PROFILES[role]);
     }
   };
 

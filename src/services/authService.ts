@@ -1,58 +1,65 @@
 import { supabase } from './supabase';
 import type { UserProfile, UserRole } from '../types/auth';
-
-// Demo Mock Profiles for Instant Testing & Offline Capabilities
-export const DEMO_PROFILES: Record<UserRole, UserProfile> = {
-  admin: {
-    id: 'usr-admin-001',
-    email: 'admin@gmdigitalstudio.com',
-    fullName: 'G. M. Ahmed',
-    role: 'admin',
-    company: 'GM Digital Studio',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-    phone: '+1 (555) 019-2834',
-    createdAt: '2026-01-15'
-  },
-  client: {
-    id: 'usr-client-002',
-    email: 'alex.morgan@nexus.tech',
-    fullName: 'Alex Morgan',
-    role: 'client',
-    company: 'Nexus Tech Global',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',
-    phone: '+1 (555) 482-9102',
-    createdAt: '2026-03-10'
-  }
-};
+import { clientService } from './clientService';
+import avatar1 from '../assets/avatars/avatar-1.jpg';
+import avatar3 from '../assets/avatars/avatar-3.jpg';
 
 export const authService = {
-  async signIn(email: string, rolePreference?: UserRole): Promise<UserProfile> {
-    try {
-      if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password: 'password123',
-        });
-        if (!error && data.user) {
-          return {
-            id: data.user.id,
-            email: data.user.email || email,
-            fullName: data.user.user_metadata?.full_name || 'Studio Member',
-            role: (data.user.user_metadata?.role as UserRole) || rolePreference || 'client',
-            avatarUrl: data.user.user_metadata?.avatar_url,
-          };
-        }
-      }
-    } catch (err) {
-      console.warn('Supabase auth fallback active:', err);
+  async signIn(email: string, password?: string): Promise<UserProfile> {
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail || !password) {
+      throw new Error('Please enter both your email address and password.');
     }
 
-    const targetRole = rolePreference || (email.includes('admin') ? 'admin' : 'client');
-    const profile = DEMO_PROFILES[targetRole];
-    return {
-      ...profile,
-      email: email || profile.email
-    };
+    // 1. Authenticate with Supabase Auth API
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
+
+      if (!error && data.user) {
+        const role = (data.user.user_metadata?.role as UserRole) || 'admin';
+        return {
+          id: data.user.id,
+          email: data.user.email || cleanEmail,
+          fullName: data.user.user_metadata?.full_name || 'Studio User',
+          role,
+          company: data.user.user_metadata?.company,
+          avatarUrl: data.user.user_metadata?.avatar_url || (role === 'admin' ? avatar1 : avatar3),
+        };
+      }
+    }
+
+    // 2. Authenticate against Client Database Records
+    const clients = await clientService.getClients();
+    const matchedClient = clients.find((c) => c.email.toLowerCase() === cleanEmail);
+
+    if (matchedClient) {
+      if (matchedClient.status === 'inactive') {
+        throw new Error('Your client portal account has been deactivated. Please contact GM Digital Studio support.');
+      }
+
+      // Check strictly against the exact initial password assigned by Admin
+      if (matchedClient.portalPassword && password !== matchedClient.portalPassword) {
+        throw new Error('Invalid portal password. Please check your credentials.');
+      }
+
+      return {
+        id: matchedClient.id,
+        email: matchedClient.email,
+        fullName: matchedClient.fullName,
+        role: 'client',
+        company: matchedClient.company,
+        avatarUrl: matchedClient.avatarUrl || avatar3,
+        phone: matchedClient.phone,
+        createdAt: matchedClient.joinedDate,
+      };
+    }
+
+    // 3. Invalid Credentials Error
+    throw new Error('Invalid email address or password. Please check your credentials.');
   },
 
   async signOut(): Promise<void> {
@@ -66,17 +73,14 @@ export const authService = {
   },
 
   async resetPassword(email: string): Promise<boolean> {
-    try {
-      if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
-        });
-        if (error) throw error;
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/login`,
+      });
+      if (error) {
+        throw new Error(error.message || 'Failed to send reset email.');
       }
-      return true;
-    } catch (err) {
-      console.warn('Reset password error:', err);
-      return true;
     }
+    return true;
   }
 };

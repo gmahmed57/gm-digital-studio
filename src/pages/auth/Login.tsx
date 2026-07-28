@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import type { UserRole } from '../../types/auth';
-import { Lock, Mail, Eye, EyeOff, ArrowRight, ShieldCheck, User } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SEO from '../../components/common/SEO';
 import logo from '../../assets/icon-logo.png';
@@ -47,28 +46,34 @@ export function Login() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleLogin = async (e: React.FormEvent, roleOverride?: UserRole) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      setErrorMsg('Please enter your email address and password.');
+      return;
+    }
+
     setErrorMsg('');
     setIsSubmitting(true);
 
     try {
-      const targetEmail = roleOverride
-        ? roleOverride === 'admin'
-          ? 'admin@gmdigitalstudio.com'
-          : 'alex.morgan@nexus.tech'
-        : email || 'alex.morgan@nexus.tech';
+      await login(email, password);
 
-      await login(targetEmail, roleOverride);
-      
-      const targetRole = roleOverride || (targetEmail.includes('admin') ? 'admin' : 'client');
-      if (targetRole === 'admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/client/dashboard');
+      const savedUser = localStorage.getItem('gm_auth_user');
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          if (parsed.role === 'admin') {
+            navigate('/admin/dashboard');
+            return;
+          }
+        } catch (e) {
+          // Fallback
+        }
       }
-    } catch (err) {
-      setErrorMsg('Invalid login credentials. Please check your email and password.');
+      navigate('/client/dashboard');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Invalid login credentials. Please check your email and password.');
     } finally {
       setIsSubmitting(false);
     }
@@ -88,7 +93,7 @@ export function Login() {
         {/* Outer Container Card Matching Reference Layout */}
         <div className="w-full max-w-5xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-3 md:p-4 shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[620px]">
           
-          {/* Left Panel: Visual Panel with Brand Gradient (#f94a00 / #ea3900) & Smooth Ambient Movement */}
+          {/* Left Panel: Visual Panel with Brand Gradient (#f94a00 / #ea3900) & Ambient Movement */}
           <div className="lg:col-span-6 rounded-2xl bg-[#0a0a0b] text-white p-6 md:p-8 flex flex-col justify-between relative overflow-hidden border border-gray-800/80 min-h-[380px] lg:min-h-[580px]">
             
             {/* Ambient Brand Orange Gradient Movement Orbs */}
@@ -176,42 +181,16 @@ export function Login() {
 
           </div>
 
-          {/* Right Panel: Clean Client Portal Login Form (Matches Light/Dark Theme) */}
+          {/* Right Panel: Clean Portal Login Form */}
           <div className="lg:col-span-6 p-6 sm:p-8 md:p-10 flex flex-col justify-between">
             <div>
-              <div className="mb-6">
+              <div className="mb-8">
                 <h1 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-white mb-1.5">
-                  Client Portal Sign In
+                  Sign In to Portal
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
-                  Enter your assigned credentials to view live project updates.
+                  Enter your credentials to access your GM Digital Studio portal workspace.
                 </p>
-              </div>
-
-              {/* Quick Demo Switcher */}
-              <div className="mb-6 p-3.5 rounded-2xl bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                    Quick Demo Access
-                  </span>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Select role to login</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => handleLogin(e, 'client')}
-                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
-                  >
-                    <User className="w-3.5 h-3.5" /> Client Portal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleLogin(e, 'admin')}
-                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-gray-900 hover:bg-gray-800 dark:bg-white dark:text-gray-950 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-brand-600" /> Admin Console
-                  </button>
-                </div>
               </div>
 
               {errorMsg && (
@@ -221,7 +200,7 @@ export function Login() {
               )}
 
               {/* Login Form */}
-              <form onSubmit={(e) => handleLogin(e)} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-5">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">
                     Email Address
@@ -232,9 +211,10 @@ export function Login() {
                     </div>
                     <input
                       type="email"
+                      required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="alex.morgan@nexus.tech"
+                      placeholder="your.email@company.com"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-600 text-sm transition-all"
                     />
                   </div>
@@ -258,6 +238,7 @@ export function Login() {
                     </div>
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
@@ -293,7 +274,7 @@ export function Login() {
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>
-                      Sign In to Client Portal <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      Sign In to Workspace <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
                 </button>
