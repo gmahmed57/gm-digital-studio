@@ -211,11 +211,17 @@ export function Clients() {
                       {/* Client Info */}
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleOpenEditPage(client.id)}>
-                          <img
-                            src={client.avatarUrl}
-                            alt={client.fullName}
-                            className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-dark-border"
-                          />
+                          {client.avatarUrl && typeof client.avatarUrl === 'string' && client.avatarUrl.trim() !== '' ? (
+                            <img
+                              src={client.avatarUrl}
+                              alt={client.fullName}
+                              className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-dark-border flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 font-bold flex items-center justify-center text-sm border border-brand-500/20 flex-shrink-0">
+                              {client.fullName ? client.fullName.charAt(0).toUpperCase() : 'C'}
+                            </div>
+                          )}
                           <div>
                             <p className="font-bold text-gray-900 dark:text-white hover:text-brand-600 transition-colors">{client.fullName}</p>
                             <p className="text-gray-500 dark:text-gray-400 text-[11px] flex items-center gap-1 mt-0.5">

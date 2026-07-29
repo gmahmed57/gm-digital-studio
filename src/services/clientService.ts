@@ -1,10 +1,7 @@
 import type { ClientItem } from '../types/client';
 import { supabase } from './supabase';
-import avatar5 from '../assets/avatars/avatar-5.jpg';
 
-// Clear dummy seeders so only real created clients are visible
 const INITIAL_CLIENTS: ClientItem[] = [];
-
 const STORAGE_KEY = 'gm_studio_clients_db';
 
 export const clientService = {
@@ -16,7 +13,6 @@ export const clientService = {
         if (error) {
           console.error('Supabase select clients error:', error.message || error);
         } else if (data) {
-          // Normalize column names if returned in lowercase from PostgreSQL
           const normalized: ClientItem[] = data.map((row: any) => ({
             id: row.id,
             fullName: row.fullName || row.fullname || row.full_name || 'Client User',
@@ -24,13 +20,14 @@ export const clientService = {
             email: row.email || '',
             phone: row.phone || '',
             portalPassword: row.portalPassword || row.portalpassword || row.portal_password || '',
-            avatarUrl: row.avatarUrl || row.avatarurl || row.avatar_url || avatar5,
+            avatarUrl: row.avatarUrl || row.avatarurl || row.avatar_url || '',
             status: row.status || 'active',
             joinedDate: row.joinedDate || row.joineddate || row.joined_date || '',
             activeProjectsCount: row.activeProjectsCount ?? row.activeprojectscount ?? 0,
             totalBilled: row.totalBilled || row.totalbilled || '$0',
             assignedPackage: row.assignedPackage || row.assignedpackage || 'Standard Package',
             allowedToolIds: row.allowedToolIds || row.allowedtoolids || row.allowed_tool_ids || [],
+            requestedToolIds: row.requestedToolIds || row.requestedtoolids || row.requested_tool_ids || [],
           }));
           return normalized;
         }
@@ -44,7 +41,7 @@ export const clientService = {
       try {
         return JSON.parse(cached);
       } catch (e) {
-        // Fallback to empty list
+        // Fallback
       }
     }
 
@@ -58,14 +55,12 @@ export const clientService = {
     let targetItem: ClientItem;
 
     if (client.id && client.id !== 'new') {
-      // Update existing
       targetItem = {
         ...existing.find((item) => item.id === client.id),
         ...client,
       } as ClientItem;
       updatedList = existing.map((item) => (item.id === client.id ? targetItem : item));
     } else {
-      // Create new client (all tools locked initially: allowedToolIds = [])
       targetItem = {
         id: `client-${Date.now()}`,
         fullName: client.fullName || 'New Client',
@@ -73,50 +68,42 @@ export const clientService = {
         email: client.email || 'client@company.com',
         phone: client.phone || '+1 (555) 000-0000',
         portalPassword: client.portalPassword || '',
-        avatarUrl: avatar5,
+        avatarUrl: client.avatarUrl || '',
         status: client.status || 'active',
         joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
         activeProjectsCount: client.activeProjectsCount || 0,
         totalBilled: client.totalBilled || '$0',
         assignedPackage: client.assignedPackage || 'Standard Web Development',
-        allowedToolIds: client.allowedToolIds !== undefined ? client.allowedToolIds : [], // Locked by default
+        allowedToolIds: client.allowedToolIds !== undefined ? client.allowedToolIds : [],
+        requestedToolIds: client.requestedToolIds || [],
       };
       updatedList = [targetItem, ...existing];
     }
 
-    // Save persistently to LocalStorage
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
 
-    // Database payload object - ONLY include columns that exist in public.clients PostgreSQL schema!
     const dbPayload = {
       id: targetItem.id,
       fullName: targetItem.fullName,
       company: targetItem.company,
       email: targetItem.email,
       phone: targetItem.phone,
-      avatarUrl: typeof targetItem.avatarUrl === 'string' ? targetItem.avatarUrl : '/src/assets/avatars/avatar-5.jpg',
+      avatarUrl: targetItem.avatarUrl || '',
       status: targetItem.status,
       joinedDate: targetItem.joinedDate,
       activeProjectsCount: targetItem.activeProjectsCount,
       totalBilled: targetItem.totalBilled,
       assignedPackage: targetItem.assignedPackage,
       allowedToolIds: targetItem.allowedToolIds || [],
+      requestedToolIds: targetItem.requestedToolIds || [],
     };
 
-    // Register user in Supabase Auth & PostgreSQL database
     try {
       if (supabase) {
-        // 1. Sync payload to public.clients PostgreSQL table
-        const { error: dbErr } = await supabase.from('clients').upsert(dbPayload);
-        if (dbErr) {
-          console.error('Supabase clients table insert error:', dbErr.message || dbErr);
-        } else {
-          console.log('Successfully inserted client into Supabase clients table!', dbPayload);
-        }
+        await supabase.from('clients').upsert(dbPayload);
 
-        // 2. Create user in Supabase Auth (auth.users)
         if (client.email && targetItem.portalPassword && targetItem.portalPassword.length >= 6) {
-          const { data: authData, error: authErr } = await supabase.auth.signUp({
+          await supabase.auth.signUp({
             email: client.email,
             password: targetItem.portalPassword,
             options: {
@@ -127,15 +114,92 @@ export const clientService = {
               },
             },
           });
-          if (authErr) {
-            console.warn('Supabase Auth signUp notice:', authErr.message || authErr);
-          } else {
-            console.log('Successfully created user in Supabase Auth:', authData?.user);
-          }
         }
       }
     } catch (e) {
       console.warn('Supabase Auth provisioning notice:', e);
+    }
+
+    return updatedList;
+  },
+
+  // Save persistent tool request for a client
+  requestToolAccess: async (clientEmail: string, toolId: string): Promise<ClientItem[]> => {
+    const existing = await clientService.getClients();
+    let updatedTarget: ClientItem | null = null;
+
+    const updatedList = existing.map((c) => {
+      if (c.email.toLowerCase() === clientEmail.toLowerCase()) {
+        const currentRequested = c.requestedToolIds || [];
+        if (!currentRequested.includes(toolId)) {
+          updatedTarget = { ...c, requestedToolIds: [...currentRequested, toolId] };
+          return updatedTarget;
+        }
+      }
+      return c;
+    });
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
+
+    if (supabase && updatedTarget) {
+      try {
+        await supabase.from('clients').upsert({
+          id: (updatedTarget as ClientItem).id,
+          fullName: (updatedTarget as ClientItem).fullName,
+          company: (updatedTarget as ClientItem).company,
+          email: (updatedTarget as ClientItem).email,
+          allowedToolIds: (updatedTarget as ClientItem).allowedToolIds || [],
+          requestedToolIds: (updatedTarget as ClientItem).requestedToolIds || [],
+        });
+      } catch (e) {
+        console.warn('Supabase requestToolAccess notice:', e);
+      }
+    }
+
+    return updatedList;
+  },
+
+  // Respond to client tool request (Grant or Decline)
+  respondToToolRequest: async (clientId: string, toolId: string, action: 'grant' | 'decline'): Promise<ClientItem[]> => {
+    const existing = await clientService.getClients();
+    let updatedTarget: ClientItem | null = null;
+
+    const updatedList = existing.map((c) => {
+      if (c.id === clientId) {
+        const currentAllowed = c.allowedToolIds || [];
+        const currentRequested = c.requestedToolIds || [];
+
+        const newAllowed = action === 'grant'
+          ? Array.from(new Set([...currentAllowed, toolId]))
+          : currentAllowed;
+
+        const newRequested = currentRequested.filter((id) => id !== toolId);
+
+        updatedTarget = {
+          ...c,
+          allowedToolIds: newAllowed,
+          requestedToolIds: newRequested,
+        };
+        return updatedTarget;
+      }
+      return c;
+    });
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
+
+    if (supabase && updatedTarget) {
+      try {
+        await supabase.from('clients').upsert({
+          id: (updatedTarget as ClientItem).id,
+          fullName: (updatedTarget as ClientItem).fullName,
+          company: (updatedTarget as ClientItem).company,
+          email: (updatedTarget as ClientItem).email,
+          allowedToolIds: (updatedTarget as ClientItem).allowedToolIds || [],
+          requestedToolIds: (updatedTarget as ClientItem).requestedToolIds || [],
+        });
+      } catch (e) {
+        console.warn('Supabase respondToToolRequest notice:', e);
+      }
     }
 
     return updatedList;
@@ -149,10 +213,12 @@ export const clientService = {
     const updatedList = existing.map((c) => {
       if (c.id === clientId) {
         const hasTool = c.allowedToolIds.includes(toolId);
-        const newToolIds = hasTool
+        const newAllowed = hasTool
           ? c.allowedToolIds.filter((id) => id !== toolId)
           : [...c.allowedToolIds, toolId];
-        updatedTarget = { ...c, allowedToolIds: newToolIds };
+        const newRequested = (c.requestedToolIds || []).filter((id) => id !== toolId);
+
+        updatedTarget = { ...c, allowedToolIds: newAllowed, requestedToolIds: newRequested };
         return updatedTarget;
       }
       return c;
@@ -161,21 +227,14 @@ export const clientService = {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
     if (supabase && updatedTarget) {
       try {
-        const payload = {
+        await supabase.from('clients').upsert({
           id: (updatedTarget as ClientItem).id,
           fullName: (updatedTarget as ClientItem).fullName,
           company: (updatedTarget as ClientItem).company,
           email: (updatedTarget as ClientItem).email,
-          phone: (updatedTarget as ClientItem).phone,
-          avatarUrl: typeof (updatedTarget as ClientItem).avatarUrl === 'string' ? (updatedTarget as ClientItem).avatarUrl : '/src/assets/avatars/avatar-5.jpg',
-          status: (updatedTarget as ClientItem).status,
-          joinedDate: (updatedTarget as ClientItem).joinedDate,
-          activeProjectsCount: (updatedTarget as ClientItem).activeProjectsCount,
-          totalBilled: (updatedTarget as ClientItem).totalBilled,
-          assignedPackage: (updatedTarget as ClientItem).assignedPackage,
-          allowedToolIds: (updatedTarget as ClientItem).allowedToolIds,
-        };
-        await supabase.from('clients').upsert(payload);
+          allowedToolIds: (updatedTarget as ClientItem).allowedToolIds || [],
+          requestedToolIds: (updatedTarget as ClientItem).requestedToolIds || [],
+        });
       } catch (e) {
         // Ignore
       }
@@ -199,21 +258,13 @@ export const clientService = {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
     if (supabase && updatedTarget) {
       try {
-        const payload = {
+        await supabase.from('clients').upsert({
           id: (updatedTarget as ClientItem).id,
           fullName: (updatedTarget as ClientItem).fullName,
           company: (updatedTarget as ClientItem).company,
           email: (updatedTarget as ClientItem).email,
-          phone: (updatedTarget as ClientItem).phone,
-          avatarUrl: typeof (updatedTarget as ClientItem).avatarUrl === 'string' ? (updatedTarget as ClientItem).avatarUrl : '/src/assets/avatars/avatar-5.jpg',
           status: (updatedTarget as ClientItem).status,
-          joinedDate: (updatedTarget as ClientItem).joinedDate,
-          activeProjectsCount: (updatedTarget as ClientItem).activeProjectsCount,
-          totalBilled: (updatedTarget as ClientItem).totalBilled,
-          assignedPackage: (updatedTarget as ClientItem).assignedPackage,
-          allowedToolIds: (updatedTarget as ClientItem).allowedToolIds,
-        };
-        await supabase.from('clients').upsert(payload);
+        });
       } catch (e) {
         // Ignore
       }

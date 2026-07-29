@@ -91,14 +91,13 @@ export function Login() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-dark-bg text-gray-900 dark:text-white p-4 sm:p-6 md:p-10 font-sans">
         
         {/* Outer Container Card Matching Reference Layout */}
-        <div className="w-full max-w-5xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-3 md:p-4 shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[620px]">
+        <div className="w-full max-w-5xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-3 md:p-4 shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[580px]">
           
-          {/* Left Panel: Visual Panel with Brand Gradient (#f94a00 / #ea3900) & Ambient Movement */}
-          <div className="lg:col-span-6 rounded-2xl bg-[#0a0a0b] text-white p-6 md:p-8 flex flex-col justify-between relative overflow-hidden border border-gray-800/80 min-h-[380px] lg:min-h-[580px]">
+          {/* Left Panel: Visual Panel with Brand Gradient & Centered Text Content */}
+          <div className="lg:col-span-6 rounded-2xl bg-[#0a0a0b] text-white p-6 md:p-10 flex flex-col justify-between relative overflow-hidden border border-gray-800/80 min-h-[420px] lg:min-h-[540px]">
             
             {/* Ambient Brand Orange Gradient Movement Orbs */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              {/* Brand Orange Orb 1 */}
               <motion.div
                 animate={{
                   scale: [1, 1.2, 1],
@@ -114,7 +113,6 @@ export function Login() {
                 className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-brand-500/20 blur-3xl"
               />
 
-              {/* Brand Orange Orb 2 */}
               <motion.div
                 animate={{
                   scale: [1.2, 1, 1.2],
@@ -144,8 +142,8 @@ export function Login() {
               </Link>
             </div>
 
-            {/* Bottom Content & Text Slideshow overlay */}
-            <div className="relative z-10 mt-auto pt-12 space-y-6">
+            {/* Vertically Centered Text Content & Slideshow */}
+            <div className="relative z-10 my-auto py-8 space-y-6">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentSlide.id}
@@ -181,10 +179,10 @@ export function Login() {
 
           </div>
 
-          {/* Right Panel: Clean Portal Login Form */}
-          <div className="lg:col-span-6 p-6 sm:p-8 md:p-10 flex flex-col justify-between">
+          {/* Right Panel: Perfectly Balanced Portal Login Form */}
+          <div className="lg:col-span-6 p-6 sm:p-8 md:p-10 flex flex-col justify-center space-y-6">
             <div>
-              <div className="mb-8">
+              <div className="mb-6">
                 <h1 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-white mb-1.5">
                   Sign In to Portal
                 </h1>
@@ -200,7 +198,7 @@ export function Login() {
               )}
 
               {/* Login Form */}
-              <form onSubmit={handleLogin} className="space-y-5">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">
                     Email Address
@@ -247,7 +245,7 @@ export function Login() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -281,7 +279,8 @@ export function Login() {
               </form>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-gray-100 dark:border-dark-border text-center text-xs text-gray-500 dark:text-gray-400">
+            {/* Tightly Integrated Footer Support Link */}
+            <div className="pt-3 border-t border-gray-100 dark:border-dark-border text-center text-xs text-gray-500 dark:text-gray-400">
               Need assistance? Contact support at{' '}
               <a href="mailto:support@gmdigitalstudio.com" className="text-brand-600 dark:text-brand-400 font-semibold hover:underline">
                 support@gmdigitalstudio.com

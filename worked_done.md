@@ -82,3 +82,36 @@ This document provides a comprehensive, master chronological record of all archi
   - **Client Overview (`src/pages/dashboard/ClientOverview.tsx`):** Sleek, clean Client Welcome Card, active deliverable cards with milestone progress bars, and recent invoices summary table.
 - **Main Website Portal Links:** Integrated **"Client Portal"** links into the global website Navbar header (`src/components/ui/Navbar.tsx`), mobile menu drawer, and global Footer (`src/components/ui/Footer.tsx`).
 - **Production Build Verification:** Executed `npm run build` — **Built cleanly in 5.83s with 0 errors across 2,389 modules!**
+
+---
+
+## 📅 Module 2.2: Client Management CRUD & Scalable Studio Tools Hub (28-07-2026)
+- **Client Management Directory (`src/pages/dashboard/Clients.tsx`):** Built full Admin client management directory table with keyword search, active/inactive status filters, company avatars, active project counters, total revenue metrics, and tool access badges.
+- **Admin Client Provisioning Modal (`src/components/dashboard/AddClientModal.tsx`):** Created modal for provisioning new clients or editing existing accounts, including a **Scalable Tool Access Entitlement Check Matrix** to grant/revoke studio tools per client.
+- **Scalable Studio Tools Catalog (`src/constants/toolsData.ts`):** Defined catalog of agency tools (*AI Carousel Post Maker*, *Media & File Converter*, *AI Studio Content Assistant*, *SEO Auditor*, *Brand Kit Generator*).
+- **Client Tools & Add-ons Suite (`src/pages/dashboard/ClientTools.tsx`):** Built dedicated Client Portal section (`/client/tools`) displaying unlocked tools with an active **"Launch Tool"** button, and locked tools with a **"Request Access / Upgrade"** CTA card for scalable SaaS monetization.
+- **Client Data Service Layer (`src/services/clientService.ts`):** Implemented client CRUD logic with persistent local storage and Supabase database query compatibility.
+- **Navigation & Route Wiring (`src/components/dashboard/Sidebar.tsx` & `App.tsx`):** Added **"Studio Tools"** navigation link to the Client Sidebar, and wired `/admin/clients` and `/client/tools` routes.
+- **Production Build Verification:** Executed `npm run build` — **Built cleanly in 5.63s with 0 errors across 2,394 modules!**
+
+---
+
+## 📅 Module 2.3: Project Management CRUD, Role Notifications & Notifications Center (29-07-2026)
+- **Project CRUD & Supabase Database Sync (`src/services/projectService.ts` & `src/pages/dashboard/Projects.tsx`):**
+  - Built full Project Directory overview with active project KPI metric cards (*Total, Active Development, In Client Review, Completed*).
+  - Implemented dynamic status calculation (`getEffectiveStatus()`) ensuring projects evaluate to completed ONLY when progress reaches 100%.
+  - Synced project CRUD operations with Supabase `public.projects` PostgreSQL table storing `milestones JSONB`, `deliverables`, `client_email`, and `progress`.
+- **Admin Project & Milestone Builder (`src/pages/dashboard/ProjectEditPage.tsx`):**
+  - Created interactive form for assigning client accounts, setting categories, defining deliverables, and configuring milestone roadmaps.
+  - Implemented milestone re-editing, client revision feedback boxes, and 1-click **"Re-submit for Review"** controls.
+- **Persistent Tool Access Requests & Admin Response Panel (`src/services/clientService.ts` & `ClientEditPage.tsx`):**
+  - Added persistent `requestedToolIds` state in `public.clients` database schema. Client portal retains `"Request Sent to Studio Admin"` badge across page reloads.
+  - Admin client edit view highlights requested tools with a **`REQUESTED BY CLIENT`** badge and 1-click **"Grant Access"** (Green) and **"Decline"** (Red) response buttons.
+- **Role-Targeted Notifications & Deep Link Routing (`src/services/notificationService.ts`):**
+  - Implemented role/email targeting (`targetRole`, `targetEmail`). Client actions notify Admin only; Admin actions notify assigned Client only.
+  - Clicking any notification automatically marks it as read and navigates directly to the relevant workspace route.
+  - Replaced hardcoded time text with real clock timestamps (`10:38 PM`) and dynamic relative time formatting (`Just now`, `5m ago`, `2h ago`).
+- **Full Notifications Center Page & Dropdown Footer (`src/pages/dashboard/NotificationsPage.tsx`):**
+  - Built full Notifications Page at `/admin/notifications` and `/client/notifications` with filter tabs (*All, Unread, Read, Categories*), **Mark All Read**, **Clear All**, and single-item delete buttons.
+  - Added **"View All Notifications →"** button at the bottom of the header dropdown and added a **Notifications** link to the main sidebar.
+- **Production Build Verification:** Executed `npm run build` — **Built cleanly in 3.94s with 0 errors across 2,400 modules!**

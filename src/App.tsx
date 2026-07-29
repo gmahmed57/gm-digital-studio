@@ -30,6 +30,10 @@ import ClientOverview from './pages/dashboard/ClientOverview';
 import Clients from './pages/dashboard/Clients';
 import ClientEditPage from './pages/dashboard/ClientEditPage';
 import ClientTools from './pages/dashboard/ClientTools';
+import Projects from './pages/dashboard/Projects';
+import ProjectEditPage from './pages/dashboard/ProjectEditPage';
+import ClientProjectDetailPage from './pages/dashboard/ClientProjectDetailPage';
+import NotificationsPage from './pages/dashboard/NotificationsPage';
 
 function App() {
   return (
@@ -68,9 +72,11 @@ function App() {
             >
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminOverview />} />
+              <Route path="notifications" element={<NotificationsPage />} />
               <Route path="clients" element={<Clients />} />
               <Route path="clients/edit/:id" element={<ClientEditPage />} />
-              <Route path="projects" element={<AdminOverview />} />
+              <Route path="projects" element={<Projects />} />
+              <Route path="projects/edit/:id" element={<ProjectEditPage />} />
               <Route path="invoices" element={<AdminOverview />} />
               <Route path="analytics" element={<AdminOverview />} />
               <Route path="cms" element={<AdminOverview />} />
@@ -88,8 +94,10 @@ function App() {
             >
               <Route index element={<Navigate to="/client/dashboard" replace />} />
               <Route path="dashboard" element={<ClientOverview />} />
+              <Route path="notifications" element={<NotificationsPage />} />
               <Route path="tools" element={<ClientTools />} />
-              <Route path="projects" element={<ClientOverview />} />
+              <Route path="projects" element={<Projects />} />
+              <Route path="projects/view/:id" element={<ClientProjectDetailPage />} />
               <Route path="invoices" element={<ClientOverview />} />
               <Route path="files" element={<ClientOverview />} />
               <Route path="messages" element={<ClientOverview />} />

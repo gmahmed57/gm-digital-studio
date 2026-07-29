@@ -25,4 +25,5 @@ export interface ClientItem {
   totalBilled: string;
   assignedPackage: string;
   allowedToolIds: string[]; // List of tool IDs enabled by Admin for this client
+  requestedToolIds?: string[]; // List of tool IDs requested by client pending Admin approval
 }

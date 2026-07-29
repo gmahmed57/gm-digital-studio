@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { clientService } from '../../services/clientService';
+import { notificationService } from '../../services/notificationService';
 import { MASTER_STUDIO_TOOLS } from '../../constants/toolsData';
 import type { ClientItem } from '../../types/client';
 import {
@@ -31,26 +32,42 @@ export function ClientTools() {
   const [clientData, setClientData] = useState<ClientItem | null>(null);
   const [requestSentMap, setRequestSentMap] = useState<Record<string, boolean>>({});
 
+  const fetchClient = async () => {
+    const clients = await clientService.getClients();
+    const matched = clients.find((c) => c.email.toLowerCase() === user?.email?.toLowerCase());
+    if (matched) {
+      setClientData(matched);
+    } else if (clients.length > 0) {
+      setClientData(clients[0]);
+    }
+  };
+
   useEffect(() => {
-    const fetchClient = async () => {
-      const clients = await clientService.getClients();
-      // Match current logged in user email
-      const matched = clients.find((c) => c.email.toLowerCase() === user?.email.toLowerCase());
-      if (matched) {
-        setClientData(matched);
-      } else {
-        // Fallback default client profile
-        setClientData(clients[0]);
-      }
-    };
     fetchClient();
   }, [user]);
 
-  const handleRequestAccess = (toolId: string) => {
+  const handleRequestAccess = async (toolId: string, toolName: string) => {
+    if (!user?.email) return;
+
+    // 1. Save persistent tool access request in client profile
+    await clientService.requestToolAccess(user.email, toolId);
     setRequestSentMap((prev) => ({ ...prev, [toolId]: true }));
+
+    // 2. Broadcast live targeted notification to Admin
+    await notificationService.addNotification({
+      title: 'Studio Tool Access Requested',
+      message: `${clientData?.company || clientData?.fullName || user.email} requested access to "${toolName}" tool.`,
+      type: 'client',
+      targetRole: 'admin',
+      link: clientData?.id ? `/admin/clients/edit/${clientData.id}` : '/admin/clients',
+    });
+
+    // Refresh client state
+    await fetchClient();
   };
 
-  const allowedIds = clientData?.allowedToolIds || ['file-converter', 'brand-kit'];
+  const allowedIds = clientData?.allowedToolIds || [];
+  const requestedIds = clientData?.requestedToolIds || [];
 
   return (
     <>
@@ -61,7 +78,7 @@ export function ClientTools() {
 
       <div className="space-y-6 font-sans">
         
-        {/* Consistent Top Header Card (Clean, Professional, Zero Pill Badges, Matches Theme) */}
+        {/* Top Header Card */}
         <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-heading font-extrabold text-gray-900 dark:text-white">
@@ -83,8 +100,8 @@ export function ClientTools() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {MASTER_STUDIO_TOOLS.map((tool) => {
             const isUnlocked = allowedIds.includes(tool.id);
+            const isRequested = requestedIds.includes(tool.id) || requestSentMap[tool.id];
             const IconComponent = ICON_MAP[tool.iconName] || Wrench;
-            const isRequested = requestSentMap[tool.id];
 
             return (
               <div
@@ -142,11 +159,11 @@ export function ClientTools() {
                     </button>
                   ) : isRequested ? (
                     <div className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 font-bold text-xs text-center flex items-center justify-center gap-2">
-                      <ShieldCheck className="w-4 h-4" /> Access Requested from Admin
+                      <ShieldCheck className="w-4 h-4" /> Request Sent to Studio Admin
                     </div>
                   ) : (
                     <button
-                      onClick={() => handleRequestAccess(tool.id)}
+                      onClick={() => handleRequestAccess(tool.id, tool.name)}
                       className="w-full py-2.5 px-4 rounded-xl bg-gray-900 hover:bg-gray-800 dark:bg-white dark:text-gray-950 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                     >
                       Request Tool Access <ArrowRight className="w-3.5 h-3.5" />

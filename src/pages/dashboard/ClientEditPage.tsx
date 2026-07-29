@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { clientService } from '../../services/clientService';
+import { notificationService } from '../../services/notificationService';
 import type { ClientItem } from '../../types/client';
 import { MASTER_STUDIO_TOOLS } from '../../constants/toolsData';
 import {
@@ -15,6 +16,9 @@ import {
   Save,
   Power,
   Key,
+  Clock,
+  Check,
+  X,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 
@@ -27,31 +31,34 @@ export function ClientEditPage() {
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [portalPassword, setPortalPassword] = useState(''); // Empty by default (no pre-filled fallback)
+  const [portalPassword, setPortalPassword] = useState('');
   const [assignedPackage, setAssignedPackage] = useState('Enterprise Web Development');
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
-  const [allowedToolIds, setAllowedToolIds] = useState<string[]>([]); // All tools locked by default
+  const [allowedToolIds, setAllowedToolIds] = useState<string[]>([]);
+  const [requestedToolIds, setRequestedToolIds] = useState<string[]>([]);
   const [clientItem, setClientItem] = useState<ClientItem | null>(null);
   const [formError, setFormError] = useState('');
 
-  useEffect(() => {
-    const loadClient = async () => {
-      if (isEditing && id) {
-        const clients = await clientService.getClients();
-        const found = clients.find((c) => c.id === id);
-        if (found) {
-          setClientItem(found);
-          setFullName(found.fullName);
-          setCompany(found.company);
-          setEmail(found.email);
-          setPhone(found.phone);
-          setPortalPassword(found.portalPassword || '');
-          setAssignedPackage(found.assignedPackage);
-          setStatus(found.status);
-          setAllowedToolIds(found.allowedToolIds || []);
-        }
+  const loadClient = async () => {
+    if (isEditing && id) {
+      const clients = await clientService.getClients();
+      const found = clients.find((c) => c.id === id);
+      if (found) {
+        setClientItem(found);
+        setFullName(found.fullName);
+        setCompany(found.company);
+        setEmail(found.email);
+        setPhone(found.phone);
+        setPortalPassword(found.portalPassword || '');
+        setAssignedPackage(found.assignedPackage);
+        setStatus(found.status);
+        setAllowedToolIds(found.allowedToolIds || []);
+        setRequestedToolIds(found.requestedToolIds || []);
       }
-    };
+    }
+  };
+
+  useEffect(() => {
     loadClient();
   }, [id, isEditing]);
 
@@ -60,6 +67,42 @@ export function ClientEditPage() {
       setAllowedToolIds(allowedToolIds.filter((item) => item !== toolId));
     } else {
       setAllowedToolIds([...allowedToolIds, toolId]);
+      setRequestedToolIds(requestedToolIds.filter((item) => item !== toolId));
+    }
+  };
+
+  const handleToolResponse = async (toolId: string, toolName: string, action: 'grant' | 'decline') => {
+    if (!id || !isEditing) return;
+
+    await clientService.respondToToolRequest(id, toolId, action);
+
+    if (action === 'grant') {
+      setAllowedToolIds(Array.from(new Set([...allowedToolIds, toolId])));
+      setRequestedToolIds(requestedToolIds.filter((t) => t !== toolId));
+
+      if (email) {
+        await notificationService.addNotification({
+          title: 'Studio Tool Access Granted',
+          message: `Admin approved and granted access to "${toolName}" tool.`,
+          type: 'client',
+          targetRole: 'client',
+          targetEmail: email,
+          link: '/client/tools',
+        });
+      }
+    } else {
+      setRequestedToolIds(requestedToolIds.filter((t) => t !== toolId));
+
+      if (email) {
+        await notificationService.addNotification({
+          title: 'Studio Tool Request Declined',
+          message: `Admin declined access request for "${toolName}" tool.`,
+          type: 'client',
+          targetRole: 'client',
+          targetEmail: email,
+          link: '/client/tools',
+        });
+      }
     }
   };
 
@@ -67,7 +110,6 @@ export function ClientEditPage() {
     e.preventDefault();
     setFormError('');
 
-    // Strict validation: password must be at least 6 characters
     if (!isEditing && (!portalPassword || portalPassword.length < 6)) {
       setFormError('Initial Portal Password must be at least 6 characters long.');
       return;
@@ -89,7 +131,20 @@ export function ClientEditPage() {
         assignedPackage,
         status,
         allowedToolIds,
+        requestedToolIds,
       });
+
+      if (email) {
+        await notificationService.addNotification({
+          title: 'Studio Tool Access Permissions Updated',
+          message: `Admin updated your active studio tool access permissions (${allowedToolIds.length} tools unlocked).`,
+          type: 'client',
+          targetRole: 'client',
+          targetEmail: email,
+          link: '/client/tools',
+        });
+      }
+
       navigate('/admin/clients');
     } catch (err: any) {
       setFormError(err.message || 'Failed to save client details.');
@@ -328,7 +383,7 @@ export function ClientEditPage() {
             </div>
           </div>
 
-          {/* Right Column: Granted Studio Tools & Add-ons Access Matrix Card */}
+          {/* Right Column: Granted Studio Tools Access Matrix */}
           <div className="lg:col-span-6 space-y-6">
             <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-dark-border">
@@ -341,7 +396,7 @@ export function ClientEditPage() {
                       Granted Studio Tools Access
                     </h2>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Enable or revoke client tool permissions for SaaS monetization.
+                      Respond to client access requests (Grant or Decline).
                     </p>
                   </div>
                 </div>
@@ -354,13 +409,16 @@ export function ClientEditPage() {
               <div className="space-y-3">
                 {MASTER_STUDIO_TOOLS.map((tool) => {
                   const isEnabled = allowedToolIds.includes(tool.id);
+                  const isRequested = requestedToolIds.includes(tool.id);
+
                   return (
                     <div
                       key={tool.id}
-                      onClick={() => toggleTool(tool.id)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                      className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${
                         isEnabled
                           ? 'border-brand-500/50 bg-brand-500/5 dark:bg-brand-500/10'
+                          : isRequested
+                          ? 'border-amber-400 bg-amber-50/70 dark:bg-amber-950/30'
                           : 'border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/50 opacity-70 hover:opacity-100'
                       }`}
                     >
@@ -369,6 +427,11 @@ export function ClientEditPage() {
                           <span className="text-sm font-bold text-gray-900 dark:text-white">
                             {tool.name}
                           </span>
+                          {isRequested && (
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-amber-500 text-white uppercase flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5" /> REQUESTED
+                            </span>
+                          )}
                           {tool.isPremium && (
                             <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-600 dark:text-amber-400 uppercase">
                               PREMIUM
@@ -382,13 +445,38 @@ export function ClientEditPage() {
 
                       <div className="flex-shrink-0">
                         {isEnabled ? (
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-3 py-1.5 rounded-xl">
-                            <CheckCircle2 className="w-4 h-4 fill-brand-600/10" /> Enabled
+                          <button
+                            type="button"
+                            onClick={() => toggleTool(tool.id)}
+                            className="flex items-center gap-1.5 text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-3 py-1.5 rounded-xl hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-brand-600" /> Granted
+                          </button>
+                        ) : isRequested ? (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleToolResponse(tool.id, tool.name, 'grant')}
+                              className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                            >
+                              <Check className="w-3.5 h-3.5" /> Grant Access
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToolResponse(tool.id, tool.name, 'decline')}
+                              className="px-2.5 py-1.5 rounded-xl bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" /> Decline
+                            </button>
                           </div>
                         ) : (
-                          <div className="text-xs font-semibold text-gray-400 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-xl">
-                            Locked
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleTool(tool.id)}
+                            className="text-xs font-semibold text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-xl hover:border-brand-500 hover:text-brand-500 cursor-pointer"
+                          >
+                            Grant Access
+                          </button>
                         )}
                       </div>
                     </div>
