@@ -115,3 +115,24 @@ This document provides a comprehensive, master chronological record of all archi
   - Built full Notifications Page at `/admin/notifications` and `/client/notifications` with filter tabs (*All, Unread, Read, Categories*), **Mark All Read**, **Clear All**, and single-item delete buttons.
   - Added **"View All Notifications →"** button at the bottom of the header dropdown and added a **Notifications** link to the main sidebar.
 - **Production Build Verification:** Executed `npm run build` — **Built cleanly in 3.94s with 0 errors across 2,400 modules!**
+
+---
+
+## 📅 Module 2.4: Advanced Invoicing, Payment Proofs & PDF Generation (30-07-2026)
+- **Supabase Cloud Storage Integration:** 
+  - Provisioned `invoices` storage bucket with public read/upload RLS policies for secure receipt storage.
+  - Implemented automatic old-image cleanup logic to delete legacy proof images when a client uploads a new one, saving cloud storage capacity.
+- **Admin Invoice Management (`src/pages/dashboard/AdminInvoices.tsx`):**
+  - Built comprehensive Admin Invoice table with filtering, search, and dynamic status badges.
+  - Created an **Advanced Multi-Item Invoice Builder** modal supporting dynamic line items, quantity/rate auto-calculation, Subtotal, configurable Tax Rate (%), and Grand Total.
+  - Developed an **Interactive Payment Proof Inspector** allowing Admins to view client-uploaded receipts, instantly Approve & Mark Paid, or **Reject** with an inline feedback text box.
+- **Client Invoice Portal & Payment Uploads (`src/pages/dashboard/ClientInvoices.tsx`):**
+  - Clean client dashboard displaying all assigned invoices.
+  - Built secure **Submit Payment Proof** modal with file upload functionality (`.jpg`, `.png`, `.pdf`) and transaction reference text inputs.
+  - Integrated dynamic red alert boxes to display the Admin's specific rejection reason if a proof is denied.
+- **On-the-Fly PDF Generation (`html2canvas` + `jspdf`):**
+  - Designed a premium, pixel-perfect printable invoice template hidden in the DOM.
+  - Implemented dynamic PDF rendering allowing both Admin and Client to download an official invoice statement instantly without consuming cloud database storage.
+- **Invoice Service Layer (`src/services/invoiceService.ts`):** 
+  - Abstracted all local-storage fallback and Supabase cloud operations, including automated row-level calculation for taxes and robust event broadcasting for real-time UI synchronization.
+- **Production Build Verification:** Executed `npm run build` — **Built cleanly in 6.20s with 0 errors!**

@@ -77,11 +77,12 @@ CREATE POLICY "Allow public write projects" ON public.projects FOR ALL USING (tr
 
 ---
 
-## 3. Invoices Table (`public.invoices`)
+## 3. Invoices Table (`public.invoices`) *(Itemized & Payment Proof Fields)*
 
 ```sql
 CREATE TABLE IF NOT EXISTS public.invoices (
   id TEXT PRIMARY KEY,
+  invoice_number TEXT,
   client_id TEXT,
   client_name TEXT,
   client_company TEXT,
@@ -92,8 +93,42 @@ CREATE TABLE IF NOT EXISTS public.invoices (
   date TEXT NOT NULL,
   due_date TEXT,
   pdf_url TEXT,
+  client_message TEXT,
+  transaction_id TEXT,
+  payment_method TEXT,
+  payment_notes TEXT,
+  payment_submitted_at TEXT,
+  proof_url TEXT,
+  items JSONB DEFAULT '[]'::jsonb,
+  notes TEXT,
+  subtotal NUMERIC DEFAULT 0,
+  tax_rate NUMERIC DEFAULT 0,
+  tax NUMERIC DEFAULT 0,
+  total NUMERIC DEFAULT 0,
+  admin_rejection_reason TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Safe Migration ALTER TABLE statements for existing invoices table
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS invoice_number TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS client_id TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS client_name TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS client_company TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS client_email TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS due_date TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS client_message TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS transaction_id TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS payment_method TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS payment_notes TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS payment_submitted_at TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS proof_url TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS subtotal NUMERIC DEFAULT 0;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS tax_rate NUMERIC DEFAULT 0;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS tax NUMERIC DEFAULT 0;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS total NUMERIC DEFAULT 0;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS admin_rejection_reason TEXT;
 
 -- Row Level Security (RLS)
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
@@ -131,4 +166,25 @@ DROP POLICY IF EXISTS "Allow public read notifications" ON public.notifications;
 CREATE POLICY "Allow public read notifications" ON public.notifications FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow public write notifications" ON public.notifications;
 CREATE POLICY "Allow public write notifications" ON public.notifications FOR ALL USING (true);
+```
+
+---
+
+## 5. Supabase Storage Buckets Setup (`invoices` & `payment-proofs`)
+
+To store PDF invoice documents and client payment proof receipts in Supabase Cloud Storage:
+
+```sql
+-- 1. Create Public Bucket for Invoices & Payment Proofs
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('invoices', 'invoices', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 2. Storage Policies for Public Access
+CREATE POLICY "Public Read Invoices" ON storage.objects
+  FOR SELECT USING (bucket_id = 'invoices');
+
+-- 3. Allow Public Upload Access
+CREATE POLICY "Public Upload Invoices" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'invoices');
 ```

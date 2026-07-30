@@ -12,7 +12,7 @@ export const clientService = {
         const { data, error } = await supabase.from('clients').select('*');
         if (error) {
           console.error('Supabase select clients error:', error.message || error);
-        } else if (data) {
+        } else if (data && data.length > 0) {
           const normalized: ClientItem[] = data.map((row: any) => ({
             id: row.id,
             fullName: row.fullName || row.fullname || row.full_name || 'Client User',
@@ -88,6 +88,7 @@ export const clientService = {
       company: targetItem.company,
       email: targetItem.email,
       phone: targetItem.phone,
+      portalPassword: targetItem.portalPassword,
       avatarUrl: targetItem.avatarUrl || '',
       status: targetItem.status,
       joinedDate: targetItem.joinedDate,
@@ -123,16 +124,76 @@ export const clientService = {
     return updatedList;
   },
 
-  // Save persistent tool request for a client
-  requestToolAccess: async (clientEmail: string, toolId: string): Promise<ClientItem[]> => {
+  // Toggle client active/inactive status
+  toggleClientStatus: async (id: string): Promise<ClientItem[]> => {
     const existing = await clientService.getClients();
     let updatedTarget: ClientItem | null = null;
 
     const updatedList = existing.map((c) => {
-      if (c.email.toLowerCase() === clientEmail.toLowerCase()) {
-        const currentRequested = c.requestedToolIds || [];
-        if (!currentRequested.includes(toolId)) {
-          updatedTarget = { ...c, requestedToolIds: [...currentRequested, toolId] };
+      if (c.id === id) {
+        const newStatus: 'active' | 'inactive' = c.status === 'active' ? 'inactive' : 'active';
+        updatedTarget = { ...c, status: newStatus };
+        return updatedTarget;
+      }
+      return c;
+    });
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
+
+    if (supabase && updatedTarget) {
+      try {
+        await supabase.from('clients').update({ status: (updatedTarget as ClientItem).status }).eq('id', id);
+      } catch (e) {
+        console.warn('Supabase status toggle notice:', e);
+      }
+    }
+
+    return updatedList;
+  },
+
+  // Update SaaS Studio Tools Access for a specific client
+  updateClientToolPermissions: async (
+    clientId: string,
+    allowedToolIds: string[]
+  ): Promise<ClientItem[]> => {
+    const existing = await clientService.getClients();
+    let updatedTarget: ClientItem | null = null;
+
+    const updatedList = existing.map((c) => {
+      if (c.id === clientId) {
+        updatedTarget = { ...c, allowedToolIds };
+        return updatedTarget;
+      }
+      return c;
+    });
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
+
+    if (supabase && updatedTarget) {
+      try {
+        await supabase.from('clients').update({ allowedToolIds }).eq('id', clientId);
+      } catch (e) {
+        console.warn('Supabase tool permissions update notice:', e);
+      }
+    }
+
+    return updatedList;
+  },
+
+  // Client requests tool activation permission from Admin
+  requestToolAccess: async (
+    clientId: string,
+    toolId: string
+  ): Promise<ClientItem[]> => {
+    const existing = await clientService.getClients();
+    let updatedTarget: ClientItem | null = null;
+
+    const updatedList = existing.map((c) => {
+      if (c.id === clientId) {
+        const currentReqs = c.requestedToolIds || [];
+        if (!currentReqs.includes(toolId)) {
+          const updatedReqs = [...currentReqs, toolId];
+          updatedTarget = { ...c, requestedToolIds: updatedReqs };
           return updatedTarget;
         }
       }
@@ -143,43 +204,35 @@ export const clientService = {
 
     if (supabase && updatedTarget) {
       try {
-        await supabase.from('clients').upsert({
-          id: (updatedTarget as ClientItem).id,
-          fullName: (updatedTarget as ClientItem).fullName,
-          company: (updatedTarget as ClientItem).company,
-          email: (updatedTarget as ClientItem).email,
-          allowedToolIds: (updatedTarget as ClientItem).allowedToolIds || [],
-          requestedToolIds: (updatedTarget as ClientItem).requestedToolIds || [],
-        });
+        await supabase
+          .from('clients')
+          .update({ requestedToolIds: (updatedTarget as ClientItem).requestedToolIds })
+          .eq('id', clientId);
       } catch (e) {
-        console.warn('Supabase requestToolAccess notice:', e);
+        console.warn('Supabase request tool access notice:', e);
       }
     }
 
     return updatedList;
   },
 
-  // Respond to client tool request (Grant or Decline)
-  respondToToolRequest: async (clientId: string, toolId: string, action: 'grant' | 'decline'): Promise<ClientItem[]> => {
+  // Admin approves or denies a client tool request
+  resolveToolAccessRequest: async (
+    clientId: string,
+    toolId: string,
+    approve: boolean
+  ): Promise<ClientItem[]> => {
     const existing = await clientService.getClients();
     let updatedTarget: ClientItem | null = null;
 
     const updatedList = existing.map((c) => {
       if (c.id === clientId) {
-        const currentAllowed = c.allowedToolIds || [];
-        const currentRequested = c.requestedToolIds || [];
-
-        const newAllowed = action === 'grant'
-          ? Array.from(new Set([...currentAllowed, toolId]))
-          : currentAllowed;
-
-        const newRequested = currentRequested.filter((id) => id !== toolId);
-
-        updatedTarget = {
-          ...c,
-          allowedToolIds: newAllowed,
-          requestedToolIds: newRequested,
-        };
+        const reqs = (c.requestedToolIds || []).filter((id) => id !== toolId);
+        let allowed = c.allowedToolIds || [];
+        if (approve && !allowed.includes(toolId)) {
+          allowed = [...allowed, toolId];
+        }
+        updatedTarget = { ...c, requestedToolIds: reqs, allowedToolIds: allowed };
         return updatedTarget;
       }
       return c;
@@ -188,87 +241,47 @@ export const clientService = {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
 
     if (supabase && updatedTarget) {
+      const target = updatedTarget as ClientItem;
       try {
-        await supabase.from('clients').upsert({
-          id: (updatedTarget as ClientItem).id,
-          fullName: (updatedTarget as ClientItem).fullName,
-          company: (updatedTarget as ClientItem).company,
-          email: (updatedTarget as ClientItem).email,
-          allowedToolIds: (updatedTarget as ClientItem).allowedToolIds || [],
-          requestedToolIds: (updatedTarget as ClientItem).requestedToolIds || [],
-        });
+        await supabase
+          .from('clients')
+          .update({
+            allowedToolIds: target.allowedToolIds,
+            requestedToolIds: target.requestedToolIds,
+          })
+          .eq('id', clientId);
       } catch (e) {
-        console.warn('Supabase respondToToolRequest notice:', e);
+        console.warn('Supabase resolve tool request notice:', e);
       }
     }
 
     return updatedList;
   },
 
-  // Toggle tool access for a specific client
-  toggleClientTool: async (clientId: string, toolId: string): Promise<ClientItem[]> => {
-    const existing = await clientService.getClients();
-    let updatedTarget: ClientItem | null = null;
-
-    const updatedList = existing.map((c) => {
-      if (c.id === clientId) {
-        const hasTool = c.allowedToolIds.includes(toolId);
-        const newAllowed = hasTool
-          ? c.allowedToolIds.filter((id) => id !== toolId)
-          : [...c.allowedToolIds, toolId];
-        const newRequested = (c.requestedToolIds || []).filter((id) => id !== toolId);
-
-        updatedTarget = { ...c, allowedToolIds: newAllowed, requestedToolIds: newRequested };
-        return updatedTarget;
-      }
-      return c;
-    });
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
-    if (supabase && updatedTarget) {
-      try {
-        await supabase.from('clients').upsert({
-          id: (updatedTarget as ClientItem).id,
-          fullName: (updatedTarget as ClientItem).fullName,
-          company: (updatedTarget as ClientItem).company,
-          email: (updatedTarget as ClientItem).email,
-          allowedToolIds: (updatedTarget as ClientItem).allowedToolIds || [],
-          requestedToolIds: (updatedTarget as ClientItem).requestedToolIds || [],
-        });
-      } catch (e) {
-        // Ignore
-      }
-    }
-    return updatedList;
+  // Alias for resolveToolAccessRequest
+  respondToToolRequest: async (
+    clientId: string,
+    toolId: string,
+    action: boolean | 'grant' | 'decline' | 'approve' | 'deny'
+  ): Promise<ClientItem[]> => {
+    const isApprove = action === true || action === 'approve' || action === 'grant';
+    return clientService.resolveToolAccessRequest(clientId, toolId, isApprove);
   },
 
-  // Deactivate/Activate client profile
-  toggleClientStatus: async (clientId: string): Promise<ClientItem[]> => {
+  // Delete client
+  deleteClient: async (id: string): Promise<ClientItem[]> => {
     const existing = await clientService.getClients();
-    let updatedTarget: ClientItem | null = null;
-
-    const updatedList = existing.map((c) => {
-      if (c.id === clientId) {
-        updatedTarget = { ...c, status: (c.status === 'active' ? 'inactive' : 'active') as ClientItem['status'] };
-        return updatedTarget;
-      }
-      return c;
-    });
-
+    const updatedList = existing.filter((c) => c.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
-    if (supabase && updatedTarget) {
-      try {
-        await supabase.from('clients').upsert({
-          id: (updatedTarget as ClientItem).id,
-          fullName: (updatedTarget as ClientItem).fullName,
-          company: (updatedTarget as ClientItem).company,
-          email: (updatedTarget as ClientItem).email,
-          status: (updatedTarget as ClientItem).status,
-        });
-      } catch (e) {
-        // Ignore
+
+    try {
+      if (supabase) {
+        await supabase.from('clients').delete().eq('id', id);
       }
+    } catch (e) {
+      console.warn('Supabase delete client notice:', e);
     }
+
     return updatedList;
   },
 };

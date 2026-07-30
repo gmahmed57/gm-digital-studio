@@ -34,6 +34,9 @@ import Projects from './pages/dashboard/Projects';
 import ProjectEditPage from './pages/dashboard/ProjectEditPage';
 import ClientProjectDetailPage from './pages/dashboard/ClientProjectDetailPage';
 import NotificationsPage from './pages/dashboard/NotificationsPage';
+import AdminInvoices from './pages/dashboard/AdminInvoices';
+import ClientInvoices from './pages/dashboard/ClientInvoices';
+import AdminAnalytics from './pages/dashboard/AdminAnalytics';
 
 function App() {
   return (
@@ -77,8 +80,8 @@ function App() {
               <Route path="clients/edit/:id" element={<ClientEditPage />} />
               <Route path="projects" element={<Projects />} />
               <Route path="projects/edit/:id" element={<ProjectEditPage />} />
-              <Route path="invoices" element={<AdminOverview />} />
-              <Route path="analytics" element={<AdminOverview />} />
+              <Route path="invoices" element={<AdminInvoices />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
               <Route path="cms" element={<AdminOverview />} />
               <Route path="settings" element={<AdminOverview />} />
             </Route>
@@ -98,7 +101,7 @@ function App() {
               <Route path="tools" element={<ClientTools />} />
               <Route path="projects" element={<Projects />} />
               <Route path="projects/view/:id" element={<ClientProjectDetailPage />} />
-              <Route path="invoices" element={<ClientOverview />} />
+              <Route path="invoices" element={<ClientInvoices />} />
               <Route path="files" element={<ClientOverview />} />
               <Route path="messages" element={<ClientOverview />} />
               <Route path="support" element={<ClientOverview />} />
