@@ -1,65 +1,53 @@
 import type { ClientItem } from '../types/client';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
-const INITIAL_CLIENTS: ClientItem[] = [];
-const STORAGE_KEY = 'gm_studio_clients_db';
-
 export const clientService = {
-  // Get all clients (Supabase live database or local storage)
+  // Get all clients (Supabase live database)
   getClients: async (): Promise<ClientItem[]> => {
-    try {
-      if (supabase) {
-        const { data, error } = await supabase.from('clients').select('*');
-        if (error) {
-          console.error('Supabase select clients error:', error.message || error);
-        } else if (data && data.length > 0) {
-          const normalized: ClientItem[] = data.map((row: any) => ({
-            id: row.id,
-            fullName: row.fullName || row.fullname || row.full_name || 'Client User',
-            company: row.company || '',
-            email: row.email || '',
-            phone: row.phone || '',
-            portalPassword: row.portalPassword || row.portalpassword || row.portal_password || '',
-            avatarUrl: row.avatarUrl || row.avatarurl || row.avatar_url || '',
-            status: row.status || 'active',
-            joinedDate: row.joinedDate || row.joineddate || row.joined_date || '',
-            activeProjectsCount: row.activeProjectsCount ?? row.activeprojectscount ?? 0,
-            totalBilled: row.totalBilled || row.totalbilled || '$0',
-            assignedPackage: row.assignedPackage || row.assignedpackage || 'Standard Package',
-            allowedToolIds: row.allowedToolIds || row.allowedtoolids || row.allowed_tool_ids || [],
-            requestedToolIds: row.requestedToolIds || row.requestedtoolids || row.requested_tool_ids || [],
-          }));
-          return normalized;
-        }
-      }
-    } catch (e) {
-      console.warn('Supabase clients fetch failed, using local storage database.', e);
+    if (!supabase) throw new Error('Supabase client not initialized');
+
+    const { data, error } = await supabase.from('clients').select('*');
+    if (error) {
+      console.error('Supabase select clients error:', error.message);
+      throw error;
     }
 
-    const cached = localStorage.getItem(STORAGE_KEY);
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        // Fallback
-      }
+    if (data) {
+      return data.map((row: any) => ({
+        id: row.id,
+        fullName: row.fullName || row.fullname || row.full_name || 'Client User',
+        company: row.company || '',
+        email: row.email || '',
+        phone: row.phone || '',
+        portalPassword: row.portalPassword || row.portalpassword || row.portal_password || '',
+        avatarUrl: row.avatarUrl || row.avatarurl || row.avatar_url || '',
+        status: row.status || 'active',
+        joinedDate: row.joinedDate || row.joineddate || row.joined_date || '',
+        activeProjectsCount: row.activeProjectsCount ?? row.activeprojectscount ?? 0,
+        totalBilled: row.totalBilled || row.totalbilled || '$0',
+        assignedPackage: row.assignedPackage || row.assignedpackage || 'Standard Package',
+        allowedToolIds: row.allowedToolIds || row.allowedtoolids || row.allowed_tool_ids || [],
+        requestedToolIds: row.requestedToolIds || row.requestedtoolids || row.requested_tool_ids || [],
+      }));
     }
-
-    return INITIAL_CLIENTS;
+    
+    return [];
   },
 
   // Save new client or update existing client
   saveClient: async (client: Partial<ClientItem>): Promise<ClientItem[]> => {
-    const existing = await clientService.getClients();
-    let updatedList: ClientItem[];
+    if (!supabase) throw new Error('Supabase client not initialized');
+
     let targetItem: ClientItem;
 
     if (client.id && client.id !== 'new') {
+      const existing = await clientService.getClients();
+      const match = existing.find((item) => item.id === client.id);
       targetItem = {
-        ...existing.find((item) => item.id === client.id),
+        ...(match || {}),
         ...client,
       } as ClientItem;
-      updatedList = existing.map((item) => (item.id === client.id ? targetItem : item));
     } else {
       targetItem = {
         id: `client-${Date.now()}`,
@@ -77,18 +65,52 @@ export const clientService = {
         allowedToolIds: client.allowedToolIds !== undefined ? client.allowedToolIds : [],
         requestedToolIds: client.requestedToolIds || [],
       };
-      updatedList = [targetItem, ...existing];
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
+    // If this is a brand NEW client being created, provision their Auth account first
+    if ((!client.id || client.id === 'new') && client.email && targetItem.portalPassword && targetItem.portalPassword.length >= 6) {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (supabaseUrl && supabaseAnonKey) {
+        // Create secondary client so we don't log out the Admin
+        const adminAuthClient = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          }
+        });
 
+        const { error: authError } = await adminAuthClient.auth.signUp({
+          email: client.email.trim().toLowerCase(),
+          password: targetItem.portalPassword,
+          options: {
+            data: {
+              full_name: targetItem.fullName || 'Client User',
+              role: 'client',
+              company: targetItem.company || 'Client Company',
+            },
+          },
+        });
+
+        if (authError) {
+          // If the user is already in Auth (e.g. from a partial failure previously), we can safely proceed to DB insertion
+          if (authError.message.toLowerCase().includes('already registered')) {
+            console.warn('User already registered in Auth, proceeding to sync with clients table.');
+          } else {
+            throw new Error(`Failed to create authentication user: ${authError.message}`);
+          }
+        }
+      }
+    }
+
+    // Prepare payload without portalPassword to avoid schema errors and ensure security
     const dbPayload = {
       id: targetItem.id,
       fullName: targetItem.fullName,
       company: targetItem.company,
       email: targetItem.email,
       phone: targetItem.phone,
-      portalPassword: targetItem.portalPassword,
       avatarUrl: targetItem.avatarUrl || '',
       status: targetItem.status,
       joinedDate: targetItem.joinedDate,
@@ -99,56 +121,29 @@ export const clientService = {
       requestedToolIds: targetItem.requestedToolIds || [],
     };
 
-    try {
-      if (supabase) {
-        await supabase.from('clients').upsert(dbPayload);
-
-        if (client.email && targetItem.portalPassword && targetItem.portalPassword.length >= 6) {
-          await supabase.auth.signUp({
-            email: client.email,
-            password: targetItem.portalPassword,
-            options: {
-              data: {
-                full_name: targetItem.fullName || 'Client User',
-                role: 'client',
-                company: targetItem.company || 'Client Company',
-              },
-            },
-          });
-        }
-      }
-    } catch (e) {
-      console.warn('Supabase Auth provisioning notice:', e);
+    const { error } = await supabase.from('clients').upsert(dbPayload);
+    if (error) {
+      console.error('Supabase client upsert error:', error.message);
+      throw error;
     }
 
-    return updatedList;
+    return await clientService.getClients();
   },
 
   // Toggle client active/inactive status
   toggleClientStatus: async (id: string): Promise<ClientItem[]> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
     const existing = await clientService.getClients();
-    let updatedTarget: ClientItem | null = null;
-
-    const updatedList = existing.map((c) => {
-      if (c.id === id) {
-        const newStatus: 'active' | 'inactive' = c.status === 'active' ? 'inactive' : 'active';
-        updatedTarget = { ...c, status: newStatus };
-        return updatedTarget;
-      }
-      return c;
-    });
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
-
-    if (supabase && updatedTarget) {
-      try {
-        await supabase.from('clients').update({ status: (updatedTarget as ClientItem).status }).eq('id', id);
-      } catch (e) {
-        console.warn('Supabase status toggle notice:', e);
-      }
+    const client = existing.find((c) => c.id === id);
+    
+    if (client) {
+      const newStatus = client.status === 'active' ? 'inactive' : 'active';
+      const { error } = await supabase.from('clients').update({ status: newStatus }).eq('id', id);
+      if (error) throw error;
     }
 
-    return updatedList;
+    return await clientService.getClients();
   },
 
   // Update SaaS Studio Tools Access for a specific client
@@ -156,28 +151,12 @@ export const clientService = {
     clientId: string,
     allowedToolIds: string[]
   ): Promise<ClientItem[]> => {
-    const existing = await clientService.getClients();
-    let updatedTarget: ClientItem | null = null;
+    if (!supabase) throw new Error('Supabase client not initialized');
 
-    const updatedList = existing.map((c) => {
-      if (c.id === clientId) {
-        updatedTarget = { ...c, allowedToolIds };
-        return updatedTarget;
-      }
-      return c;
-    });
+    const { error } = await supabase.from('clients').update({ allowedToolIds }).eq('id', clientId);
+    if (error) throw error;
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
-
-    if (supabase && updatedTarget) {
-      try {
-        await supabase.from('clients').update({ allowedToolIds }).eq('id', clientId);
-      } catch (e) {
-        console.warn('Supabase tool permissions update notice:', e);
-      }
-    }
-
-    return updatedList;
+    return await clientService.getClients();
   },
 
   // Client requests tool activation permission from Admin
@@ -185,35 +164,24 @@ export const clientService = {
     clientId: string,
     toolId: string
   ): Promise<ClientItem[]> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+
     const existing = await clientService.getClients();
-    let updatedTarget: ClientItem | null = null;
+    const client = existing.find((c) => c.id === clientId);
 
-    const updatedList = existing.map((c) => {
-      if (c.id === clientId) {
-        const currentReqs = c.requestedToolIds || [];
-        if (!currentReqs.includes(toolId)) {
-          const updatedReqs = [...currentReqs, toolId];
-          updatedTarget = { ...c, requestedToolIds: updatedReqs };
-          return updatedTarget;
-        }
-      }
-      return c;
-    });
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
-
-    if (supabase && updatedTarget) {
-      try {
-        await supabase
+    if (client) {
+      const currentReqs = client.requestedToolIds || [];
+      if (!currentReqs.includes(toolId)) {
+        const updatedReqs = [...currentReqs, toolId];
+        const { error } = await supabase
           .from('clients')
-          .update({ requestedToolIds: (updatedTarget as ClientItem).requestedToolIds })
+          .update({ requestedToolIds: updatedReqs })
           .eq('id', clientId);
-      } catch (e) {
-        console.warn('Supabase request tool access notice:', e);
+        if (error) throw error;
       }
     }
 
-    return updatedList;
+    return await clientService.getClients();
   },
 
   // Admin approves or denies a client tool request
@@ -222,40 +190,31 @@ export const clientService = {
     toolId: string,
     approve: boolean
   ): Promise<ClientItem[]> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+
     const existing = await clientService.getClients();
-    let updatedTarget: ClientItem | null = null;
+    const client = existing.find((c) => c.id === clientId);
 
-    const updatedList = existing.map((c) => {
-      if (c.id === clientId) {
-        const reqs = (c.requestedToolIds || []).filter((id) => id !== toolId);
-        let allowed = c.allowedToolIds || [];
-        if (approve && !allowed.includes(toolId)) {
-          allowed = [...allowed, toolId];
-        }
-        updatedTarget = { ...c, requestedToolIds: reqs, allowedToolIds: allowed };
-        return updatedTarget;
+    if (client) {
+      const reqs = (client.requestedToolIds || []).filter((id) => id !== toolId);
+      let allowed = client.allowedToolIds || [];
+      
+      if (approve && !allowed.includes(toolId)) {
+        allowed = [...allowed, toolId];
       }
-      return c;
-    });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
-
-    if (supabase && updatedTarget) {
-      const target = updatedTarget as ClientItem;
-      try {
-        await supabase
-          .from('clients')
-          .update({
-            allowedToolIds: target.allowedToolIds,
-            requestedToolIds: target.requestedToolIds,
-          })
-          .eq('id', clientId);
-      } catch (e) {
-        console.warn('Supabase resolve tool request notice:', e);
-      }
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          allowedToolIds: allowed,
+          requestedToolIds: reqs,
+        })
+        .eq('id', clientId);
+        
+      if (error) throw error;
     }
 
-    return updatedList;
+    return await clientService.getClients();
   },
 
   // Alias for resolveToolAccessRequest
@@ -270,18 +229,11 @@ export const clientService = {
 
   // Delete client
   deleteClient: async (id: string): Promise<ClientItem[]> => {
-    const existing = await clientService.getClients();
-    const updatedList = existing.filter((c) => c.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
+    if (!supabase) throw new Error('Supabase client not initialized');
 
-    try {
-      if (supabase) {
-        await supabase.from('clients').delete().eq('id', id);
-      }
-    } catch (e) {
-      console.warn('Supabase delete client notice:', e);
-    }
+    const { error } = await supabase.from('clients').delete().eq('id', id);
+    if (error) throw error;
 
-    return updatedList;
+    return await clientService.getClients();
   },
 };

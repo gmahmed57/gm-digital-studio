@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   TrendingUp, 
-  TrendingDown, 
   Briefcase, 
   Clock, 
   Users, 
@@ -10,57 +10,141 @@ import {
   ChevronDown
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
+import { invoiceService } from '../../services/invoiceService';
+import { projectService } from '../../services/projectService';
+import { clientService } from '../../services/clientService';
+import type { ProjectStatus } from '../../types/project';
 
 export function AdminOverview() {
+  const navigate = useNavigate();
   const [timeFilter, setTimeFilter] = useState('Last 30 days');
+  const [metricsData, setMetricsData] = useState({
+    totalRevenue: 0,
+    activeProjects: 0,
+    totalProjects: 0,
+    totalClients: 0,
+  });
 
-  // Inspired by user reference sample 1 metrics
+  const [projectSummary, setProjectSummary] = useState<any[]>([]);
+  const [progressStats, setProgressStats] = useState<any[]>([
+    { label: 'Completed', percent: 0, color: 'bg-brand-500' },
+    { label: 'On going', percent: 0, color: 'bg-amber-500' },
+    { label: 'At risk', percent: 0, color: 'bg-red-500' },
+    { label: 'Delayed', percent: 0, color: 'bg-gray-400 dark:bg-gray-600' },
+  ]);
+
+  const loadData = async () => {
+    try {
+      const [invoices, projects, clients] = await Promise.all([
+        invoiceService.getInvoices(),
+        projectService.getProjects(),
+        clientService.getClients(),
+      ]);
+
+      // Calculate Total Revenue (paid invoices only)
+      const paidInvoices = invoices.filter(inv => inv.status === 'Paid');
+      const totalRevenue = paidInvoices.reduce((sum, inv) => {
+        const amt = parseFloat((inv.amount || '0').replace(/[^0-9.]/g, ''));
+        return sum + (amt || 0);
+      }, 0);
+
+      // Active Projects
+      const activeProjects = projects.filter(p => p.status === 'active' || p.status === 'in_review').length;
+      const totalProjects = projects.length;
+      
+      // Client count
+      const totalClients = clients.length;
+
+      setMetricsData({
+        totalRevenue,
+        activeProjects,
+        totalProjects,
+        totalClients
+      });
+
+      // Project Summary Table
+      const sortedProjects = [...projects].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).slice(0, 5);
+      
+      const formatStatusBadge = (status: ProjectStatus) => {
+        switch(status) {
+          case 'completed': return { text: 'Completed', class: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' };
+          case 'on_hold': return { text: 'On Hold', class: 'bg-gray-100 text-gray-700 dark:bg-dark-surface dark:text-gray-400' };
+          case 'in_review': return { text: 'In Review', class: 'bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-400' };
+          case 'active': return { text: 'On going', class: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400' };
+          default: return { text: 'Pending', class: 'bg-gray-100 text-gray-700' };
+        }
+      };
+
+      setProjectSummary(sortedProjects.map(p => ({
+        name: p.title,
+        dueDate: p.dueDate,
+        ...formatStatusBadge(p.status)
+      })));
+
+      // Progress Stats
+      if (totalProjects > 0) {
+        const completedCount = projects.filter(p => p.status === 'completed').length;
+        const ongoingCount = projects.filter(p => p.status === 'active').length;
+        const inReviewCount = projects.filter(p => p.status === 'in_review').length;
+        const onHoldCount = projects.filter(p => p.status === 'on_hold').length;
+
+        setProgressStats([
+          { label: 'Completed', percent: Math.round((completedCount / totalProjects) * 100), color: 'bg-emerald-500' },
+          { label: 'On going', percent: Math.round((ongoingCount / totalProjects) * 100), color: 'bg-amber-500' },
+          { label: 'In Review', percent: Math.round((inReviewCount / totalProjects) * 100), color: 'bg-brand-500' },
+          { label: 'On Hold', percent: Math.round((onHoldCount / totalProjects) * 100), color: 'bg-gray-400 dark:bg-gray-600' },
+        ]);
+      }
+
+    } catch(err) {
+      console.warn("Failed to load admin stats:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+
+    const handleUpdate = () => loadData();
+    window.addEventListener('gm_invoice_updated', handleUpdate);
+    window.addEventListener('gm_project_updated', handleUpdate);
+    window.addEventListener('gm_studio_clients_updated', handleUpdate); // Adding generic clients update if existed
+
+    return () => {
+      window.removeEventListener('gm_invoice_updated', handleUpdate);
+      window.removeEventListener('gm_project_updated', handleUpdate);
+      window.removeEventListener('gm_studio_clients_updated', handleUpdate);
+    };
+  }, []);
+
   const metrics = [
     {
-      title: 'Total revenue',
-      value: '$53,900',
+      title: 'Total revenue (Paid Invoices)',
+      value: `$${metricsData.totalRevenue.toLocaleString()}`,
       change: '+12%',
       isPositive: true,
       icon: TrendingUp,
     },
     {
       title: 'Active Projects',
-      value: '95 / 100',
+      value: `${metricsData.activeProjects} / ${metricsData.totalProjects}`,
       change: '-10%',
       isPositive: false,
       icon: Briefcase,
     },
     {
-      title: 'Total Time Logged',
-      value: '1022 /1300 Hrs',
+      title: 'Estimated Time',
+      value: `${metricsData.totalProjects * 20} Hrs`,
       change: '+8%',
       isPositive: true,
       icon: Clock,
     },
     {
-      title: 'Client Retention',
-      value: '101 / 120',
+      title: 'Total Clients',
+      value: `${metricsData.totalClients}`,
       change: '+2%',
       isPositive: true,
       icon: Users,
     },
-  ];
-
-  // Project Summary Table data matching User Sample 1 layout
-  const projectSummary = [
-    { name: 'Nelsa Web Development', dueDate: '25.01.26', status: 'Completed', badgeClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' },
-    { name: 'Datascale AI App', dueDate: '25.01.26', status: 'Delayed', badgeClass: 'bg-gray-100 text-gray-700 dark:bg-dark-surface dark:text-gray-400' },
-    { name: 'Media Channel Branding', dueDate: '25.01.26', status: 'At risk', badgeClass: 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400' },
-    { name: 'Corlax iOS App Development', dueDate: '25.01.26', status: 'Completed', badgeClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' },
-    { name: 'Website Builder Development', dueDate: '25.01.26', status: 'On going', badgeClass: 'bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-400' },
-  ];
-
-  // Progress Bar Distribution Data matching User Sample 1 right chart
-  const progressStats = [
-    { label: 'Completed', percent: 65, color: 'bg-brand-500' },
-    { label: 'On going', percent: 87, color: 'bg-amber-500' },
-    { label: 'At risk', percent: 20, color: 'bg-red-500' },
-    { label: 'Delayed', percent: 25, color: 'bg-gray-400 dark:bg-gray-600' },
   ];
 
   return (
@@ -98,7 +182,9 @@ export function AdminOverview() {
               <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
             </div>
 
-            <button className="py-2 px-4 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs transition-all shadow-md shadow-brand-500/20 flex items-center gap-2">
+            <button 
+              onClick={() => navigate('/admin/projects/edit/new')}
+              className="py-2 px-4 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs transition-all shadow-md shadow-brand-500/20 flex items-center gap-2 cursor-pointer">
               <Plus className="w-4 h-4" /> New Project
             </button>
           </div>
@@ -117,16 +203,6 @@ export function AdminOverview() {
                   <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-dark-surface text-gray-700 dark:text-gray-300 flex items-center justify-center">
                     <Icon className="w-5 h-5" />
                   </div>
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                      item.isPositive
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
-                        : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400'
-                    }`}
-                  >
-                    {item.isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    {item.change}
-                  </span>
                 </div>
 
                 <div>
@@ -149,14 +225,6 @@ export function AdminOverview() {
               <h2 className="text-base font-heading font-bold text-gray-900 dark:text-white">
                 Project Summary
               </h2>
-              <div className="flex items-center gap-2">
-                <button className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-dark-surface text-gray-600 dark:text-gray-300 text-xs font-medium">
-                  Filter Project
-                </button>
-                <button className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-dark-surface text-gray-600 dark:text-gray-300 text-xs font-medium">
-                  Status
-                </button>
-              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -169,19 +237,27 @@ export function AdminOverview() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-dark-border">
-                  {projectSummary.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-dark-surface/50 transition-colors">
-                      <td className="py-3.5 font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        {row.name}
-                      </td>
-                      <td className="py-3.5 text-gray-500 dark:text-gray-400">{row.dueDate}</td>
-                      <td className="py-3.5 text-right">
-                        <span className={`inline-block px-3 py-1 rounded-lg font-bold text-[11px] ${row.badgeClass}`}>
-                          {row.status}
-                        </span>
+                  {projectSummary.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                        No active projects to display.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    projectSummary.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-dark-surface/50 transition-colors">
+                        <td className="py-3.5 font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                          {row.name}
+                        </td>
+                        <td className="py-3.5 text-gray-500 dark:text-gray-400">{row.dueDate}</td>
+                        <td className="py-3.5 text-right">
+                          <span className={`inline-block px-3 py-1 rounded-lg font-bold text-[11px] ${row.class}`}>
+                            {row.text}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -232,7 +308,9 @@ export function AdminOverview() {
             <h3 className="text-lg font-heading font-bold">Ready to onboard a new client project?</h3>
             <p className="text-xs text-white/80 mt-0.5">Generate client credentials, assign milestones, and issue invoice PDF directly.</p>
           </div>
-          <button className="py-2.5 px-5 rounded-xl bg-white text-gray-950 font-bold text-xs hover:bg-gray-100 transition-colors flex items-center gap-2 shadow-md">
+          <button 
+            onClick={() => navigate('/admin/clients/edit/new')}
+            className="py-2.5 px-5 rounded-xl bg-white text-gray-950 font-bold text-xs hover:bg-gray-100 transition-colors flex items-center gap-2 shadow-md cursor-pointer">
             Provision Client Workspace <ArrowUpRight className="w-4 h-4" />
           </button>
         </div>

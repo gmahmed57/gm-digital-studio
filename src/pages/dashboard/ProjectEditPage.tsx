@@ -263,6 +263,10 @@ export function ProjectEditPage() {
                       >
                         <option value="Enterprise Web Development">Enterprise Web Development</option>
                         <option value="UI/UX & Product Design">UI/UX & Product Design</option>
+                        <option value="Digital Marketing">Digital Marketing</option>
+                        <option value="Social Media Management">Social Media Management</option>
+                        <option value="SEO">SEO</option>
+                        <option value="Virtual Assistant">Virtual Assistant</option>
                         <option value="AI Automation Suite">AI Automation Suite</option>
                         <option value="Brand Identity Strategy">Brand Identity Strategy</option>
                         <option value="Mobile App Development">Mobile App Development</option>

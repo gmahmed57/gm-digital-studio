@@ -1,12 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { messageService } from '../../services/messageService';
 import { 
   LayoutDashboard, 
   Users, 
   FolderKanban, 
   FileText, 
   Settings, 
-  HelpCircle, 
   ChevronLeft, 
   ChevronRight,
   BarChart2,
@@ -29,8 +30,31 @@ interface SidebarProps {
 export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMobile }: SidebarProps) {
   const location = useLocation();
   const { role, user, logout } = useAuth();
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   const isAdmin = role === 'admin';
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      if (user) {
+        const count = await messageService.getUnreadCount(
+          isAdmin ? 'admin' : 'client',
+          isAdmin ? undefined : user.id
+        );
+        setUnreadMessages(count);
+      }
+    };
+
+    fetchUnread();
+    
+    window.addEventListener('gm_messages_updated', fetchUnread);
+    const interval = setInterval(fetchUnread, 15000); // Poll every 15s for WhatsApp-like real-time feel
+
+    return () => {
+      window.removeEventListener('gm_messages_updated', fetchUnread);
+      clearInterval(interval);
+    };
+  }, [user, isAdmin]);
 
   const adminNavItems = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
@@ -38,6 +62,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
     { label: 'Clients', path: '/admin/clients', icon: Users },
     { label: 'Projects', path: '/admin/projects', icon: FolderKanban },
     { label: 'Invoices', path: '/admin/invoices', icon: FileText },
+    { label: 'Messages', path: '/admin/messages', icon: MessageSquare },
     { label: 'Analytics', path: '/admin/analytics', icon: BarChart2 },
     { label: 'Blog & CMS', path: '/admin/cms', icon: FileCheck2 },
     { label: 'Settings', path: '/admin/settings', icon: Settings },
@@ -51,7 +76,6 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
     { label: 'Invoices', path: '/client/invoices', icon: FileText },
     { label: 'Shared Files', path: '/client/files', icon: FolderOpen },
     { label: 'Messages', path: '/client/messages', icon: MessageSquare },
-    { label: 'Support', path: '/client/support', icon: HelpCircle },
   ];
 
   const navItems = isAdmin ? adminNavItems : clientNavItems;
@@ -105,21 +129,34 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
+              const isMessages = item.label === 'Messages';
 
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   onClick={onCloseMobile}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all relative ${
                     isActive
                       ? 'bg-brand-600 text-white shadow-xs'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface hover:text-gray-900 dark:hover:text-white'
                   }`}
                   title={isCollapsed ? item.label : undefined}
                 >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  {!isCollapsed && <span>{item.label}</span>}
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    {!isCollapsed && <span>{item.label}</span>}
+                  </div>
+                  
+                  {/* Unread Messages Badge */}
+                  {isMessages && unreadMessages > 0 && !isCollapsed && (
+                    <span className="bg-white text-brand-600 dark:bg-brand-500 dark:text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full shadow-sm min-w-[20px] text-center">
+                      {unreadMessages > 99 ? '99+' : unreadMessages}
+                    </span>
+                  )}
+                  {isMessages && unreadMessages > 0 && isCollapsed && (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-brand-500 rounded-full ring-2 ring-white dark:ring-dark-card shadow-sm"></span>
+                  )}
                 </Link>
               );
             })}

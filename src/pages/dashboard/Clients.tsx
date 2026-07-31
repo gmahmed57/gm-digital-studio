@@ -16,6 +16,7 @@ import {
   DollarSign,
   ShieldCheck,
   CheckCircle2,
+  Trash2,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 
@@ -43,6 +44,14 @@ export function Clients() {
     const updated = await clientService.toggleClientStatus(id);
     setClients(updated);
     setActiveMenuId(null);
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    if (confirm('Are you sure you want to permanently delete this client? This will remove all their projects and data.')) {
+      const updated = await clientService.deleteClient(id);
+      setClients(updated);
+      setActiveMenuId(null);
+    }
   };
 
   const handleOpenEditPage = (clientId: string) => {
@@ -293,6 +302,14 @@ export function Clients() {
                               >
                                 <Power className="w-3.5 h-3.5 text-gray-500" />
                                 {client.status === 'active' ? 'Deactivate Client' : 'Activate Client'}
+                              </button>
+                              <div className="my-1 border-t border-gray-100 dark:border-dark-border" />
+                              <button
+                                onClick={() => handleDeleteClient(client.id)}
+                                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 text-left cursor-pointer font-medium"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Delete Client
                               </button>
                             </div>
                           )}

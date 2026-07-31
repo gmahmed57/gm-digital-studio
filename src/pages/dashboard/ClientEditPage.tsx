@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { clientService } from '../../services/clientService';
 import { notificationService } from '../../services/notificationService';
 import type { ClientItem } from '../../types/client';
+import { folderService, type SharedFolder } from '../../services/folderService';
 import { MASTER_STUDIO_TOOLS } from '../../constants/toolsData';
 import {
   ArrowLeft,
@@ -19,6 +20,10 @@ import {
   Clock,
   Check,
   X,
+  FolderOpen,
+  Link as LinkIcon,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 
@@ -39,6 +44,12 @@ export function ClientEditPage() {
   const [clientItem, setClientItem] = useState<ClientItem | null>(null);
   const [formError, setFormError] = useState('');
 
+  // Folder Management State
+  const [folders, setFolders] = useState<SharedFolder[]>([]);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderUrl, setNewFolderUrl] = useState('');
+  const [isAddingFolder, _setIsAddingFolder] = useState(false);
+
   const loadClient = async () => {
     if (isEditing && id) {
       const clients = await clientService.getClients();
@@ -50,10 +61,16 @@ export function ClientEditPage() {
         setEmail(found.email);
         setPhone(found.phone);
         setPortalPassword(found.portalPassword || '');
-        setAssignedPackage(found.assignedPackage);
-        setStatus(found.status);
+        setAssignedPackage(found.assignedPackage || 'Enterprise Web Development');
+        setStatus(found.status || 'active');
         setAllowedToolIds(found.allowedToolIds || []);
         setRequestedToolIds(found.requestedToolIds || []);
+        
+        // Load folders
+        const clientFolders = await folderService.getFoldersForClient(id);
+        setFolders(clientFolders);
+      } else {
+        navigate('/admin/clients');
       }
     }
   };
@@ -115,11 +132,6 @@ export function ClientEditPage() {
       return;
     }
 
-    if (isEditing && portalPassword && portalPassword.length < 6) {
-      setFormError('Portal Password must be at least 6 characters long.');
-      return;
-    }
-
     try {
       await clientService.saveClient({
         id: isEditing ? id : undefined,
@@ -131,24 +143,32 @@ export function ClientEditPage() {
         assignedPackage,
         status,
         allowedToolIds,
-        requestedToolIds,
+        requestedToolIds: isEditing ? requestedToolIds : [],
       });
-
-      if (email) {
-        await notificationService.addNotification({
-          title: 'Studio Tool Access Permissions Updated',
-          message: `Admin updated your active studio tool access permissions (${allowedToolIds.length} tools unlocked).`,
-          type: 'client',
-          targetRole: 'client',
-          targetEmail: email,
-          link: '/client/tools',
-        });
-      }
-
       navigate('/admin/clients');
     } catch (err: any) {
-      setFormError(err.message || 'Failed to save client details.');
+      setFormError(err.message || 'Failed to provision client account.');
     }
+  };
+
+  const handleAddFolder = async () => {
+    if (!newFolderName || !newFolderUrl || !id) return;
+    _setIsAddingFolder(true);
+    try {
+      const added = await folderService.addFolder(id, newFolderName, newFolderUrl);
+      setFolders([added, ...folders]);
+      setNewFolderName('');
+      setNewFolderUrl('');
+    } catch (e) {
+      console.error(e);
+    }
+    _setIsAddingFolder(false);
+  };
+
+  const handleRemoveFolder = async (folderId: string) => {
+    if (!confirm('Are you sure you want to remove this folder link?')) return;
+    await folderService.removeFolder(folderId);
+    setFolders(folders.filter(f => f.id !== folderId));
   };
 
   const handleToggleActiveStatus = async () => {
@@ -342,8 +362,14 @@ export function ClientEditPage() {
                     >
                       <option value="Enterprise Development">Enterprise Web Development</option>
                       <option value="UI/UX & Product Design">UI/UX & Product Design</option>
+                      <option value="Digital Marketing">Digital Marketing</option>
+                      <option value="Social Media Management">Social Media Management</option>
+                      <option value="SEO">SEO</option>
+                      <option value="Virtual Assistant">Virtual Assistant</option>
                       <option value="AI Automation Suite">AI Automation Suite</option>
                       <option value="Brand Identity Strategy">Brand Identity Strategy</option>
+                      <option value="Mobile App Development">Mobile App Development</option>
+                      <option value="Cloud Infrastructure">Cloud Infrastructure</option>
                     </select>
                   </div>
                 </div>
@@ -381,6 +407,96 @@ export function ClientEditPage() {
                 </div>
               </div>
             </div>
+
+            {/* Google Drive Shared Folders Management */}
+            {isEditing && (
+              <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-dark-border">
+                  <div className="w-10 h-10 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold">
+                    <FolderOpen className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-white">
+                      Assigned Cloud Folders
+                    </h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Link Google Drive folders for this client to access securely.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Add New Folder Form */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="relative">
+                      <FolderOpen className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                      <input
+                        type="text"
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        placeholder="Folder Name (e.g. Brand Assets)"
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
+                      />
+                    </div>
+                    <div className="relative">
+                      <LinkIcon className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                      <input
+                        type="url"
+                        value={newFolderUrl}
+                        onChange={(e) => setNewFolderUrl(e.target.value)}
+                        placeholder="Google Drive URL"
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddFolder}
+                    disabled={!newFolderName || !newFolderUrl || isAddingFolder}
+                    className="w-full px-4 py-2 rounded-xl bg-brand-50 dark:bg-brand-500/10 hover:bg-brand-100 dark:hover:bg-brand-500/20 text-brand-600 dark:text-brand-400 text-xs font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-brand-200 dark:border-brand-500/20"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {isAddingFolder ? 'Adding...' : 'Link New Folder'}
+                  </button>
+
+                  {/* List of Folders */}
+                  {folders.length > 0 ? (
+                    <div className="space-y-3 mt-4">
+                      {folders.map(folder => (
+                        <div key={folder.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-surface">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center flex-shrink-0">
+                              <FolderOpen className="w-4 h-4" />
+                            </div>
+                            <div className="truncate">
+                              <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                                {folder.folderName}
+                              </p>
+                              <a href={folder.driveUrl} target="_blank" rel="noreferrer" className="text-[10px] text-brand-600 hover:underline truncate block">
+                                {folder.driveUrl}
+                              </a>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFolder(folder.id)}
+                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0"
+                            title="Remove Folder"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 border border-dashed border-gray-300 dark:border-dark-border rounded-2xl bg-gray-50/50 dark:bg-dark-surface/50">
+                      <FolderOpen className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">No folders linked for this client.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Granted Studio Tools Access Matrix */}

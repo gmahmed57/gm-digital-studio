@@ -3,6 +3,9 @@ export type ProjectStatus = 'active' | 'in_review' | 'completed' | 'on_hold';
 export type ProjectCategory =
   | 'Enterprise Web Development'
   | 'UI/UX & Product Design'
+  | 'Digital Marketing'
+  | 'Social Media Management'
+  | 'SEO'
   | 'AI Automation Suite'
   | 'Brand Identity Strategy'
   | 'Mobile App Development'

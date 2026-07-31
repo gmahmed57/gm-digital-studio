@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   AreaChart,
   Area,
@@ -22,32 +23,123 @@ import {
   Layers,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
-
-const REVENUE_DATA = [
-  { month: 'Jan', revenue: 24000, projects: 4 },
-  { month: 'Feb', revenue: 31000, projects: 6 },
-  { month: 'Mar', revenue: 28000, projects: 5 },
-  { month: 'Apr', revenue: 42000, projects: 8 },
-  { month: 'May', revenue: 39000, projects: 7 },
-  { month: 'Jun', revenue: 58000, projects: 11 },
-  { month: 'Jul', revenue: 65700, projects: 14 },
-];
-
-const CATEGORY_DATA = [
-  { category: 'Web Dev', revenue: 35000 },
-  { category: 'UI/UX Design', revenue: 22000 },
-  { category: 'AI Suite', revenue: 18500 },
-  { category: 'Brand Identity', revenue: 12000 },
-  { category: 'Mobile Apps', revenue: 16000 },
-];
-
-const STATUS_PIE_DATA = [
-  { name: 'Paid Revenue', value: 65, color: '#10b981' },
-  { name: 'Pending Balance', value: 25, color: '#3b82f6' },
-  { name: 'Overdue Balance', value: 10, color: '#ef4444' },
-];
+import { invoiceService } from '../../services/invoiceService';
+import { clientService } from '../../services/clientService';
+import { projectService } from '../../services/projectService';
 
 export function AdminAnalytics() {
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [statusPieData, setStatusPieData] = useState<any[]>([]);
+  
+  const [metrics, setMetrics] = useState({
+    totalRevenue: 0,
+    activeClients: 0,
+    activeProjects: 0,
+    completedProjects: 0,
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [invoices, clients, projects] = await Promise.all([
+          invoiceService.getInvoices(),
+          clientService.getClients(),
+          projectService.getProjects(),
+        ]);
+
+        // --- Metrics Calculation ---
+        let totalRev = 0;
+        let paidRev = 0;
+        let pendingRev = 0;
+        let overdueRev = 0;
+
+        invoices.forEach((inv) => {
+          const amt = parseFloat(inv.amount.replace(/[^0-9.-]+/g, '')) || 0;
+          if (inv.status === 'Paid') {
+            totalRev += amt;
+            paidRev += amt;
+          } else if (inv.status === 'Overdue') {
+            overdueRev += amt;
+          } else {
+            pendingRev += amt;
+          }
+        });
+
+        const activeClients = clients.filter(c => c.status === 'active').length;
+        const activeProjects = projects.filter(p => p.status === 'active').length;
+        const completedProjects = projects.filter(p => p.status === 'completed').length;
+
+        setMetrics({
+          totalRevenue: totalRev,
+          activeClients,
+          activeProjects,
+          completedProjects,
+        });
+
+        // --- Status Pie Data ---
+        setStatusPieData([
+          { name: 'Paid Revenue', value: paidRev, color: '#10b981' },
+          { name: 'Pending Balance', value: pendingRev, color: '#3b82f6' },
+          { name: 'Overdue Balance', value: overdueRev, color: '#ef4444' },
+        ].filter(d => d.value > 0));
+
+        // --- Category Data ---
+        const catMap: Record<string, number> = {};
+        projects.forEach(p => {
+          catMap[p.category] = (catMap[p.category] || 0) + 1;
+        });
+        const cData = Object.keys(catMap).map(k => ({
+          category: k,
+          projects: catMap[k],
+        }));
+        setCategoryData(cData);
+
+        // --- Revenue Data (Monthly) ---
+        // Basic naive implementation: bucket invoices by month
+        const monthlyRev: Record<string, number> = {};
+        invoices.forEach(inv => {
+          if (inv.status === 'Paid') {
+            const date = new Date(inv.date);
+            const month = date.toLocaleString('default', { month: 'short' });
+            const amt = parseFloat(inv.amount.replace(/[^0-9.-]+/g, '')) || 0;
+            monthlyRev[month] = (monthlyRev[month] || 0) + amt;
+          }
+        });
+
+        // Ensure chronological order for a basic year
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const rData = months
+          .filter(m => monthlyRev[m] !== undefined)
+          .map(m => ({
+            month: m,
+            revenue: monthlyRev[m]
+          }));
+          
+        setRevenueData(rData.length > 0 ? rData : [{ month: 'Current', revenue: totalRev }]);
+
+      } catch (error) {
+        console.error("Error fetching analytics data", error);
+      }
+      setIsLoading(false);
+    };
+
+    fetchData();
+  }, []);
+
+  const formatCurrency = (val: number) => `$${val.toLocaleString()}`;
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center min-h-[500px]">
+        <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <>
       <SEO
@@ -64,7 +156,7 @@ export function AdminAnalytics() {
               Platform Performance Analytics
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Financial telemetry, service category distribution, and growth charts.
+              Financial telemetry, service category distribution, and growth charts based on real database records.
             </p>
           </div>
 
@@ -86,11 +178,8 @@ export function AdminAnalytics() {
               </div>
             </div>
             <p className="text-2xl font-heading font-bold text-gray-900 dark:text-white mt-2">
-              $267,700
+              {formatCurrency(metrics.totalRevenue)}
             </p>
-            <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1 mt-1">
-              <TrendingUp className="w-3 h-3" /> +24.8% vs last quarter
-            </span>
           </div>
 
           <div className="p-5 rounded-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs">
@@ -98,193 +187,173 @@ export function AdminAnalytics() {
               <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Active Client Roster
               </span>
-              <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
                 <Users className="w-4 h-4" />
               </div>
             </div>
             <p className="text-2xl font-heading font-bold text-gray-900 dark:text-white mt-2">
-              18 Accounts
+              {metrics.activeClients}
             </p>
-            <span className="text-[11px] font-bold text-blue-600 flex items-center gap-1 mt-1">
-              98.2% Client Retention Rate
-            </span>
           </div>
 
           <div className="p-5 rounded-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Delivered Builds
+                Projects In Pipeline
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                <Layers className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-2xl font-heading font-bold text-gray-900 dark:text-white mt-2">
+              {metrics.activeProjects}
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Completed Projects
               </span>
               <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
             <p className="text-2xl font-heading font-bold text-gray-900 dark:text-white mt-2">
-              55 Products
+              {metrics.completedProjects}
             </p>
-            <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1 mt-1">
-              100% On-Time Delivery Ratio
-            </span>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Average Deal Size
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-                <BarChart3 className="w-4 h-4" />
-              </div>
-            </div>
-            <p className="text-2xl font-heading font-bold text-gray-900 dark:text-white mt-2">
-              $14,870
-            </p>
-            <span className="text-[11px] font-bold text-purple-600 flex items-center gap-1 mt-1">
-              Enterprise Package Average
-            </span>
           </div>
         </div>
 
         {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
-          {/* Monthly Revenue Area Chart */}
-          <div className="lg:col-span-8 p-6 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-dark-border">
+          {/* Revenue Area Chart */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-base font-bold text-gray-900 dark:text-white">
-                  Monthly Revenue Growth ($ USD)
+                <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-brand-600" />
+                  Monthly Paid Revenue
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Historical monthly billing progression across all studio client packages.
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Growth trajectory across the fiscal year.</p>
               </div>
             </div>
+            <div className="h-72 w-full">
+              {revenueData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4e89ae" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#4e89ae" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-800" />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(value) => `$${value/1000}k`} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      formatter={(value: any) => [`$${value.toLocaleString()}`, 'Revenue']}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#4e89ae" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-500 text-sm">No paid invoices available.</div>
+              )}
+            </div>
+          </div>
 
-            <div className="h-72 w-full pt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={REVENUE_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#f97316" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
-                  <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} tickLine={false} />
-                  <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#111827',
-                      borderColor: '#374151',
-                      borderRadius: '12px',
-                      color: '#ffffff',
-                    }}
-                    formatter={(val: any) => [`$${Number(val).toLocaleString()}`, 'Revenue']}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#f97316"
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorRevenue)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+          {/* Project Category Distribution Bar Chart */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-brand-600" />
+                  Service Category Breakdown
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">Number of projects per core offering.</p>
+              </div>
+            </div>
+            <div className="h-72 w-full">
+              {categoryData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={categoryData} layout="vertical" margin={{ top: 10, right: 30, left: 40, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-800" />
+                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                    <YAxis dataKey="category" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 'bold' }} dx={-10} />
+                    <Tooltip 
+                      cursor={{fill: 'transparent'}}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Bar dataKey="projects" fill="#4e89ae" radius={[0, 4, 4, 0]} barSize={24} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-500 text-sm">No project data available.</div>
+              )}
             </div>
           </div>
 
           {/* Invoice Status Distribution Pie Chart */}
-          <div className="lg:col-span-4 p-6 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-4 flex flex-col justify-between">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white">
-                Invoice Settlement Telemetry
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Breakdown of Paid vs Pending vs Overdue account balances.
-              </p>
-            </div>
-
-            <div className="h-52 w-full flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={STATUS_PIE_DATA}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {STATUS_PIE_DATA.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#111827',
-                      borderColor: '#374151',
-                      borderRadius: '12px',
-                      color: '#ffffff',
-                    }}
-                    formatter={(val: any) => [`${val}%`, 'Share']}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-dark-border">
-              {STATUS_PIE_DATA.map((item) => (
-                <div key={item.name} className="flex items-center justify-between text-xs font-semibold">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-gray-700 dark:text-gray-300">{item.name}</span>
-                  </div>
-                  <span className="text-gray-900 dark:text-white font-bold">{item.value}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Service Category Revenue Bar Chart */}
-          <div className="lg:col-span-12 p-6 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-dark-border">
-              <div className="flex items-center gap-2">
-                <Layers className="w-5 h-5 text-brand-600" />
-                <h3 className="text-base font-bold text-gray-900 dark:text-white">
-                  Revenue Distribution by Service Category ($ USD)
+          <div className="lg:col-span-2 p-6 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-brand-600" />
+                  Invoice Capital Distribution
                 </h3>
+                <p className="text-xs text-gray-500 mt-1">Real-time status of all issued billing statements.</p>
               </div>
             </div>
-
-            <div className="h-64 w-full pt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={CATEGORY_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
-                  <XAxis dataKey="category" stroke="#9ca3af" fontSize={12} tickLine={false} />
-                  <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#111827',
-                      borderColor: '#374151',
-                      borderRadius: '12px',
-                      color: '#ffffff',
-                    }}
-                    formatter={(val: any) => [`$${Number(val).toLocaleString()}`, 'Total Revenue']}
-                  />
-                  <Bar dataKey="revenue" fill="#ea580c" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="h-72 w-full flex items-center">
+              {statusPieData.length > 0 ? (
+                <>
+                  <div className="flex-1 h-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={statusPieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={80}
+                          outerRadius={110}
+                          paddingAngle={4}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {statusPieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value: any) => `$${value.toLocaleString()}`}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-center gap-4">
+                    {statusPieData.map((entry, index) => (
+                      <div key={index} className="flex items-center gap-3">
+                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white">{entry.name}</p>
+                          <p className="text-xs text-gray-500">${entry.value.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-gray-500 text-sm">No invoice data available.</div>
+              )}
             </div>
           </div>
-
+          
         </div>
-
       </div>
     </>
   );
 }
-
-export default AdminAnalytics;

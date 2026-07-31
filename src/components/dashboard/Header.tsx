@@ -35,7 +35,14 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
     const timer = setInterval(() => {
       fetchNotifications();
     }, 8000);
-    return () => clearInterval(timer);
+
+    const handleUpdate = () => fetchNotifications();
+    window.addEventListener('gm_notifications_updated', handleUpdate);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('gm_notifications_updated', handleUpdate);
+    };
   }, [user, role]);
 
   useEffect(() => {

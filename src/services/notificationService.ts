@@ -1,9 +1,6 @@
 import type { NotificationItem } from '../types/notification';
 import { supabase } from './supabase';
 
-const STORAGE_KEY = 'gm_studio_notifications_db';
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
-
 // Helper to format real time strings (e.g. "10:38 PM", "5m ago")
 export const formatNotificationTime = (timestamp?: string, createdAt?: string): string => {
   let dateObj: Date | null = null;
@@ -50,52 +47,34 @@ export const formatNotificationTime = (timestamp?: string, createdAt?: string): 
 export const notificationService = {
   // Get notifications filtered strictly by user role and target email
   getNotifications: async (userEmail?: string, userRole?: string): Promise<NotificationItem[]> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+
     let allNotifications: NotificationItem[] = [];
 
-    try {
-      if (supabase) {
-        const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
-        if (error) {
-          console.warn('Supabase select notifications notice:', error.message || error);
-        } else if (data && data.length > 0) {
-          allNotifications = data.map((row: any) => {
-            const rawCreated = row.created_at || new Date().toISOString();
-            const realTime = formatNotificationTime(row.timestamp, rawCreated);
-
-            return {
-              id: row.id,
-              title: row.title,
-              message: row.message,
-              timestamp: realTime,
-              createdAt: rawCreated,
-              read: Boolean(row.read),
-              type: row.type || 'system',
-              link: row.link || undefined,
-              targetRole: row.target_role || row.targetRole || undefined,
-              targetEmail: row.target_email || row.targetEmail || undefined,
-            };
-          });
-        }
-      }
-    } catch (e) {
-      console.warn('Supabase notifications fetch failed, using local storage database.', e);
+    const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.error('Supabase select notifications error:', error.message);
+      throw error;
     }
 
-    if (allNotifications.length === 0) {
-      const cached = localStorage.getItem(STORAGE_KEY);
-      if (cached) {
-        try {
-          const parsed: NotificationItem[] = JSON.parse(cached);
-          allNotifications = parsed.map((n) => ({
-            ...n,
-            timestamp: formatNotificationTime(n.timestamp, n.createdAt),
-          }));
-        } catch (e) {
-          allNotifications = INITIAL_NOTIFICATIONS;
-        }
-      } else {
-        allNotifications = INITIAL_NOTIFICATIONS;
-      }
+    if (data) {
+      allNotifications = data.map((row: any) => {
+        const rawCreated = row.created_at || new Date().toISOString();
+        const realTime = formatNotificationTime(row.timestamp, rawCreated);
+
+        return {
+          id: row.id,
+          title: row.title,
+          message: row.message,
+          timestamp: realTime,
+          createdAt: rawCreated,
+          read: Boolean(row.read),
+          type: row.type || 'system',
+          link: row.link || undefined,
+          targetRole: row.target_role || row.targetRole || undefined,
+          targetEmail: row.target_email || row.targetEmail || undefined,
+        };
+      });
     }
 
     // Role and Email Filtering Logic:
@@ -124,7 +103,8 @@ export const notificationService = {
   addNotification: async (
     notification: Omit<NotificationItem, 'id' | 'timestamp' | 'read'>
   ): Promise<NotificationItem[]> => {
-    const existing = await notificationService.getNotifications();
+    if (!supabase) throw new Error('Supabase client not initialized');
+
     const nowIso = new Date().toISOString();
     const realTimeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
@@ -135,111 +115,94 @@ export const notificationService = {
       createdAt: nowIso,
       read: false,
     };
-    const updated = [newItem, ...existing];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
-    try {
-      if (supabase) {
-        await supabase.from('notifications').upsert({
-          id: newItem.id,
-          title: newItem.title,
-          message: newItem.message,
-          timestamp: newItem.timestamp,
-          created_at: newItem.createdAt,
-          read: newItem.read,
-          type: newItem.type,
-          link: newItem.link,
-          target_role: newItem.targetRole,
-          target_email: newItem.targetEmail,
-        });
-      }
-    } catch (e) {
-      console.warn('Supabase insert notification error:', e);
-    }
+    const { error } = await supabase.from('notifications').upsert({
+      id: newItem.id,
+      title: newItem.title,
+      message: newItem.message,
+      timestamp: newItem.timestamp,
+      created_at: newItem.createdAt,
+      read: newItem.read,
+      type: newItem.type,
+      link: newItem.link,
+      target_role: newItem.targetRole,
+      target_email: newItem.targetEmail,
+    });
+    
+    if (error) throw error;
 
-    return updated;
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_notifications_updated'));
+
+    return await notificationService.getNotifications();
   },
 
   // Delete single specific notification
   deleteNotification: async (id: string, userEmail?: string, userRole?: string): Promise<NotificationItem[]> => {
-    const existing = await notificationService.getNotifications(userEmail, userRole);
-    const updated = existing.filter((n) => n.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    if (!supabase) throw new Error('Supabase client not initialized');
 
     try {
-      if (supabase) {
-        await supabase.from('notifications').delete().eq('id', id);
-      }
-    } catch (e) {
-      console.warn('Supabase delete single notification error:', e);
+      const { error } = await supabase.from('notifications').delete().eq('id', id);
+      if (error) console.error('Supabase delete notification error:', error.message);
+    } catch (err) {
+      console.error('Delete notification failed:', err);
     }
 
-    return updated;
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_notifications_updated'));
+
+    return await notificationService.getNotifications(userEmail, userRole);
   },
 
   // Mark single notification as read
   markAsRead: async (id: string): Promise<NotificationItem[]> => {
-    const existing = await notificationService.getNotifications();
-    const updated = existing.map((n) => (n.id === id ? { ...n, read: true } : n));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    if (!supabase) throw new Error('Supabase client not initialized');
 
-    try {
-      if (supabase) {
-        await supabase.from('notifications').update({ read: true }).eq('id', id);
-      }
-    } catch (e) {
-      console.warn('Supabase mark as read error:', e);
-    }
+    const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id);
+    if (error) throw error;
 
-    return updated;
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_notifications_updated'));
+
+    return await notificationService.getNotifications();
   },
 
   // Mark all notifications as read for target user/role
   markAllAsRead: async (userEmail?: string, userRole?: string): Promise<NotificationItem[]> => {
-    const existing = await notificationService.getNotifications(userEmail, userRole);
-    const updated = existing.map((n) => ({ ...n, read: true }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    if (!supabase) throw new Error('Supabase client not initialized');
 
     try {
-      if (supabase) {
-        if (userRole === 'admin') {
-          await supabase.from('notifications').update({ read: true }).eq('target_role', 'admin');
-        } else if (userEmail) {
-          await supabase.from('notifications').update({ read: true }).ilike('target_email', userEmail);
-        }
+      if (userRole === 'admin') {
+        const { error } = await supabase.from('notifications').update({ read: true }).or('target_role.eq.admin,target_role.is.null');
+        if (error) console.error('Supabase markAllAsRead admin error:', error.message);
+      } else if (userEmail) {
+        const { error } = await supabase.from('notifications').update({ read: true }).eq('target_email', userEmail);
+        if (error) console.error('Supabase markAllAsRead client error:', error.message);
       }
-    } catch (e) {
-      console.warn('Supabase mark all read error:', e);
+    } catch (err) {
+      console.error('markAllAsRead failed:', err);
     }
 
-    return updated;
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_notifications_updated'));
+
+    return await notificationService.getNotifications(userEmail, userRole);
   },
 
   // Clear notifications for active role/email
   clearNotifications: async (userEmail?: string, userRole?: string): Promise<NotificationItem[]> => {
-    const existing = await notificationService.getNotifications();
-    let remaining: NotificationItem[] = [];
-
-    if (userRole === 'admin') {
-      remaining = existing.filter((n) => n.targetRole !== 'admin');
-    } else if (userEmail) {
-      remaining = existing.filter((n) => !n.targetEmail || n.targetEmail.toLowerCase() !== userEmail.toLowerCase());
-    }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
+    if (!supabase) throw new Error('Supabase client not initialized');
 
     try {
-      if (supabase) {
-        if (userRole === 'admin') {
-          await supabase.from('notifications').delete().eq('target_role', 'admin');
-        } else if (userEmail) {
-          await supabase.from('notifications').delete().ilike('target_email', userEmail);
-        }
+      if (userRole === 'admin') {
+        const { error } = await supabase.from('notifications').delete().or('target_role.eq.admin,target_role.is.null');
+        if (error) console.error('Supabase clearNotifications admin error:', error.message);
+      } else if (userEmail) {
+        const { error } = await supabase.from('notifications').delete().eq('target_email', userEmail);
+        if (error) console.error('Supabase clearNotifications client error:', error.message);
       }
-    } catch (e) {
-      console.warn('Supabase delete notifications error:', e);
+    } catch (err) {
+      console.error('clearNotifications failed:', err);
     }
 
-    return remaining;
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_notifications_updated'));
+
+    return await notificationService.getNotifications(userEmail, userRole);
   },
 };

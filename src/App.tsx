@@ -36,11 +36,14 @@ import ClientProjectDetailPage from './pages/dashboard/ClientProjectDetailPage';
 import NotificationsPage from './pages/dashboard/NotificationsPage';
 import AdminInvoices from './pages/dashboard/AdminInvoices';
 import ClientInvoices from './pages/dashboard/ClientInvoices';
-import AdminAnalytics from './pages/dashboard/AdminAnalytics';
+import { AdminAnalytics } from './pages/dashboard/AdminAnalytics';
+import { AdminMessages } from './pages/dashboard/AdminMessages';
+import { ClientMessages } from './pages/dashboard/ClientMessages';
+import { SharedFiles } from './pages/dashboard/SharedFiles';
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <AuthProvider>
         <BrowserRouter>
           <Routes>
@@ -82,6 +85,7 @@ function App() {
               <Route path="projects/edit/:id" element={<ProjectEditPage />} />
               <Route path="invoices" element={<AdminInvoices />} />
               <Route path="analytics" element={<AdminAnalytics />} />
+              <Route path="messages" element={<AdminMessages />} />
               <Route path="cms" element={<AdminOverview />} />
               <Route path="settings" element={<AdminOverview />} />
             </Route>
@@ -102,9 +106,8 @@ function App() {
               <Route path="projects" element={<Projects />} />
               <Route path="projects/view/:id" element={<ClientProjectDetailPage />} />
               <Route path="invoices" element={<ClientInvoices />} />
-              <Route path="files" element={<ClientOverview />} />
-              <Route path="messages" element={<ClientOverview />} />
-              <Route path="support" element={<ClientOverview />} />
+              <Route path="files" element={<SharedFiles />} />
+              <Route path="messages" element={<ClientMessages />} />
             </Route>
 
             {/* Fallback 404 Route */}
