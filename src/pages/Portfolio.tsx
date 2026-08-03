@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Filter, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SEO from '../components/common/SEO';
 import { CASE_STUDIES } from '../constants/portfolioData';
+import { cmsService } from '../services/cmsService';
+import type { CaseStudy } from '../types/portfolio';
 
 import heroBgVideo from '../assets/videos/hero-bg.mp4';
 
@@ -11,10 +13,24 @@ const CATEGORIES = ['All', 'Web Development', 'UI/UX Design', 'AI Automation', '
 
 const Portfolio: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [studies, setStudies] = useState<CaseStudy[]>(CASE_STUDIES);
+
+  useEffect(() => {
+    const fetchLiveStudies = async () => {
+      const liveStudies = await cmsService.getCaseStudies();
+      if (liveStudies.length > 0) {
+        setStudies(liveStudies);
+      }
+    };
+    fetchLiveStudies();
+
+    window.addEventListener('gm_cms_updated', fetchLiveStudies);
+    return () => window.removeEventListener('gm_cms_updated', fetchLiveStudies);
+  }, []);
 
   const filteredProjects = selectedCategory === 'All'
-    ? CASE_STUDIES
-    : CASE_STUDIES.filter((p) => p.category === selectedCategory);
+    ? studies
+    : studies.filter((p) => p.category === selectedCategory);
 
   return (
     <div className="w-full bg-white dark:bg-dark-bg text-gray-900 dark:text-white font-sans">

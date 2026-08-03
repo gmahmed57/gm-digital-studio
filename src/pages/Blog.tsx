@@ -1,20 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, ArrowRight, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SEO from '../components/common/SEO';
 import { BLOG_POSTS } from '../constants/portfolioData';
-
-const BLOG_CATEGORIES = ['All', 'Engineering', 'UI/UX Design', 'AI & Automation'];
+import { cmsService } from '../services/cmsService';
+import type { BlogPost } from '../types/portfolio';
 
 const Blog: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [posts, setPosts] = useState<BlogPost[]>(BLOG_POSTS);
+
+  const blogCategories = Array.from(new Set(['All', ...posts.map((p) => p.category)])).filter(Boolean);
+
+  useEffect(() => {
+    const fetchLivePosts = async () => {
+      const livePosts = await cmsService.getBlogs();
+      if (livePosts.length > 0) {
+        setPosts(livePosts);
+      }
+    };
+    fetchLivePosts();
+
+    window.addEventListener('gm_cms_updated', fetchLivePosts);
+    return () => window.removeEventListener('gm_cms_updated', fetchLivePosts);
+  }, []);
 
   const filteredPosts = selectedCategory === 'All'
-    ? BLOG_POSTS
-    : BLOG_POSTS.filter((p) => p.category === selectedCategory);
+    ? posts
+    : posts.filter((p) => p.category === selectedCategory);
 
-  const featuredPost = BLOG_POSTS[0];
+  const featuredPost = posts[0] || BLOG_POSTS[0];
+  const bottomPosts = filteredPosts.filter((post) => post.slug !== featuredPost.slug);
 
   return (
     <div className="w-full bg-white dark:bg-dark-bg text-gray-900 dark:text-white font-sans">
@@ -47,7 +64,7 @@ const Blog: React.FC = () => {
 
           {/* Category Filter Tabs */}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {BLOG_CATEGORIES.map((cat) => (
+            {blogCategories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
@@ -136,7 +153,7 @@ const Blog: React.FC = () => {
       <section className="py-20 bg-white dark:bg-dark-bg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {filteredPosts.map((post, index) => (
+            {bottomPosts.map((post, index) => (
               <motion.div
                 key={post.id}
                 initial={{ opacity: 0, y: 25 }}

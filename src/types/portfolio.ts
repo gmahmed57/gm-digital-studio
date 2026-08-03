@@ -2,7 +2,7 @@ export interface CaseStudy {
   id: string;
   title: string;
   slug: string;
-  category: 'Web Development' | 'UI/UX Design' | 'AI Automation' | 'Mobile Apps';
+  category: string;
   client: string;
   year: string;
   timeline: string;
@@ -49,7 +49,7 @@ export interface BlogPost {
   id: string;
   title: string;
   slug: string;
-  category: 'Engineering' | 'UI/UX Design' | 'AI & Automation' | 'Strategy';
+  category: string;
   description: string;
   content: string;
   imageUrl: string;

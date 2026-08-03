@@ -86,7 +86,7 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/portal-login');
+    navigate('/login');
   };
 
   const getBreadcrumb = () => {
@@ -159,103 +159,105 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
         </button>
 
         {/* Live Notifications Dropdown Trigger */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-dark-surface flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-brand-500 transition-colors relative cursor-pointer"
-            title="Notifications"
-          >
-            <Bell className="w-4 h-4" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-brand-600 text-white text-[9px] font-extrabold shadow-xs">
-                {unreadCount}
-              </span>
-            )}
-          </button>
+        {role !== 'author' && (
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-dark-surface flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-brand-500 transition-colors relative cursor-pointer"
+              title="Notifications"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-brand-600 text-white text-[9px] font-extrabold shadow-xs">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
 
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl py-3 px-4 z-50">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 dark:border-dark-border">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-gray-900 dark:text-white">Notifications</span>
-                  {unreadCount > 0 && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-400">
-                      {unreadCount} New
-                    </span>
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl py-3 px-4 z-50">
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 dark:border-dark-border">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-900 dark:text-white">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-400">
+                        {unreadCount} New
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-[10px] font-bold text-gray-500 hover:text-brand-600 flex items-center gap-1 cursor-pointer"
+                      title="Mark all as read"
+                    >
+                      <CheckCheck className="w-3 h-3" /> Read All
+                    </button>
+                    <button
+                      onClick={handleClearNotifications}
+                      className="text-[10px] font-bold text-gray-400 hover:text-red-500 flex items-center gap-1 cursor-pointer"
+                      title="Clear all"
+                    >
+                      <Trash2 className="w-3 h-3" /> Clear
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs max-h-72 overflow-y-auto pr-1">
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic text-center py-4">No notifications present.</p>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        onClick={() => handleNotificationClick(notif)}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer space-y-1 group relative ${
+                          !notif.read
+                            ? 'border-brand-500/30 bg-brand-500/5 dark:bg-brand-500/10'
+                            : 'border-gray-100 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/50 opacity-80'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="font-bold text-gray-900 dark:text-white text-xs pr-4">{notif.title}</p>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <span className="text-[10px] font-medium text-gray-400">
+                              {formatNotificationTime(notif.timestamp, notif.createdAt)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteSingle(e, notif.id)}
+                              className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                              title="Delete notification"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed pr-2">
+                          {notif.message}
+                        </p>
+                      </div>
+                    ))
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                {/* View All Notifications Footer Button */}
+                <div className="pt-2.5 mt-2 border-t border-gray-100 dark:border-dark-border text-center">
                   <button
-                    onClick={handleMarkAllRead}
-                    className="text-[10px] font-bold text-gray-500 hover:text-brand-600 flex items-center gap-1 cursor-pointer"
-                    title="Mark all as read"
+                    onClick={() => {
+                      setShowNotifications(false);
+                      navigate(role === 'admin' ? '/admin/notifications' : '/client/notifications');
+                    }}
+                    className="w-full py-2 rounded-xl bg-brand-500/10 hover:bg-brand-500/20 text-brand-600 dark:text-brand-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <CheckCheck className="w-3 h-3" /> Read All
-                  </button>
-                  <button
-                    onClick={handleClearNotifications}
-                    className="text-[10px] font-bold text-gray-400 hover:text-red-500 flex items-center gap-1 cursor-pointer"
-                    title="Clear all"
-                  >
-                    <Trash2 className="w-3 h-3" /> Clear
+                    View All Notifications <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
-
-              <div className="space-y-2 text-xs max-h-72 overflow-y-auto pr-1">
-                {notifications.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic text-center py-4">No notifications present.</p>
-                ) : (
-                  notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      onClick={() => handleNotificationClick(notif)}
-                      className={`p-3 rounded-xl border transition-all cursor-pointer space-y-1 group relative ${
-                        !notif.read
-                          ? 'border-brand-500/30 bg-brand-500/5 dark:bg-brand-500/10'
-                          : 'border-gray-100 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/50 opacity-80'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="font-bold text-gray-900 dark:text-white text-xs pr-4">{notif.title}</p>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <span className="text-[10px] font-medium text-gray-400">
-                            {formatNotificationTime(notif.timestamp, notif.createdAt)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteSingle(e, notif.id)}
-                            className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
-                            title="Delete notification"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed pr-2">
-                        {notif.message}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* View All Notifications Footer Button */}
-              <div className="pt-2.5 mt-2 border-t border-gray-100 dark:border-dark-border text-center">
-                <button
-                  onClick={() => {
-                    setShowNotifications(false);
-                    navigate(role === 'admin' ? '/admin/notifications' : '/client/notifications');
-                  }}
-                  className="w-full py-2 rounded-xl bg-brand-500/10 hover:bg-brand-500/20 text-brand-600 dark:text-brand-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  View All Notifications <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* User Profile Avatar Dropdown */}
         <div className="relative">

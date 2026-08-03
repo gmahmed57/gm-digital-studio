@@ -1,5 +1,4 @@
 import type { ClientItem } from '../types/client';
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
 export const clientService = {
@@ -39,92 +38,81 @@ export const clientService = {
   saveClient: async (client: Partial<ClientItem>): Promise<ClientItem[]> => {
     if (!supabase) throw new Error('Supabase client not initialized');
 
-    let targetItem: ClientItem;
 
-    if (client.id && client.id !== 'new') {
-      const existing = await clientService.getClients();
-      const match = existing.find((item) => item.id === client.id);
-      targetItem = {
-        ...(match || {}),
-        ...client,
-      } as ClientItem;
-    } else {
-      targetItem = {
-        id: `client-${Date.now()}`,
-        fullName: client.fullName || 'New Client',
-        company: client.company || 'Client Company',
-        email: client.email || 'client@company.com',
-        phone: client.phone || '+1 (555) 000-0000',
-        portalPassword: client.portalPassword || '',
-        avatarUrl: client.avatarUrl || '',
-        status: client.status || 'active',
-        joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-        activeProjectsCount: client.activeProjectsCount || 0,
-        totalBilled: client.totalBilled || '$0',
-        assignedPackage: client.assignedPackage || 'Standard Web Development',
-        allowedToolIds: client.allowedToolIds !== undefined ? client.allowedToolIds : [],
-        requestedToolIds: client.requestedToolIds || [],
-      };
-    }
 
-    // If this is a brand NEW client being created, provision their Auth account first
-    if ((!client.id || client.id === 'new') && client.email && targetItem.portalPassword && targetItem.portalPassword.length >= 6) {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (supabaseUrl && supabaseAnonKey) {
-        // Create secondary client so we don't log out the Admin
-        const adminAuthClient = createClient(supabaseUrl, supabaseAnonKey, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          }
-        });
+    if (!client.id || client.id === 'new') {
+      if (!client.email || !client.portalPassword || client.portalPassword.length < 6) {
+        throw new Error('Email and a password of at least 6 characters are required for new clients.');
+      }
 
-        const { error: authError } = await adminAuthClient.auth.signUp({
-          email: client.email.trim().toLowerCase(),
-          password: targetItem.portalPassword,
-          options: {
-            data: {
-              full_name: targetItem.fullName || 'Client User',
-              role: 'client',
-              company: targetItem.company || 'Client Company',
-            },
-          },
-        });
-
-        if (authError) {
-          // If the user is already in Auth (e.g. from a partial failure previously), we can safely proceed to DB insertion
-          if (authError.message.toLowerCase().includes('already registered')) {
-            console.warn('User already registered in Auth, proceeding to sync with clients table.');
-          } else {
-            throw new Error(`Failed to create authentication user: ${authError.message}`);
+      const { data, error } = await supabase.functions.invoke('manage-users', {
+        body: {
+          action: 'create-user',
+          email: client.email,
+          password: client.portalPassword,
+          role: 'client',
+          updates: {
+            fullName: client.fullName || 'New Client',
+            company: client.company || 'Client Company',
+            phone: client.phone || '',
+            avatarUrl: client.avatarUrl || '',
+            status: client.status || 'active',
+            assignedPackage: client.assignedPackage || 'Standard Web Development',
+            allowedToolIds: client.allowedToolIds || [],
+            requestedToolIds: client.requestedToolIds || [],
           }
         }
+      });
+
+      if (error || data?.error) {
+        let errorMsg = 'Failed to create client.';
+        if (error) {
+          try {
+            const errBody = await (error as any).context.json();
+            errorMsg = errBody.error || error.message;
+          } catch {
+            errorMsg = error.message;
+          }
+        } else if (data?.error) {
+          errorMsg = data.error;
+        }
+        throw new Error(errorMsg);
       }
-    }
+    } else {
+      const { data, error } = await supabase.functions.invoke('manage-users', {
+        body: {
+          action: 'update-user',
+          userId: client.id,
+          email: client.email,
+          password: client.portalPassword || undefined,
+          role: 'client',
+          updates: {
+            fullName: client.fullName,
+            company: client.company,
+            phone: client.phone,
+            avatarUrl: client.avatarUrl,
+            status: client.status,
+            assignedPackage: client.assignedPackage,
+            allowedToolIds: client.allowedToolIds,
+            requestedToolIds: client.requestedToolIds,
+          }
+        }
+      });
 
-    // Prepare payload without portalPassword to avoid schema errors and ensure security
-    const dbPayload = {
-      id: targetItem.id,
-      fullName: targetItem.fullName,
-      company: targetItem.company,
-      email: targetItem.email,
-      phone: targetItem.phone,
-      avatarUrl: targetItem.avatarUrl || '',
-      status: targetItem.status,
-      joinedDate: targetItem.joinedDate,
-      activeProjectsCount: targetItem.activeProjectsCount,
-      totalBilled: targetItem.totalBilled,
-      assignedPackage: targetItem.assignedPackage,
-      allowedToolIds: targetItem.allowedToolIds || [],
-      requestedToolIds: targetItem.requestedToolIds || [],
-    };
-
-    const { error } = await supabase.from('clients').upsert(dbPayload);
-    if (error) {
-      console.error('Supabase client upsert error:', error.message);
-      throw error;
+      if (error || data?.error) {
+        let errorMsg = 'Failed to update client.';
+        if (error) {
+          try {
+            const errBody = await (error as any).context.json();
+            errorMsg = errBody.error || error.message;
+          } catch {
+            errorMsg = error.message;
+          }
+        } else if (data?.error) {
+          errorMsg = data.error;
+        }
+        throw new Error(errorMsg);
+      }
     }
 
     return await clientService.getClients();
@@ -227,12 +215,20 @@ export const clientService = {
     return clientService.resolveToolAccessRequest(clientId, toolId, isApprove);
   },
 
-  // Delete client
   deleteClient: async (id: string): Promise<ClientItem[]> => {
     if (!supabase) throw new Error('Supabase client not initialized');
 
-    const { error } = await supabase.from('clients').delete().eq('id', id);
-    if (error) throw error;
+    const { data, error } = await supabase.functions.invoke('manage-users', {
+      body: {
+        action: 'delete-user',
+        userId: id,
+        role: 'client',
+      }
+    });
+
+    if (error || data?.error) {
+      throw new Error(error?.message || data?.error || 'Failed to delete client.');
+    }
 
     return await clientService.getClients();
   },

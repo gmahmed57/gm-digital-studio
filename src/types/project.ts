@@ -6,6 +6,7 @@ export type ProjectCategory =
   | 'Digital Marketing'
   | 'Social Media Management'
   | 'SEO'
+  | 'Virtual Assistant'
   | 'AI Automation Suite'
   | 'Brand Identity Strategy'
   | 'Mobile App Development'

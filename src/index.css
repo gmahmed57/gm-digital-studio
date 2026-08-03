@@ -6,4 +6,58 @@
   body {
     @apply antialiased text-gray-900 bg-white;
   }
+
+  /* Global headings: no underlines, no decorations by default */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+    text-decoration: none !important;
+    border-bottom: none !important;
+  }
+}
+
+/* ── CMS Rendered Article & Editor: Force solid black headings, remove all Word color pollution ── */
+.cms-article-body h1,
+.cms-article-body h2,
+.cms-article-body h3,
+.cms-article-body h4,
+.cms-article-body h5,
+.cms-article-body h6,
+.cms-heading {
+  color: #000000 !important;
+  font-weight: 900 !important;
+  text-decoration: none !important;
+  border-bottom: none !important;
+  background: none !important;
+}
+
+.dark .cms-article-body h1,
+.dark .cms-article-body h2,
+.dark .cms-article-body h3,
+.dark .cms-article-body h4,
+.dark .cms-article-body h5,
+.dark .cms-article-body h6,
+.dark .cms-heading {
+  color: #ffffff !important;
+}
+
+/* ── Quill Editor Canvas Heading Overrides ── */
+.ql-editor h1,
+.ql-editor h2,
+.ql-editor h3,
+.ql-editor h4,
+.ql-editor h5,
+.ql-editor h6 {
+  color: #000000 !important;
+  font-weight: 900 !important;
+  text-decoration: none !important;
+  border-bottom: none !important;
+}
+
+.dark .ql-editor h1,
+.dark .ql-editor h2,
+.dark .ql-editor h3,
+.dark .ql-editor h4,
+.dark .ql-editor h5,
+.dark .ql-editor h6 {
+  color: #ffffff !important;
 }

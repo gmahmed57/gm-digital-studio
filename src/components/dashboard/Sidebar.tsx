@@ -56,6 +56,8 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
     };
   }, [user, isAdmin]);
 
+  const isAuthor = role === 'author';
+
   const adminNavItems = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Notifications', path: '/admin/notifications', icon: Bell },
@@ -68,6 +70,10 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
     { label: 'Settings', path: '/admin/settings', icon: Settings },
   ];
 
+  const authorNavItems = [
+    { label: 'Blog & CMS', path: '/author/cms', icon: FileCheck2 },
+  ];
+
   const clientNavItems = [
     { label: 'Dashboard', path: '/client/dashboard', icon: LayoutDashboard },
     { label: 'Notifications', path: '/client/notifications', icon: Bell },
@@ -78,7 +84,11 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
     { label: 'Messages', path: '/client/messages', icon: MessageSquare },
   ];
 
-  const navItems = isAdmin ? adminNavItems : clientNavItems;
+  const navItems = isAdmin 
+    ? adminNavItems 
+    : isAuthor 
+      ? authorNavItems 
+      : clientNavItems;
 
   return (
     <>
@@ -101,7 +111,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
         {/* Top Header & Logo */}
         <div>
           <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-dark-border">
-            <Link to={isAdmin ? '/admin/dashboard' : '/client/dashboard'} className="flex items-center gap-3">
+            <Link to={isAdmin ? '/admin/dashboard' : isAuthor ? '/author/cms' : '/client/dashboard'} className="flex items-center gap-3">
               <img src={logo} alt="GM Studio" className="w-8 h-8 object-contain" />
               {!isCollapsed && (
                 <div className="flex flex-col">
@@ -109,7 +119,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
                     GM STUDIO
                   </span>
                   <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mt-0.5">
-                    {isAdmin ? 'ADMIN CONTROL' : 'CLIENT PORTAL'}
+                    {isAdmin ? 'ADMIN CONTROL' : isAuthor ? 'AUTHOR PORTAL' : 'CLIENT PORTAL'}
                   </span>
                 </div>
               )}

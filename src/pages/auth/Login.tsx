@@ -66,6 +66,12 @@ export function Login() {
           if (parsed.role === 'admin') {
             navigate('/admin/dashboard');
             return;
+          } else if (parsed.role === 'author') {
+            navigate('/author/cms');
+            return;
+          } else if (parsed.role === 'client') {
+            navigate('/client/dashboard');
+            return;
           }
         } catch (e) {
           // Fallback

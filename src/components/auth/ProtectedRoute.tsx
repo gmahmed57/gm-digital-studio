@@ -28,7 +28,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (allowedRoles && role && !allowedRoles.includes(role)) {
-    const fallbackPath = role === 'admin' ? '/admin/dashboard' : '/client/dashboard';
+    const fallbackPath = role === 'admin' ? '/admin/dashboard' : role === 'author' ? '/author/cms' : '/client/dashboard';
     return <Navigate to={fallbackPath} replace />;
   }
 

@@ -40,6 +40,9 @@ import { AdminAnalytics } from './pages/dashboard/AdminAnalytics';
 import { AdminMessages } from './pages/dashboard/AdminMessages';
 import { ClientMessages } from './pages/dashboard/ClientMessages';
 import { SharedFiles } from './pages/dashboard/SharedFiles';
+import { AdminCMS } from './pages/dashboard/AdminCMS';
+import { AdminBlogEditor } from './pages/dashboard/AdminBlogEditor';
+import { AdminPortfolioEditor } from './pages/dashboard/AdminPortfolioEditor';
 
 function App() {
   return (
@@ -86,8 +89,29 @@ function App() {
               <Route path="invoices" element={<AdminInvoices />} />
               <Route path="analytics" element={<AdminAnalytics />} />
               <Route path="messages" element={<AdminMessages />} />
-              <Route path="cms" element={<AdminOverview />} />
+              <Route path="cms" element={<AdminCMS />} />
+              <Route path="cms/blog/new" element={<AdminBlogEditor />} />
+              <Route path="cms/blog/edit/:id" element={<AdminBlogEditor />} />
+              <Route path="cms/portfolio/new" element={<AdminPortfolioEditor />} />
+              <Route path="cms/portfolio/edit/:id" element={<AdminPortfolioEditor />} />
               <Route path="settings" element={<AdminOverview />} />
+            </Route>
+
+            {/* Author Protected Dashboard Routes */}
+            <Route
+              path="/author"
+              element={
+                <ProtectedRoute allowedRoles={['author']}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/author/cms" replace />} />
+              <Route path="cms" element={<AdminCMS />} />
+              <Route path="cms/blog/new" element={<AdminBlogEditor />} />
+              <Route path="cms/blog/edit/:id" element={<AdminBlogEditor />} />
+              <Route path="cms/portfolio/new" element={<AdminPortfolioEditor />} />
+              <Route path="cms/portfolio/edit/:id" element={<AdminPortfolioEditor />} />
             </Route>
 
             {/* Client Protected Dashboard Routes */}

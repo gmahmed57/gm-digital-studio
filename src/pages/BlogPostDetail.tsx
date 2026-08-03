@@ -1,82 +1,148 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Clock, Calendar, ArrowRight, Tag, MessageSquare, List, Send, CheckCircle2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Clock,
+  Calendar,
+  ArrowRight,
+  Tag,
+  MessageSquare,
+  List,
+  Send,
+  CheckCircle2,
+} from 'lucide-react';
 import SEO from '../components/common/SEO';
 import { BLOG_POSTS } from '../constants/portfolioData';
+import { cmsService, type BlogComment } from '../services/cmsService';
+import type { BlogPost } from '../types/portfolio';
+import { BlogContentRenderer } from '../components/common/BlogContentRenderer';
 
-import avatar1 from '../assets/avatars/avatar-1.jpg';
-import avatar2 from '../assets/avatars/avatar-2.jpg';
-import avatar3 from '../assets/avatars/avatar-3.jpg';
-
-interface CommentItem {
+// TOC Heading item with id & display text from the live DOM
+interface TocHeading {
   id: string;
-  name: string;
-  avatarUrl: string;
-  date: string;
-  content: string;
+  text: string;
+  level: number;
 }
-
-const INITIAL_COMMENTS: Record<string, CommentItem[]> = {
-  'building-scalable-react-18-architecture': [
-    {
-      id: 'c1',
-      name: 'James Walker',
-      avatarUrl: avatar1,
-      date: 'July 21, 2026',
-      content: 'Excellent breakdown of React 18 App Router hydration! Server Actions have completely simplified our form submit pipeline.',
-    },
-    {
-      id: 'c2',
-      name: 'Elena Rostova',
-      avatarUrl: avatar2,
-      date: 'July 22, 2026',
-      content: 'The section on tokenized CSS utility integration with Tailwind is spot on. Thanks for sharing this architecture guide.',
-    },
-  ],
-};
 
 const BlogPostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
 
-  const post = BLOG_POSTS.find((p) => p.id === id || p.slug === id) || BLOG_POSTS[0];
-
-  // Comment Form State
-  const [comments, setComments] = useState<CommentItem[]>(INITIAL_COMMENTS[post.id] || []);
+  const [post, setPost] = useState<BlogPost>(
+    BLOG_POSTS.find((p) => p.id === id || p.slug === id) || BLOG_POSTS[0]
+  );
+  const [comments, setComments] = useState<BlogComment[]>([]);
   const [authorName, setAuthorName] = useState('');
+  const [authorEmail, setAuthorEmail] = useState('');
   const [commentText, setCommentText] = useState('');
   const [commentSubmitted, setCommentSubmitted] = useState(false);
 
-  const handleAddComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!authorName.trim() || !commentText.trim()) return;
+  // DOM-based TOC state — populated after article renders into the DOM
+  const [tocItems, setTocItems] = useState<TocHeading[]>([]);
+  const [activeHeadingId, setActiveHeadingId] = useState<string>('');
+  const articleRef = useRef<HTMLDivElement>(null);
 
-    const newComment: CommentItem = {
-      id: `c-${Date.now()}`,
-      name: authorName.trim(),
-      avatarUrl: avatar3,
-      date: 'Just now',
-      content: commentText.trim(),
+
+  // Fetch live post + comments from Supabase
+  useEffect(() => {
+    const fetchLivePostAndComments = async () => {
+      if (!id) return;
+      const livePost = await cmsService.getBlogBySlug(id);
+      if (livePost) {
+        setPost(livePost);
+        const liveComments = await cmsService.getCommentsForBlog(livePost.id);
+        setComments(liveComments);
+      } else {
+        const fallback = BLOG_POSTS.find((p) => p.id === id || p.slug === id) || BLOG_POSTS[0];
+        setPost(fallback);
+      }
+    };
+    fetchLivePostAndComments();
+  }, [id]);
+
+  // ── DOM-based TOC extraction — runs AFTER article renders into DOM ──
+  // Wait 3 render ticks to ensure BlogContentRenderer has mounted & injected IDs
+  useEffect(() => {
+    if (!post.content) return;
+
+    const extractTocFromDom = () => {
+      if (!articleRef.current) return;
+      const headingEls = articleRef.current.querySelectorAll<HTMLElement>('h2');
+      const items: TocHeading[] = [];
+      headingEls.forEach((el) => {
+        const id = el.getAttribute('id');
+        const text = el.textContent?.trim();
+        const level = parseInt(el.tagName.replace('H', ''), 10);
+        if (id && text) {
+          items.push({ id, text, level });
+        }
+      });
+      setTocItems(items);
+
+      // Set first heading active
+      if (items.length > 0) setActiveHeadingId(items[0].id);
     };
 
-    setComments([newComment, ...comments]);
-    setAuthorName('');
-    setCommentText('');
-    setCommentSubmitted(true);
-    setTimeout(() => setCommentSubmitted(false), 4000);
+    // Small delay to ensure React has fully committed the DOM
+    const timer = setTimeout(extractTocFromDom, 300);
+    return () => clearTimeout(timer);
+  }, [post.content]);
+
+  // ── Scroll-event scrollspy — reliably tracks active heading as user scrolls ──
+  useEffect(() => {
+    if (tocItems.length === 0) return;
+
+    const OFFSET = 120; // px from top of viewport to consider a heading "active"
+
+    const handleScroll = () => {
+      const scrollY = window.scrollY + OFFSET;
+
+      // Walk headings from bottom to top — first one whose top <= scrollY is active
+      let activeId = tocItems[0].id;
+      for (let i = 0; i < tocItems.length; i++) {
+        const el = document.getElementById(tocItems[i].id);
+        if (el && el.getBoundingClientRect().top + window.scrollY <= scrollY) {
+          activeId = tocItems[i].id;
+        }
+      }
+      setActiveHeadingId(activeId);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // run once on mount to set initial state
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [tocItems]);
+
+  // Smooth scroll to heading when TOC link clicked
+  const scrollToHeading = (e: React.MouseEvent<HTMLAnchorElement>, headingId: string) => {
+    e.preventDefault();
+    const el = document.getElementById(headingId);
+    if (el) {
+      const top = el.getBoundingClientRect().top + window.scrollY - 100;
+      window.scrollTo({ top, behavior: 'smooth' });
+      setActiveHeadingId(headingId);
+    }
   };
 
-  // Table of Contents Section Headings
-  const headings = post.content
-    .split('\n\n')
-    .filter((p) => p.startsWith('### '))
-    .map((p) => p.replace('### ', ''));
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authorName.trim() || !commentText.trim() || !post) return;
+    const success = await cmsService.submitComment(
+      post.id,
+      authorName.trim(),
+      authorEmail.trim(),
+      commentText.trim()
+    );
+    if (success) {
+      setCommentSubmitted(true);
+      setCommentText('');
+      setTimeout(() => setCommentSubmitted(false), 5000);
+    }
+  };
 
   return (
     <div className="w-full bg-white dark:bg-dark-bg text-gray-900 dark:text-white font-sans">
-      <SEO
-        title={`${post.title} | Blog`}
-        description={post.description}
-      />
+      <SEO title={`${post.title} | Blog`} description={post.description} />
 
       {/* Header Section */}
       <section className="py-20 bg-gray-950 text-white relative overflow-hidden">
@@ -103,7 +169,7 @@ const BlogPostDetail: React.FC = () => {
             </span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-heading font-black tracking-tight mb-6 leading-tight">
+          <h1 className="text-3xl sm:text-5xl font-heading font-black tracking-tight mb-6 leading-tight text-white drop-shadow-xs">
             {post.title}
           </h1>
 
@@ -112,56 +178,46 @@ const BlogPostDetail: React.FC = () => {
           </p>
 
           {/* Author Card */}
-          <div className="flex items-center gap-4 pt-6 border-t border-white/10">
-            <img
-              src={post.author.avatarUrl}
-              alt={post.author.name}
-              className="w-12 h-12 rounded-full object-cover border border-brand-500/50"
-            />
+          <div className="flex items-center gap-3">
+            {post.author?.avatarUrl ? (
+              <img
+                src={post.author.avatarUrl}
+                alt={post.author.name}
+                className="w-12 h-12 rounded-full object-cover border border-brand-500/50"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-lg border border-brand-500/50">
+                {post.author?.name ? post.author.name.charAt(0).toUpperCase() : 'A'}
+              </div>
+            )}
             <div>
-              <h4 className="text-sm font-bold text-white">{post.author.name}</h4>
-              <span className="text-xs text-gray-400">{post.author.role}</span>
+              <h4 className="text-sm font-bold text-white">{post.author?.name || 'Studio Admin'}</h4>
+              <span className="text-xs text-gray-400">{post.author?.role || 'Solutions Architect'}</span>
             </div>
           </div>
         </div>
       </section>
 
       {/* Cover Image */}
-      <section className="py-12 bg-white dark:bg-dark-bg">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative aspect-[16/9] rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-800 bg-gray-900">
-            <img
-              src={post.imageUrl}
-              alt={post.title}
-              className="w-full h-full object-cover"
-            />
+      {post.imageUrl ? (
+        <section className="py-12 bg-white dark:bg-dark-bg">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="relative aspect-[16/9] rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-800 bg-gray-900">
+              <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
-      {/* Article Body Content & Table of Contents Sidebar Grid */}
+      {/* Article Body + Table of Contents Sidebar */}
       <section className="py-12 bg-white dark:bg-dark-bg border-b border-gray-100 dark:border-dark-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
-          
+
           {/* Article Main Body */}
           <div className="lg:col-span-8 space-y-6">
-            <div className="prose dark:prose-invert max-w-none text-base leading-relaxed text-gray-700 dark:text-gray-300 space-y-6">
-              {post.content.split('\n\n').map((paragraph, idx) => {
-                if (paragraph.startsWith('### ')) {
-                  const headingText = paragraph.replace('### ', '');
-                  const headingId = headingText.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                  return (
-                    <h3 id={headingId} key={idx} className="text-2xl font-heading font-bold text-gray-900 dark:text-white pt-6 scroll-mt-24">
-                      {headingText}
-                    </h3>
-                  );
-                }
-                return (
-                  <p key={idx} className="text-base text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {paragraph}
-                  </p>
-                );
-              })}
+            {/* ref is on a wrapper div so we can querySelectorAll inside it */}
+            <div ref={articleRef}>
+              <BlogContentRenderer content={post.content} />
             </div>
 
             {/* Tags Footer */}
@@ -177,38 +233,51 @@ const BlogPostDetail: React.FC = () => {
               ))}
             </div>
 
-            {/* Interactive Comments Section */}
+            {/* Comments Section */}
             <div className="pt-12 mt-12 border-t border-gray-200 dark:border-gray-800 space-y-8">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-brand-600 dark:text-brand-400" />
                 <h3 className="text-xl font-heading font-bold text-gray-900 dark:text-white">
-                  Discussion & Comments ({comments.length})
+                  Discussion &amp; Comments ({comments.length})
                 </h3>
               </div>
 
-              {/* Add Comment Form */}
-              <form onSubmit={handleAddComment} className="p-6 rounded-3xl bg-gray-50 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border space-y-4">
+              {/* Comment Form */}
+              <form
+                onSubmit={handleAddComment}
+                className="p-6 rounded-3xl bg-gray-50 dark:bg-dark-surface border border-gray-200/80 dark:border-dark-border space-y-4"
+              >
                 {commentSubmitted && (
                   <div className="p-3.5 rounded-xl bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 text-xs font-bold flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Your comment has been posted successfully!</span>
+                    <span>Your comment has been submitted! It will appear once approved by Studio Admin.</span>
                   </div>
                 )}
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Your Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={authorName}
-                    onChange={(e) => setAuthorName(e.target.value)}
-                    placeholder="Enter your full name"
-                    className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-dark-bg border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-xs focus:outline-none focus:border-brand-500"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Your Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={authorName}
+                      onChange={(e) => setAuthorName(e.target.value)}
+                      placeholder="Enter your full name"
+                      className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-dark-bg border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-xs focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Your Email (Optional)</label>
+                    <input
+                      type="email"
+                      value={authorEmail}
+                      onChange={(e) => setAuthorEmail(e.target.value)}
+                      placeholder="you@company.com"
+                      className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-dark-bg border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-xs focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
                 </div>
-
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Your Comment</label>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Your Comment *</label>
                   <textarea
                     required
                     rows={3}
@@ -218,12 +287,11 @@ const BlogPostDetail: React.FC = () => {
                     className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-dark-bg border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-xs focus:outline-none focus:border-brand-500"
                   />
                 </div>
-
                 <button
                   type="submit"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-md transition-all"
                 >
-                  <span>Post Comment</span>
+                  <span>Submit Comment</span>
                   <Send className="w-3.5 h-3.5" />
                 </button>
               </form>
@@ -234,23 +302,48 @@ const BlogPostDetail: React.FC = () => {
                   <div key={comment.id} className="p-5 rounded-2xl bg-white dark:bg-dark-surface border border-gray-100 dark:border-gray-800 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={comment.avatarUrl}
-                          alt={comment.name}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
+                        <div className="w-8 h-8 rounded-full bg-brand-500/10 text-brand-600 flex items-center justify-center font-bold text-xs">
+                          {comment.name.charAt(0)}
+                        </div>
                         <span className="text-xs font-bold text-gray-900 dark:text-white">{comment.name}</span>
                       </div>
-                      <span className="text-[10px] text-gray-400">{comment.date}</span>
+                      <span className="text-[10px] text-gray-400">
+                        {new Date(comment.created_at || Date.now()).toLocaleDateString()}
+                      </span>
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed pl-11">
                       {comment.content}
                     </p>
+
+                    {comment.admin_reply && (
+                      <div className="mt-3 ml-11 p-4 rounded-xl bg-gray-50 dark:bg-dark-bg/40 border-l-2 border-brand-500 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-brand-500 text-white flex items-center justify-center font-bold text-[10px]">
+                              GM
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                              GM Digital Studio
+                              <span className="px-1.5 py-0.5 rounded text-[8px] bg-brand-500/10 text-brand-600 dark:text-brand-400 font-extrabold uppercase tracking-wider">
+                                Admin
+                              </span>
+                            </span>
+                          </div>
+                          {comment.admin_reply_at && (
+                            <span className="text-[9px] text-gray-400 font-mono">
+                              {new Date(comment.admin_reply_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed pl-8">
+                          {comment.admin_reply}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
-
           </div>
 
           {/* Table of Contents Sidebar */}
@@ -263,24 +356,32 @@ const BlogPostDetail: React.FC = () => {
                 </h4>
               </div>
 
-              {headings.length > 0 ? (
-                <ul className="space-y-2.5 text-xs">
-                  {headings.map((heading, hIdx) => {
-                    const headingId = heading.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+              {tocItems.length > 0 ? (
+                <ul className="space-y-1 text-xs">
+                  {tocItems.map((item) => {
+                    const isActive = activeHeadingId === item.id;
+                    const indent = item.level === 1 ? 'pl-0' : item.level === 2 ? 'pl-0' : item.level === 3 ? 'pl-3' : 'pl-5';
                     return (
-                      <li key={hIdx}>
+                      <li key={item.id} className={indent}>
                         <a
-                          href={`#${headingId}`}
-                          className="text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors block leading-snug"
+                          href={`#${item.id}`}
+                          onClick={(e) => scrollToHeading(e, item.id)}
+                          className={`block px-3 py-1.5 rounded-lg text-xs transition-all ${
+                            isActive
+                              ? 'text-gray-900 dark:text-white font-bold bg-white dark:bg-dark-surface border-l-2 border-brand-500 pl-3 shadow-xs'
+                              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-dark-surface font-medium'
+                          }`}
                         >
-                          {heading}
+                          {item.text}
                         </a>
                       </li>
                     );
                   })}
                 </ul>
               ) : (
-                <p className="text-xs text-gray-400">Standard article overview.</p>
+                <p className="text-xs text-gray-400 italic">
+                  {post.content ? 'Loading outline...' : 'Standard article overview.'}
+                </p>
               )}
             </div>
           </div>
@@ -288,7 +389,7 @@ const BlogPostDetail: React.FC = () => {
         </div>
       </section>
 
-      {/* Brand-Orange Floating Card CTA Banner */}
+      {/* CTA Banner */}
       <section className="py-20 bg-white dark:bg-dark-bg">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative rounded-3xl bg-brand-600 text-white p-10 sm:p-14 text-center shadow-2xl overflow-hidden border border-brand-500">
@@ -308,7 +409,6 @@ const BlogPostDetail: React.FC = () => {
           </div>
         </div>
       </section>
-
     </div>
   );
 };
