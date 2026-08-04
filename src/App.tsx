@@ -43,6 +43,7 @@ import { SharedFiles } from './pages/dashboard/SharedFiles';
 import { AdminCMS } from './pages/dashboard/AdminCMS';
 import { AdminBlogEditor } from './pages/dashboard/AdminBlogEditor';
 import { AdminPortfolioEditor } from './pages/dashboard/AdminPortfolioEditor';
+import { AdminSettings } from './pages/dashboard/AdminSettings';
 
 function App() {
   return (
@@ -94,7 +95,7 @@ function App() {
               <Route path="cms/blog/edit/:id" element={<AdminBlogEditor />} />
               <Route path="cms/portfolio/new" element={<AdminPortfolioEditor />} />
               <Route path="cms/portfolio/edit/:id" element={<AdminPortfolioEditor />} />
-              <Route path="settings" element={<AdminOverview />} />
+              <Route path="settings" element={<AdminSettings />} />
             </Route>
 
             {/* Author Protected Dashboard Routes */}

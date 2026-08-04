@@ -1,12 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { Moon, Sun, Menu, X, User } from 'lucide-react';
 import logo from '../../assets/icon-logo.png';
+import { settingsService } from '../../services/settingsService';
 
 const Navbar = () => {
   const { theme, setTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [siteName, setSiteName] = useState('GM DIGITAL STUDIO');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoDisplayMode, setLogoDisplayMode] = useState<'logo-and-name' | 'logo-only'>('logo-and-name');
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const data = await settingsService.getSettings();
+      if (data) {
+        if (data.siteName) setSiteName(data.siteName);
+        if (data.logoUrl) setLogoUrl(data.logoUrl);
+        if (data.logoDisplayMode) setLogoDisplayMode(data.logoDisplayMode);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -24,10 +40,23 @@ const Navbar = () => {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-2">
-            <img src={logo} alt="GM Digital Studio Logo" className="h-8 w-auto object-contain" />
-            <span className="text-xl font-heading font-bold text-gray-900 dark:text-white hidden sm:block">
-              GM Digital <span className="text-brand-600">Studio</span>
-            </span>
+            <img src={logoUrl || logo} alt="Logo" className="h-8 w-auto object-contain" />
+            {logoDisplayMode === 'logo-and-name' && (
+              <span className="text-sm sm:text-lg font-heading font-extrabold text-gray-900 dark:text-white flex items-center tracking-tight">
+                {(() => {
+                  const words = siteName.split(' ');
+                  if (words.length <= 1) return siteName;
+                  return (
+                    <>
+                      <span>{words.slice(0, -1).join(' ')}</span>
+                      <span className="ml-1.5 text-brand-500 dark:text-brand-400">
+                        {words[words.length - 1]}
+                      </span>
+                    </>
+                  );
+                })()}
+              </span>
+            )}
           </Link>
         </div>
 

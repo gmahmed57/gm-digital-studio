@@ -518,7 +518,7 @@ export function ClientEditPage() {
                 </div>
 
                 <span className="text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-3 py-1.5 rounded-xl border border-brand-500/20">
-                  {allowedToolIds.length} of {MASTER_STUDIO_TOOLS.length} Active
+                  {allowedToolIds.filter(id => MASTER_STUDIO_TOOLS.some(t => t.id === id)).length} of {MASTER_STUDIO_TOOLS.length} Active
                 </span>
               </div>
 

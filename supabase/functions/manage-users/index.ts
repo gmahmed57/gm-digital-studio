@@ -151,8 +151,10 @@ serve(async (req) => {
         }
       }
 
-      // Update auth user if updating password or auth metadata
-      if (password || updates) {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
+
+      // Update auth user if updating password or auth metadata AND is a valid UUID
+      if (isUUID && (password || updates)) {
         const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, updateData)
         if (updateError) {
           return new Response(JSON.stringify({ error: updateError.message }), {

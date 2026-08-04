@@ -5,6 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Mail, Phone, MapPin, Clock, Send, CheckCircle2, AlertCircle, ChevronDown } from 'lucide-react';
 import { sendContactEmail } from '../services/resendService';
+import { contactService } from '../services/contactService';
+import { notificationService } from '../services/notificationService';
 import contactBgVideo from '../assets/videos/contact-bg.mp4';
 import contactGif from '../assets/animation/contact us.gif';
 import TrustedLogosBar from '../components/home/TrustedLogosBar';
@@ -62,6 +64,26 @@ const Contact: React.FC = () => {
     setIsSubmitting(true);
     setFeedback(null);
 
+    // 1. Submit to database
+    await contactService.submitContactForm({
+      name: data.name,
+      email: data.email,
+      company: data.company || '',
+      service: data.service,
+      budget: data.budget || '',
+      message: data.message,
+    });
+
+    // 2. Broadcast live targeted notification to Admin
+    await notificationService.addNotification({
+      title: 'New Project Inquiry',
+      message: `${data.name} submitted a new inquiry for ${data.service}.`,
+      type: 'system',
+      targetRole: 'admin',
+      link: '/admin/settings?tab=inquiries',
+    });
+
+    // 3. Send email simulation/production via Resend
     const res = await sendContactEmail(data);
     setIsSubmitting(false);
 

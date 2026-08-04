@@ -19,6 +19,7 @@ import {
   Bell
 } from 'lucide-react';
 import logo from '../../assets/icon-logo.png';
+import { settingsService } from '../../services/settingsService';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -31,8 +32,21 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
   const location = useLocation();
   const { role, user, logout } = useAuth();
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [siteName, setSiteName] = useState('GM STUDIO');
+  const [logoUrl, setLogoUrl] = useState('');
 
   const isAdmin = role === 'admin';
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const settings = await settingsService.getSettings();
+      if (settings) {
+        if (settings.siteName) setSiteName(settings.siteName);
+        if (settings.logoUrl) setLogoUrl(settings.logoUrl);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   useEffect(() => {
     const fetchUnread = async () => {
@@ -112,13 +126,24 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
         <div>
           <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-dark-border">
             <Link to={isAdmin ? '/admin/dashboard' : isAuthor ? '/author/cms' : '/client/dashboard'} className="flex items-center gap-3">
-              <img src={logo} alt="GM Studio" className="w-8 h-8 object-contain" />
+              <img src={logoUrl || logo} alt="Logo" className="w-8 h-8 object-contain" />
               {!isCollapsed && (
                 <div className="flex flex-col">
-                  <span className="font-heading font-extrabold text-sm text-gray-900 dark:text-white leading-none">
-                    GM STUDIO
+                  <span className="font-heading font-extrabold text-xs text-gray-900 dark:text-white flex items-center leading-none tracking-tight">
+                    {(() => {
+                      const words = siteName.split(' ');
+                      if (words.length <= 1) return siteName;
+                      return (
+                        <>
+                          <span>{words.slice(0, -1).join(' ')}</span>
+                          <span className="ml-1.5 text-brand-500 dark:text-brand-400">
+                            {words[words.length - 1]}
+                          </span>
+                        </>
+                      );
+                    })()}
                   </span>
-                  <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mt-0.5">
+                  <span className="text-[9px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1">
                     {isAdmin ? 'ADMIN CONTROL' : isAuthor ? 'AUTHOR PORTAL' : 'CLIENT PORTAL'}
                   </span>
                 </div>

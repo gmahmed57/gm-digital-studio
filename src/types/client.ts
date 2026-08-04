@@ -9,6 +9,7 @@ export interface StudioTool {
   isPremium: boolean;
   version: string;
   actionLabel?: string;
+  isActive?: boolean;
 }
 
 export interface ClientItem {
