@@ -163,32 +163,44 @@ export const generateInvoicePDF = (invoice: InvoiceItem): jsPDF => {
   const numAmount = parseFloat(invoice.amount.replace(/[^0-9.]/g, '')) || 5000;
   const subtotal = invoice.subtotal ?? numAmount;
   const tax = invoice.tax ?? 0;
-  const total = invoice.total ?? (subtotal + tax);
+  const tip = invoice.tipAmount ?? 0;
+  const total = invoice.total ?? (subtotal + tax + tip);
   const taxLabel = invoice.taxRate !== undefined ? `Tax (${invoice.taxRate}%):` : tax > 0 ? `Tax:` : `Tax (0%):`;
 
-  const calcY = lineY + 6;
+  let currentCalcY = lineY + 6;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(textGray[0], textGray[1], textGray[2]);
-  doc.text('Subtotal:', 145, calcY);
+  doc.text('Subtotal:', 145, currentCalcY);
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-  doc.text(`$${subtotal.toLocaleString()}`, 190, calcY, { align: 'right' });
+  doc.text(`$${subtotal.toLocaleString()}`, 190, currentCalcY, { align: 'right' });
 
+  currentCalcY += 6;
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(textGray[0], textGray[1], textGray[2]);
-  doc.text(taxLabel, 145, calcY + 6);
+  doc.text(taxLabel, 145, currentCalcY);
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-  doc.text(`$${tax.toLocaleString()}`, 190, calcY + 6, { align: 'right' });
+  doc.text(`$${tax.toLocaleString()}`, 190, currentCalcY, { align: 'right' });
+
+  if (tip > 0) {
+    currentCalcY += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+    doc.text('Gratuity / Tip:', 145, currentCalcY);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text(`+$${tip.toLocaleString()}`, 190, currentCalcY, { align: 'right' });
+  }
 
   // Total Highlights Line
+  currentCalcY += 5;
   doc.setFillColor(brandOrange[0], brandOrange[1], brandOrange[2]);
-  doc.rect(130, calcY + 11, 65, 9, 'F');
+  doc.rect(130, currentCalcY, 65, 9, 'F');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(255, 255, 255);
-  doc.text('TOTAL DUE:', 135, calcY + 17);
-  doc.text(`$${total.toLocaleString()}`, 190, calcY + 17, { align: 'right' });
+  doc.text('TOTAL DUE:', 135, currentCalcY + 6);
+  doc.text(`$${total.toLocaleString()}`, 190, currentCalcY + 6, { align: 'right' });
 
   // 5. Payment Terms & Footnote
   const footerY = 245;

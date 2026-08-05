@@ -54,6 +54,95 @@ export function AdminInvoices() {
   const [rejectMode, setRejectMode] = useState<boolean>(false);
   const [rejectReason, setRejectReason] = useState<string>('');
 
+  // Modal State for Reviewing & Customizing Client Invoice Requests
+  const [reviewingRequest, setReviewingRequest] = useState<InvoiceItem | null>(null);
+  const [customDescription, setCustomDescription] = useState<string>('');
+  const [customDueDate, setCustomDueDate] = useState<string>('');
+  const [customTaxRate, setCustomTaxRate] = useState<number>(0);
+  const [customNotes, setCustomNotes] = useState<string>('');
+  const [customItems, setCustomItems] = useState<InvoiceLineItem[]>([]);
+  const [customTip, setCustomTip] = useState<number>(0);
+  const [requestRejectMode, setRequestRejectMode] = useState<boolean>(false);
+  const [requestRejectReason, setRequestRejectReason] = useState<string>('');
+
+  const openReviewModal = (inv: InvoiceItem) => {
+    setReviewingRequest(inv);
+    setCustomDescription(inv.description || '');
+    setCustomDueDate(
+      inv.dueDate && !inv.dueDate.includes('Pending')
+        ? inv.dueDate
+        : new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
+    );
+    setCustomTaxRate(inv.taxRate || 0);
+    setCustomNotes(inv.notes || 'Invoice request approved by Studio Admin. Payment due within 14 days.');
+    setCustomTip(inv.tipAmount || 0);
+
+    const defaultItems: InvoiceLineItem[] = inv.items && inv.items.length > 0
+      ? inv.items
+      : [{ id: 'item-1', description: inv.description || 'Studio Services', quantity: 1, rate: inv.subtotal || 0, amount: inv.subtotal || 0 }];
+    setCustomItems(defaultItems);
+  };
+
+  const handleCustomItemChange = (id: string, field: keyof InvoiceLineItem, value: any) => {
+    setCustomItems((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, [field]: value };
+          if (field === 'quantity' || field === 'rate') {
+            const q = field === 'quantity' ? Number(value) || 0 : item.quantity;
+            const r = field === 'rate' ? Number(value) || 0 : item.rate;
+            updated.amount = q * r;
+          }
+          return updated;
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleAddCustomItem = () => {
+    setCustomItems((prev) => [
+      ...prev,
+      { id: `item-${Date.now()}`, description: '', quantity: 1, rate: 0, amount: 0 },
+    ]);
+  };
+
+  const handleRemoveCustomItem = (id: string) => {
+    if (customItems.length === 1) return;
+    setCustomItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  const handleApproveRequestWithCustomization = async () => {
+    if (!reviewingRequest) return;
+
+    const subtotal = customItems.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+    const updated = await invoiceService.approveInvoiceRequest(reviewingRequest.id, {
+      description: customDescription,
+      dueDate: customDueDate,
+      taxRate: customTaxRate,
+      subtotal: subtotal,
+      items: customItems,
+      tipAmount: customTip,
+      notes: customNotes,
+    });
+
+    setInvoices(updated);
+    setReviewingRequest(null);
+    setRequestRejectMode(false);
+    setRequestRejectReason('');
+  };
+
+  const handleRejectRequestWithReason = async () => {
+    if (!reviewingRequest || !requestRejectReason.trim()) return;
+
+    const updated = await invoiceService.rejectInvoiceRequest(reviewingRequest.id, requestRejectReason.trim());
+    setInvoices(updated);
+    setReviewingRequest(null);
+    setRequestRejectMode(false);
+    setRequestRejectReason('');
+  };
+
+
   // Clean empty initial line items state (no prefilled generic text)
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([
     { id: 'item-1', description: '', quantity: 1, rate: 0, amount: 0 },
@@ -204,6 +293,18 @@ export function AdminInvoices() {
             <CheckCircle2 className="w-3.5 h-3.5" /> Paid
           </span>
         );
+      case 'Under Approval':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 animate-pulse">
+            <Clock className="w-3.5 h-3.5" /> Under Approval
+          </span>
+        );
+      case 'Request Rejected':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+            <X className="w-3.5 h-3.5" /> Request Declined
+          </span>
+        );
       case 'Pending Verification':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800 animate-pulse">
@@ -319,6 +420,7 @@ export function AdminInvoices() {
           <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0">
             {[
               { id: 'all', label: 'All Invoices' },
+              { id: 'underapproval', label: 'Under Approval' },
               { id: 'paid', label: 'Paid' },
               { id: 'pendingverification', label: 'Pending Verification' },
               { id: 'pending', label: 'Pending' },
@@ -337,6 +439,7 @@ export function AdminInvoices() {
               </button>
             ))}
           </div>
+
 
           {/* Search Box */}
           <div className="relative min-w-[240px]">
@@ -456,6 +559,11 @@ export function AdminInvoices() {
                               (Incl. ${inv.tax} tax)
                             </span>
                           )}
+                          {inv.tipAmount !== undefined && inv.tipAmount > 0 && (
+                            <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                              (+${inv.tipAmount.toLocaleString()} tip)
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -469,16 +577,29 @@ export function AdminInvoices() {
                             onChange={(e) => handleStatusChange(inv.id, e.target.value as InvoiceStatus)}
                             className="text-[11px] font-semibold bg-transparent border border-gray-200 dark:border-dark-border rounded-lg px-2 py-1 text-gray-700 dark:text-gray-300 cursor-pointer"
                           >
+                            <option value="Under Approval">Under Approval</option>
+                            <option value="Pending">Mark Pending</option>
                             <option value="Paid">Mark Paid</option>
                             <option value="Pending Verification">Pending Verification</option>
-                            <option value="Pending">Mark Pending</option>
                             <option value="Overdue">Mark Overdue</option>
+                            <option value="Request Rejected">Request Rejected</option>
                           </select>
                         </div>
                       </td>
 
                       {/* Actions */}
                       <td className="py-4 px-6 text-right space-x-2">
+                        {inv.status === 'Under Approval' && (
+                          <button
+                            type="button"
+                            onClick={() => openReviewModal(inv)}
+                            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1 cursor-pointer"
+                            title="Review & Customize Client Request"
+                          >
+                            <FileCode2 className="w-3.5 h-3.5" /> Review Request
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => downloadInvoicePDF(inv)}
@@ -487,6 +608,7 @@ export function AdminInvoices() {
                         >
                           <Download className="w-3.5 h-3.5" /> PDF
                         </button>
+
 
                         <button
                           type="button"
@@ -947,9 +1069,301 @@ export function AdminInvoices() {
           </div>
         )}
 
+        {/* Modal for Reviewing & Customizing Client Invoice Requests BEFORE Approval */}
+        {reviewingRequest && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+            <div className="w-full max-w-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-dark-border">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                    <FileCode2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-white">
+                      Review & Customize Client Invoice Request
+                    </h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Request ID: {reviewingRequest.invoiceNumber} • Client: {reviewingRequest.clientCompany} ({reviewingRequest.clientEmail})
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReviewingRequest(null);
+                    setRequestRejectMode(false);
+                    setRequestRejectReason('');
+                  }}
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Client Note Alert */}
+              {reviewingRequest.clientMessage && (
+                <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-blue-600" /> Client Note Submitted with Request:
+                  </p>
+                  <p className="text-[11px] leading-relaxed italic">"{reviewingRequest.clientMessage}"</p>
+                </div>
+              )}
+
+              {requestRejectMode ? (
+                <div className="space-y-4 p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40">
+                  <h3 className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider">
+                    Decline Invoice Request
+                  </h3>
+                  <p className="text-xs text-red-600 dark:text-red-300">
+                    Provide a reason to notify the client why their invoice request was declined.
+                  </p>
+                  <textarea
+                    rows={3}
+                    value={requestRejectReason}
+                    onChange={(e) => setRequestRejectReason(e.target.value)}
+                    placeholder="e.g. Scope parameters need adjustment. Please contact your project manager before requesting billing..."
+                    className="w-full p-3 rounded-xl border border-red-300 dark:border-red-900/60 bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-red-600"
+                  />
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRequestRejectMode(false);
+                        setRequestRejectReason('');
+                      }}
+                      className="px-4 py-2 rounded-xl text-gray-600 dark:text-gray-400 text-xs font-bold hover:bg-gray-100"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!requestRejectReason.trim()}
+                      onClick={handleRejectRequestWithReason}
+                      className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md disabled:opacity-50"
+                    >
+                      Confirm Decline
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleApproveRequestWithCustomization();
+                  }}
+                  className="space-y-6"
+                >
+                  {/* Scope & Due Date Customization */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                        Invoice Description / Main Scope
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={customDescription}
+                        onChange={(e) => setCustomDescription(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                        Payment Due Date
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={customDueDate}
+                        onChange={(e) => setCustomDueDate(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Customizable Itemized Deliverables */}
+                  <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-dark-border">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                          Customize Line Items & Pricing Before Approval
+                        </h3>
+                        <p className="text-[11px] text-gray-500">
+                          Adjust requested descriptions, quantities, or unit rates.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAddCustomItem}
+                        className="px-3 py-1.5 rounded-xl bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400 hover:bg-brand-100 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add Line Item
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {customItems.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="p-3 rounded-2xl bg-gray-50 dark:bg-dark-surface/60 border border-gray-200 dark:border-dark-border grid grid-cols-12 gap-2 items-center text-xs"
+                        >
+                          <div className="col-span-6">
+                            <input
+                              type="text"
+                              required
+                              value={item.description}
+                              onChange={(e) => handleCustomItemChange(item.id, 'description', e.target.value)}
+                              placeholder={`Item #${index + 1} Description`}
+                              className="w-full p-2 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600"
+                            />
+                          </div>
+
+                          <div className="col-span-2">
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => handleCustomItemChange(item.id, 'quantity', e.target.value)}
+                              className="w-full p-2 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs text-center focus:ring-2 focus:ring-brand-600 font-mono"
+                            />
+                          </div>
+
+                          <div className="col-span-3">
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.rate}
+                              onChange={(e) => handleCustomItemChange(item.id, 'rate', e.target.value)}
+                              className="w-full p-2 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs text-right font-mono focus:ring-2 focus:ring-brand-600"
+                            />
+                          </div>
+
+                          <div className="col-span-1 flex items-center justify-end">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCustomItem(item.id)}
+                              disabled={customItems.length === 1}
+                              className="p-1 rounded-lg text-gray-400 hover:text-red-600 disabled:opacity-30 cursor-pointer"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tax Rate & Gratuity Customization */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div className="p-3 rounded-2xl bg-gray-50 dark:bg-dark-surface/60 border border-gray-200 dark:border-dark-border flex items-center justify-between text-xs">
+                      <span className="font-bold text-gray-700 dark:text-gray-300">Tax Rate (%):</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={customTaxRate}
+                        onChange={(e) => setCustomTaxRate(Math.max(0, Number(e.target.value) || 0))}
+                        className="w-20 p-1.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-center font-mono font-bold"
+                      />
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-gray-50 dark:bg-dark-surface/60 border border-gray-200 dark:border-dark-border flex items-center justify-between text-xs">
+                      <span className="font-bold text-gray-700 dark:text-gray-300">Client Tip / Gratuity ($):</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={customTip}
+                        onChange={(e) => setCustomTip(Math.max(0, Number(e.target.value) || 0))}
+                        className="w-24 p-1.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-right font-mono font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Approval Calculation Summary */}
+                  {(() => {
+                    const subtotal = customItems.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+                    const tax = Math.round((subtotal * customTaxRate) / 100);
+                    const total = subtotal + tax + customTip;
+                    return (
+                      <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="font-extrabold text-emerald-900 dark:text-emerald-200">
+                            Approved Total Amount:
+                          </span>
+                          <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                            Subtotal (${subtotal.toLocaleString()}) + Tax (${tax.toLocaleString()}) + Tip (${customTip.toLocaleString()})
+                          </p>
+                        </div>
+                        <span className="text-2xl font-heading font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                          ${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Admin Notes */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                      Approval Notes / Payment Instructions
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={customNotes}
+                      onChange={(e) => setCustomNotes(e.target.value)}
+                      placeholder="Payment due within 14 days of approval..."
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
+                    />
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="pt-4 border-t border-gray-100 dark:border-dark-border flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setRequestRejectMode(true)}
+                      className="px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 cursor-pointer"
+                    >
+                      Decline Request
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReviewingRequest(null);
+                          setRequestRejectMode(false);
+                          setRequestRejectReason('');
+                        }}
+                        className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border text-gray-700 dark:text-gray-300 text-xs font-bold hover:bg-gray-100 dark:hover:bg-dark-surface cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                      >
+                        <ShieldCheck className="w-4 h-4" /> Approve & Issue Invoice
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
+
+            </div>
+          </div>
+        )}
+
       </div>
     </>
   );
 }
+
 
 export default AdminInvoices;

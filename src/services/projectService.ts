@@ -21,14 +21,12 @@ export const projectService = {
       ? Math.round((approvedCount / normalizedMs.length) * 100)
       : 0;
 
-    const computedStatus: ProjectStatus = (computedProgress === 100 && normalizedMs.length > 0)
-      ? 'completed'
-      : currentStatus;
+    const rawStatus = (currentStatus || 'active').toString().toLowerCase().trim() as ProjectStatus;
 
     return {
       milestones: normalizedMs,
       progress: computedProgress,
-      status: computedStatus,
+      status: rawStatus,
     };
   },
 

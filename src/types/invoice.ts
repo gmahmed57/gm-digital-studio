@@ -1,4 +1,4 @@
-export type InvoiceStatus = 'Paid' | 'Pending' | 'Overdue' | 'Pending Verification';
+export type InvoiceStatus = 'Paid' | 'Pending' | 'Overdue' | 'Pending Verification' | 'Under Approval' | 'Request Rejected';
 
 export interface InvoiceLineItem {
   id: string;
@@ -28,12 +28,15 @@ export interface InvoiceItem {
   items?: InvoiceLineItem[];
   requestedByClient?: boolean;
   notes?: string;
+  customProjectName?: string;
+  tipAmount?: number;
   // Messaging & Payment Verification fields:
   clientMessage?: string;
-  adminRejectionReason?: string; // Reason provided when payment proof is rejected
+  adminRejectionReason?: string; // Reason provided when payment proof or request is rejected
   transactionId?: string;
   paymentMethod?: string;
   paymentNotes?: string;
   paymentSubmittedAt?: string;
   proofUrl?: string; // Visual image/document receipt proof URL
 }
+

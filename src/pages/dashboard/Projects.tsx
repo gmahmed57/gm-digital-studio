@@ -64,15 +64,8 @@ export function Projects() {
     }
   };
 
-  // Dynamically compute real project status based on milestone completion percentage
   const getEffectiveStatus = (proj: ProjectItem): ProjectStatus => {
-    const approvedCount = proj.milestones.filter((m) => m.status === 'approved' || m.completed).length;
-    const totalMs = proj.milestones.length;
-    const is100Percent = totalMs > 0 ? approvedCount === totalMs : proj.progress === 100;
-
-    if (is100Percent) return 'completed';
-    if (proj.status === 'completed' && !is100Percent) return 'active';
-    return proj.status;
+    return proj.status || 'active';
   };
 
   // Filter projects by search term & status

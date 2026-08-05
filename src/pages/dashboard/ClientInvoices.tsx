@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { invoiceService } from '../../services/invoiceService';
 import { projectService } from '../../services/projectService';
 import { downloadInvoicePDF } from '../../utils/pdfGenerator';
-import type { InvoiceItem, InvoiceStatus } from '../../types/invoice';
+import type { InvoiceItem, InvoiceStatus, InvoiceLineItem } from '../../types/invoice';
 import type { ProjectItem } from '../../types/project';
 import {
   FileText,
@@ -33,20 +33,63 @@ export function ClientInvoices() {
   // Request Invoice Modal State
   const [showRequestModal, setShowRequestModal] = useState<boolean>(false);
   const [selectedProjectTitle, setSelectedProjectTitle] = useState<string>('');
+  const [useCustomProject, setUseCustomProject] = useState<boolean>(false);
+  const [customProjectName, setCustomProjectName] = useState<string>('');
   const [clientMessageInput, setClientMessageInput] = useState<string>('');
+  const [tipAmountInput, setTipAmountInput] = useState<string>('');
   const [requestSent, setRequestSent] = useState<boolean>(false);
+
+  // Itemized line items for Client Invoice Request
+  const [requestLineItems, setRequestLineItems] = useState<InvoiceLineItem[]>([
+    { id: 'item-1', description: '', quantity: 1, rate: 0, amount: 0 },
+  ]);
 
   // Submit Payment Proof Modal State
   const [payingInvoice, setPayingInvoice] = useState<InvoiceItem | null>(null);
   const [transactionIdInput, setTransactionIdInput] = useState<string>('');
-  const [paymentMethodInput, setPaymentMethodInput] = useState<string>('Wire Transfer');
+  const [paymentMethodInput, setPaymentMethodInput] = useState<string>('Bank Wire Transfer');
+  const [useCustomPaymentMethod, setUseCustomPaymentMethod] = useState<boolean>(false);
+  const [customPaymentMethodInput, setCustomPaymentMethodInput] = useState<string>('');
   const [paymentNotesInput, setPaymentNotesInput] = useState<string>('');
   const [proofFileInput, setProofFileInput] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [paymentProofSent, setPaymentProofSent] = useState<boolean>(false);
 
+
+
+  const handleRequestAddLineItem = () => {
+    setRequestLineItems((prev) => [
+      ...prev,
+      { id: `item-${Date.now()}`, description: '', quantity: 1, rate: 0, amount: 0 },
+    ]);
+  };
+
+  const handleRequestRemoveLineItem = (id: string) => {
+    if (requestLineItems.length === 1) return;
+    setRequestLineItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleRequestLineItemChange = (id: string, field: keyof InvoiceLineItem, value: any) => {
+    setRequestLineItems((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, [field]: value };
+          if (field === 'quantity' || field === 'rate') {
+            const q = field === 'quantity' ? Number(value) || 0 : item.quantity;
+            const r = field === 'rate' ? Number(value) || 0 : item.rate;
+            updated.amount = q * r;
+          }
+          return updated;
+        }
+        return item;
+      })
+    );
+  };
+
+
   const loadData = async () => {
     setLoading(true);
+
     const [invList, projList] = await Promise.all([
       invoiceService.getInvoices(),
       projectService.getProjects(),
@@ -99,11 +142,6 @@ export function ClientInvoices() {
       return false;
     });
 
-    // Fail-safe fallback: If client logged in and invoice was recently created in workspace, display active invoices
-    if (matchedInvoices.length === 0 && invList.length > 0) {
-      matchedInvoices = invList;
-    }
-
     const userProjects = projList.filter((p) => {
       const pEmailClean = (p.clientEmail || '').toLowerCase().trim();
       const pCompanyClean = (p.clientCompany || '').toLowerCase().trim();
@@ -114,11 +152,16 @@ export function ClientInvoices() {
     });
 
     setInvoices(matchedInvoices);
-    setClientProjects(userProjects.length > 0 ? userProjects : projList);
-    if (projList.length > 0) {
-      setSelectedProjectTitle(projList[0].title);
+    setClientProjects(userProjects);
+    if (userProjects.length > 0) {
+      setSelectedProjectTitle(userProjects[0].title);
+      setUseCustomProject(false);
+    } else {
+      setSelectedProjectTitle('');
+      setUseCustomProject(true);
     }
     setLoading(false);
+
   };
 
   useEffect(() => {
@@ -140,18 +183,27 @@ export function ClientInvoices() {
   const handleRequestInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    await invoiceService.requestInvoiceFromAdmin(
-      user?.email || 'client@company.com',
-      user?.company || user?.fullName || 'Valued Client',
-      selectedProjectTitle || 'Active Project Build',
-      clientMessageInput
-    );
+    const tipVal = parseFloat(tipAmountInput.replace(/[^0-9.]/g, '')) || 0;
+
+    await invoiceService.requestInvoiceFromAdmin({
+      clientEmail: user?.email || 'client@company.com',
+      clientCompany: user?.company || user?.fullName || 'Valued Client',
+      clientName: user?.fullName || 'Valued Client',
+      projectName: useCustomProject ? undefined : selectedProjectTitle,
+      customProjectName: useCustomProject ? customProjectName : undefined,
+      clientMessage: clientMessageInput,
+      items: requestLineItems,
+      tipAmount: tipVal,
+    });
 
     setRequestSent(true);
     setTimeout(() => {
       setShowRequestModal(false);
       setRequestSent(false);
       setClientMessageInput('');
+      setCustomProjectName('');
+      setTipAmountInput('');
+      setRequestLineItems([{ id: 'item-1', description: '', quantity: 1, rate: 0, amount: 0 }]);
       loadData();
     }, 1500);
   };
@@ -198,10 +250,14 @@ export function ClientInvoices() {
       }
     }
 
+    const finalPaymentMethod = useCustomPaymentMethod
+      ? (customPaymentMethodInput.trim() || 'Custom Payment Method')
+      : paymentMethodInput;
+
     await invoiceService.submitPaymentProof(
       payingInvoice.id,
       transactionIdInput || `TXN-${Date.now().toString().slice(-6)}`,
-      paymentMethodInput,
+      finalPaymentMethod,
       paymentNotesInput,
       uploadedUrl
     );
@@ -213,6 +269,8 @@ export function ClientInvoices() {
       setPaymentProofSent(false);
       setTransactionIdInput('');
       setPaymentNotesInput('');
+      setCustomPaymentMethodInput('');
+      setUseCustomPaymentMethod(false);
       setProofFileInput(null);
       loadData();
     }, 1500);
@@ -227,7 +285,7 @@ export function ClientInvoices() {
     .filter((i) => i.status === 'Paid')
     .reduce((acc, inv) => acc + (parseFloat(inv.amount.replace(/[^0-9.]/g, '')) || 0), 0);
 
-  const pendingCount = invoices.filter((i) => i.status === 'Pending' || i.status === 'Pending Verification').length;
+  const pendingCount = invoices.filter((i) => i.status === 'Pending' || i.status === 'Pending Verification' || i.status === 'Under Approval').length;
   const overdueCount = invoices.filter((i) => i.status === 'Overdue').length;
 
   const statusBadge = (invStatus: InvoiceStatus) => {
@@ -236,6 +294,18 @@ export function ClientInvoices() {
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
             <CheckCircle2 className="w-3.5 h-3.5" /> Paid in Full
+          </span>
+        );
+      case 'Under Approval':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 animate-pulse">
+            <Clock className="w-3.5 h-3.5" /> Under Approval (Awaiting Admin)
+          </span>
+        );
+      case 'Request Rejected':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+            <X className="w-3.5 h-3.5" /> Request Declined
           </span>
         );
       case 'Pending Verification':
@@ -258,6 +328,7 @@ export function ClientInvoices() {
         );
     }
   };
+
 
   return (
     <>
@@ -433,10 +504,15 @@ export function ClientInvoices() {
                     <p className="text-xl font-heading font-extrabold text-gray-900 dark:text-white">
                       {inv.amount}
                     </p>
+                    {inv.tipAmount !== undefined && inv.tipAmount > 0 && (
+                      <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                        (Incl. ${inv.tipAmount.toLocaleString()} tip)
+                      </span>
+                    )}
                   </div>
 
-                  {/* Submit Payment Proof Button */}
-                  {inv.status !== 'Paid' && inv.status !== 'Pending Verification' && (
+                  {/* Submit Payment Proof Button (Enabled ONLY after Admin Approval: Pending or Overdue) */}
+                  {(inv.status === 'Pending' || inv.status === 'Overdue') && (
                     <button
                       type="button"
                       onClick={() => setPayingInvoice(inv)}
@@ -459,10 +535,10 @@ export function ClientInvoices() {
           </div>
         )}
 
-        {/* Request Invoice Modal */}
+        {/* Request Invoice Modal (Itemized, Custom Project & Tip Builder) */}
         {showRequestModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+            <div className="w-full max-w-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-dark-border">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold">
@@ -473,7 +549,7 @@ export function ClientInvoices() {
                       Request Invoice Statement
                     </h2>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Request an official billing statement from Studio Admin.
+                      Submit itemized deliverables and pricing for Studio Admin approval.
                     </p>
                   </div>
                 </div>
@@ -492,45 +568,180 @@ export function ClientInvoices() {
                   <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
                     <ShieldCheck className="w-6 h-6" />
                   </div>
-                  <h3 className="text-base font-bold text-gray-900 dark:text-white">Invoice Request Dispatched</h3>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">Invoice Request Submitted for Approval</h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Studio Admin has been notified with your message and will issue your invoice statement shortly.
+                    Your request has been dispatched to Studio Admin. Its status is now set to <strong>Under Approval</strong>.
                   </p>
                 </div>
               ) : (
-                <form onSubmit={handleRequestInvoice} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                      Target Studio Project Build
-                    </label>
-                    <select
-                      value={selectedProjectTitle}
-                      onChange={(e) => setSelectedProjectTitle(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-600 transition-all cursor-pointer"
-                    >
-                      {clientProjects.length > 0 ? (
-                        clientProjects.map((p) => (
-                          <option key={p.id} value={p.title}>
-                            {p.title} ({p.category})
-                          </option>
-                        ))
-                      ) : (
-                        <option value="Active Web Development Build">Active Web Development Build</option>
-                      )}
-                    </select>
+                <form onSubmit={handleRequestInvoice} className="space-y-5">
+                  {/* Project Selector / Custom Project Name Toggle */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                        Project Scope / Reference
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setUseCustomProject(!useCustomProject)}
+                        className="text-xs text-brand-600 dark:text-brand-400 font-bold hover:underline cursor-pointer"
+                      >
+                        {useCustomProject ? '← Select Active Project' : '+ Enter Custom Project Name'}
+                      </button>
+                    </div>
+
+                    {useCustomProject ? (
+                      <input
+                        type="text"
+                        required
+                        value={customProjectName}
+                        onChange={(e) => setCustomProjectName(e.target.value)}
+                        placeholder="e.g. E-Commerce Rebrand & Mobile App API"
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
+                      />
+                    ) : (
+                      <select
+                        value={selectedProjectTitle}
+                        onChange={(e) => setSelectedProjectTitle(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all cursor-pointer"
+                      >
+                        {clientProjects.length > 0 ? (
+                          clientProjects.map((p) => (
+                            <option key={p.id} value={p.title}>
+                              {p.title} ({p.category})
+                            </option>
+                          ))
+                        ) : (
+                          <option value="Custom Studio Build">Custom Studio Build</option>
+                        )}
+                      </select>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                      Message / Note to Admin (Optional)
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={clientMessageInput}
-                      onChange={(e) => setClientMessageInput(e.target.value)}
-                      placeholder="e.g. Please issue invoice for Milestone 2 deliverables with corporate VAT tax details..."
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
-                    />
+                  {/* Itemized Deliverables & Pricing Builder */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                          Itemized Deliverables & Pricing
+                        </h4>
+                        <p className="text-[11px] text-gray-500">
+                          Add the specific items, quantities, and rates you are requesting.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleRequestAddLineItem}
+                        className="px-3 py-1.5 rounded-xl bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400 hover:bg-brand-100 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add Item
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                      {requestLineItems.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="p-3 rounded-2xl bg-gray-50 dark:bg-dark-surface/60 border border-gray-200 dark:border-dark-border grid grid-cols-12 gap-2 items-center text-xs"
+                        >
+                          <div className="col-span-6">
+                            <label className="block text-[10px] text-gray-400 font-bold mb-1">
+                              Item #{index + 1} Description
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={item.description}
+                              onChange={(e) => handleRequestLineItemChange(item.id, 'description', e.target.value)}
+                              placeholder="e.g. Frontend UI Components"
+                              className="w-full p-2 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600"
+                            />
+                          </div>
+
+                          <div className="col-span-2">
+                            <label className="block text-[10px] text-gray-400 font-bold mb-1">
+                              Qty
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => handleRequestLineItemChange(item.id, 'quantity', e.target.value)}
+                              className="w-full p-2 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs text-center focus:ring-2 focus:ring-brand-600"
+                            />
+                          </div>
+
+                          <div className="col-span-3">
+                            <label className="block text-[10px] text-gray-400 font-bold mb-1">
+                              Unit Rate ($)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.rate}
+                              onChange={(e) => handleRequestLineItemChange(item.id, 'rate', e.target.value)}
+                              className="w-full p-2 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs text-right font-mono focus:ring-2 focus:ring-brand-600"
+                            />
+                          </div>
+
+                          <div className="col-span-1 flex items-center justify-end pt-4">
+                            <button
+                              type="button"
+                              onClick={() => handleRequestRemoveLineItem(item.id)}
+                              disabled={requestLineItems.length === 1}
+                              className="p-1 rounded-lg text-gray-400 hover:text-red-600 disabled:opacity-30 cursor-pointer"
+                              title="Delete Item"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Optional Tip / Gratuity & Message */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                        Optional Gratuity / Studio Tip ($)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={tipAmountInput}
+                        onChange={(e) => setTipAmountInput(e.target.value)}
+                        placeholder="e.g. 50 (Optional bonus)"
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                        Message / Note to Admin (Optional)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={clientMessageInput}
+                        onChange={(e) => setClientMessageInput(e.target.value)}
+                        placeholder="Additional billing details..."
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Requested Total Calculation Summary */}
+                  <div className="p-3.5 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-between text-xs">
+                    <span className="font-bold text-gray-700 dark:text-gray-300">
+                      Total Requested Amount:
+                    </span>
+                    <span className="text-base font-extrabold text-brand-600 dark:text-brand-400 font-mono">
+                      ${(
+                        requestLineItems.reduce((sum, item) => sum + item.quantity * item.rate, 0) +
+                        (parseFloat(tipAmountInput) || 0)
+                      ).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </span>
                   </div>
 
                   <div className="pt-4 border-t border-gray-100 dark:border-dark-border flex items-center justify-end gap-3">
@@ -546,7 +757,7 @@ export function ClientInvoices() {
                       type="submit"
                       className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
                     >
-                      <Send className="w-4 h-4" /> Send Invoice Request
+                      <Send className="w-4 h-4" /> Submit Request for Approval
                     </button>
                   </div>
                 </form>
@@ -554,6 +765,7 @@ export function ClientInvoices() {
             </div>
           </div>
         )}
+
 
         {/* Submit Payment Proof Modal */}
         {payingInvoice && (
@@ -610,18 +822,46 @@ export function ClientInvoices() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                      Payment Method
-                    </label>
-                    <select
-                      value={paymentMethodInput}
-                      onChange={(e) => setPaymentMethodInput(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-600 transition-all cursor-pointer"
-                    >
-                      <option value="Wire Transfer">Bank Wire Transfer</option>
-                      <option value="Stripe Card Checkout">Stripe Credit/Debit Card</option>
-                      <option value="Paypal / ACH">PayPal / ACH Direct</option>
-                    </select>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                        Payment Method
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setUseCustomPaymentMethod(!useCustomPaymentMethod)}
+                        className="text-xs text-brand-600 dark:text-brand-400 font-bold hover:underline cursor-pointer"
+                      >
+                        {useCustomPaymentMethod ? '← Select Standard Method' : '+ Enter Custom Method'}
+                      </button>
+                    </div>
+
+                    {useCustomPaymentMethod ? (
+                      <input
+                        type="text"
+                        required
+                        value={customPaymentMethodInput}
+                        onChange={(e) => setCustomPaymentMethodInput(e.target.value)}
+                        placeholder="e.g. Wise Transfer / Crypto (USDT) / Bank Cheque"
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
+                      />
+                    ) : (
+                      <select
+                        value={paymentMethodInput}
+                        onChange={(e) => {
+                          if (e.target.value === 'Other') {
+                            setUseCustomPaymentMethod(true);
+                          } else {
+                            setPaymentMethodInput(e.target.value);
+                          }
+                        }}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-600 transition-all cursor-pointer"
+                      >
+                        <option value="Bank Wire Transfer">Bank Wire Transfer</option>
+                        <option value="Stripe Card Checkout">Stripe Credit/Debit Card</option>
+                        <option value="PayPal / ACH Direct">PayPal / ACH Direct</option>
+                        <option value="Other">+ Other Custom Payment Method...</option>
+                      </select>
+                    )}
                   </div>
 
                   <div>

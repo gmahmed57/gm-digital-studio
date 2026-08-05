@@ -50,6 +50,7 @@ export const invoiceService = {
           paymentSubmittedAt: row.payment_submitted_at || row.paymentSubmittedAt || row.paymentsubmittedat || undefined,
           proofUrl: row.proof_url || row.proofUrl || row.proofurl || undefined,
           adminRejectionReason: row.admin_rejection_reason || row.adminRejectionReason || row.adminrejectionreason || undefined,
+          tipAmount: row.tip_amount ?? row.tipAmount ?? 0,
         }))
         .filter((inv) => !isLegacyDummy(inv));
     }
@@ -125,6 +126,7 @@ export const invoiceService = {
       payment_notes: targetItem.paymentNotes,
       proof_url: targetItem.proofUrl,
       admin_rejection_reason: targetItem.adminRejectionReason,
+      tip_amount: targetItem.tipAmount || 0,
     };
 
     const { error: upsertError } = await supabase.from('invoices').upsert(dbPayload);
@@ -140,40 +142,56 @@ export const invoiceService = {
     return await invoiceService.getInvoices();
   },
 
-  // Client requests an invoice statement from Admin with optional message
-  requestInvoiceFromAdmin: async (
-    clientEmail: string,
-    clientCompany: string,
-    projectName?: string,
-    clientMessage?: string
-  ): Promise<InvoiceItem[]> => {
-    const targetProjectName = projectName || 'Active Web Build';
+  // Client requests an invoice statement from Admin with itemized deliverables, project selection/custom name, and optional tip
+  requestInvoiceFromAdmin: async (payload: {
+    clientEmail: string;
+    clientCompany: string;
+    clientName?: string;
+    projectName?: string;
+    customProjectName?: string;
+    clientMessage?: string;
+    items?: any[];
+    tipAmount?: number;
+  }): Promise<InvoiceItem[]> => {
+    const targetProjectName = payload.customProjectName?.trim() || payload.projectName?.trim() || 'Custom Project Build';
+
+    const items = payload.items && payload.items.length > 0
+      ? payload.items
+      : [{ id: 'item-1', description: `Services for ${targetProjectName}`, quantity: 1, rate: 0, amount: 0 }];
+
+    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+    const tip = payload.tipAmount && payload.tipAmount > 0 ? payload.tipAmount : 0;
+    const total = subtotal + tip;
+    const formattedAmount = `$${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
     const newRequestItem: Partial<InvoiceItem> = {
       id: `inv-req-${Date.now()}`,
       invoiceNumber: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
       clientId: `client-${Date.now()}`,
-      clientName: clientCompany,
-      clientCompany: clientCompany,
-      clientEmail: clientEmail,
-      description: `Invoice Statement Requested for ${targetProjectName}`,
-      amount: '$0',
-      status: 'Pending',
+      clientName: payload.clientName || payload.clientCompany,
+      clientCompany: payload.clientCompany,
+      clientEmail: payload.clientEmail,
+      description: `Invoice Requested: ${targetProjectName}`,
+      amount: formattedAmount,
+      subtotal,
+      total,
+      status: 'Under Approval',
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-      dueDate: 'Pending Admin Provision',
+      dueDate: 'Pending Admin Approval',
       requestedByClient: true,
-      clientMessage: clientMessage || undefined,
-      notes: 'Client submitted a request for an official billing invoice.',
+      clientMessage: payload.clientMessage || undefined,
+      customProjectName: payload.customProjectName,
+      tipAmount: tip,
+      items,
+      notes: payload.clientMessage ? `Client Request Note: "${payload.clientMessage}"` : 'Client submitted itemized invoice billing request for studio approval.',
     };
 
     await invoiceService.saveInvoice(newRequestItem);
 
     // Send targeted real-time alert to Admin
     await notificationService.addNotification({
-      title: 'New Invoice Requested by Client',
-      message: `${clientCompany} (${clientEmail}) requested an invoice for "${targetProjectName}". ${
-        clientMessage ? `Note: "${clientMessage}"` : ''
-      }`,
+      title: 'New Client Invoice Request (Awaiting Approval)',
+      message: `${payload.clientCompany} requested invoice billing for "${targetProjectName}" (${formattedAmount}).`,
       type: 'client',
       targetRole: 'admin',
       link: '/admin/invoices',
@@ -181,6 +199,97 @@ export const invoiceService = {
 
     return await invoiceService.getInvoices();
   },
+
+  // Admin approves client invoice request (with optional customizations)
+  approveInvoiceRequest: async (
+    id: string,
+    customizedData?: Partial<InvoiceItem>
+  ): Promise<InvoiceItem[]> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+
+    const existingList = await invoiceService.getInvoices();
+    const existing = existingList.find((inv) => inv.id === id);
+
+    const dueDateStr = customizedData?.dueDate || new Date(Date.now() + 14 * 86400000).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+
+    const items = customizedData?.items || existing?.items || [];
+    const subtotal = customizedData?.subtotal ?? (items.reduce((sum, item) => sum + (item.quantity * item.rate), 0));
+    const taxRate = customizedData?.taxRate ?? existing?.taxRate ?? 0;
+    const tax = Math.round((subtotal * taxRate) / 100);
+    const tip = customizedData?.tipAmount ?? existing?.tipAmount ?? 0;
+    const total = subtotal + tax + tip;
+    const formattedAmount = `$${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+
+    const { error } = await supabase.from('invoices').update({
+      status: 'Pending',
+      due_date: dueDateStr,
+      description: customizedData?.description || existing?.description || 'Approved Studio Billing Statement',
+      items: items,
+      subtotal: subtotal,
+      tax_rate: taxRate,
+      tax: tax,
+      total: total,
+      tip_amount: tip,
+      amount: formattedAmount,
+      notes: customizedData?.notes || existing?.notes || 'Invoice request approved by Admin. Payment due within 14 days.',
+      admin_rejection_reason: null,
+    }).eq('id', id);
+
+    if (error) throw error;
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('gm_invoice_updated'));
+    }
+
+    const updatedList = await invoiceService.getInvoices();
+    const target = updatedList.find((i) => i.id === id);
+
+    if (target && target.clientEmail) {
+      await notificationService.addNotification({
+        title: 'Invoice Request Approved',
+        message: `Admin approved your invoice statement ${target.invoiceNumber} (${formattedAmount}). You can now submit payment proof.`,
+        type: 'system',
+        targetRole: 'client',
+        targetEmail: target.clientEmail,
+        link: '/client/invoices',
+      });
+    }
+
+    return updatedList;
+  },
+
+  // Admin rejects client invoice request with reason
+  rejectInvoiceRequest: async (id: string, reason: string): Promise<InvoiceItem[]> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+
+    const { error } = await supabase.from('invoices').update({
+      status: 'Request Rejected',
+      admin_rejection_reason: reason || 'Invoice request declined by studio admin.',
+    }).eq('id', id);
+
+    if (error) throw error;
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('gm_invoice_updated'));
+    }
+
+    const updatedList = await invoiceService.getInvoices();
+    const target = updatedList.find((i) => i.id === id);
+
+    if (target && target.clientEmail) {
+      await notificationService.addNotification({
+        title: 'Invoice Request Declined',
+        message: `Admin declined invoice request ${target.invoiceNumber}. Reason: "${reason}".`,
+        type: 'system',
+        targetRole: 'client',
+        targetEmail: target.clientEmail,
+        link: '/client/invoices',
+      });
+    }
+
+    return updatedList;
+  },
+
 
   // Client submits payment proof, transaction reference & proof document/image
   submitPaymentProof: async (
