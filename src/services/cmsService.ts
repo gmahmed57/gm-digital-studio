@@ -38,19 +38,37 @@ export const cmsService = {
         return [];
       }
 
-      return (data || []).map((row) => ({
-        id: row.id,
-        slug: row.slug,
-        title: row.title,
-        category: row.category,
-        description: row.description,
-        content: row.content,
-        imageUrl: row.image_url,
-        readTime: row.read_time,
-        publishedAt: row.published_at,
-        author: row.author || { name: 'GM Digital Studio', role: 'Solutions Architect', avatarUrl: '' },
-        tags: row.tags || [],
-      }));
+      // Fetch real-time authors and profiles for live avatar joining
+      const { data: dbAuthors } = await supabase.from('authors').select('*');
+      const { data: dbProfiles } = await supabase.from('profiles').select('*');
+
+      return (data || []).map((row) => {
+        const rawAuthor = row.author || {};
+        const authorName = rawAuthor.name || rawAuthor.fullName || '';
+        
+        const matchAuthor = dbAuthors?.find(a => (a.name && authorName && a.name.toLowerCase() === authorName.toLowerCase()) || (a.email && rawAuthor.email && a.email.toLowerCase() === rawAuthor.email.toLowerCase()));
+        const matchProfile = dbProfiles?.find(p => (p.fullName && authorName && p.fullName.toLowerCase() === authorName.toLowerCase()) || (p.email && rawAuthor.email && p.email.toLowerCase() === rawAuthor.email.toLowerCase()));
+
+        const finalAvatarUrl = matchAuthor?.avatar_url || matchProfile?.avatar_url || rawAuthor.avatarUrl || rawAuthor.avatar_url || '';
+
+        return {
+          id: row.id,
+          slug: row.slug,
+          title: row.title,
+          category: row.category,
+          description: row.description,
+          content: row.content,
+          imageUrl: row.image_url,
+          readTime: row.read_time,
+          publishedAt: row.published_at,
+          author: {
+            name: authorName || matchAuthor?.name || matchProfile?.fullName || '',
+            role: matchAuthor?.role || matchProfile?.job_title || rawAuthor.role || '',
+            avatarUrl: finalAvatarUrl,
+          },
+          tags: row.tags || [],
+        };
+      });
     } catch (err) {
       console.error('Unexpected error fetching blogs:', err);
       return [];
@@ -67,6 +85,17 @@ export const cmsService = {
 
       if (error || !data) return null;
 
+      const { data: dbAuthors } = await supabase.from('authors').select('*');
+      const { data: dbProfiles } = await supabase.from('profiles').select('*');
+
+      const rawAuthor = data.author || {};
+      const authorName = rawAuthor.name || rawAuthor.fullName || '';
+
+      const matchAuthor = dbAuthors?.find(a => (a.name && authorName && a.name.toLowerCase() === authorName.toLowerCase()) || (a.email && rawAuthor.email && a.email.toLowerCase() === rawAuthor.email.toLowerCase()));
+      const matchProfile = dbProfiles?.find(p => (p.fullName && authorName && p.fullName.toLowerCase() === authorName.toLowerCase()) || (p.email && rawAuthor.email && p.email.toLowerCase() === rawAuthor.email.toLowerCase()));
+
+      const finalAvatarUrl = matchAuthor?.avatar_url || matchProfile?.avatar_url || rawAuthor.avatarUrl || rawAuthor.avatar_url || '';
+
       return {
         id: data.id,
         slug: data.slug,
@@ -77,7 +106,11 @@ export const cmsService = {
         imageUrl: data.image_url,
         readTime: data.read_time,
         publishedAt: data.published_at,
-        author: data.author || { name: 'GM Digital Studio', role: 'Solutions Architect', avatarUrl: '' },
+        author: {
+          name: authorName || matchAuthor?.name || matchProfile?.fullName || '',
+          role: matchAuthor?.role || matchProfile?.job_title || rawAuthor.role || '',
+          avatarUrl: finalAvatarUrl,
+        },
         tags: data.tags || [],
       };
     } catch (err) {
@@ -385,7 +418,6 @@ export const cmsService = {
     }
   },
 
-  // ==================== AUTHORS MANAGEMENT ====================
   async getAuthors(): Promise<AuthorItem[]> {
     try {
       const { data, error } = await supabase
@@ -393,97 +425,82 @@ export const cmsService = {
         .select('*')
         .order('created_at', { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        // Fallback default presets if DB table empty
-        return [
-          { id: '1', name: '', email: '', role: 'Studio Administrator', avatar_url: '' },
-          { id: '2', name: 'Alex Morgan', email: 'alex@gmdigital.com', role: 'Principal Solutions Architect', avatar_url: '/src/assets/avatars/avatar-1.jpg' },
-          { id: '3', name: 'Marcus Vance', email: 'marcus@gmdigital.com', role: 'Head of UI/UX Design', avatar_url: '/src/assets/avatars/avatar-2.jpg' },
-          { id: '4', name: 'Sophia Chen', email: 'sophia@gmdigital.com', role: 'Lead Full-Stack Developer', avatar_url: '/src/assets/avatars/avatar-3.jpg' },
-        ];
+      if (error || !data) {
+        console.error('Supabase select authors error:', error?.message);
+        return [];
       }
 
       return data;
-    } catch {
-      return [
-        { id: '1', name: '', email: '', role: 'Studio Administrator', avatar_url: '' },
-      ];
+    } catch (err) {
+      console.error('Unexpected error fetching authors:', err);
+      return [];
     }
   },
 
   async saveAuthor(author: { id?: string; name: string; email?: string; role: string; avatar_url?: string; bio?: string; password?: string }): Promise<boolean> {
     try {
-      const isNew = !author.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(author.id);
+      const authorId = author.id || `author-${Date.now()}`;
+      
+      // 1. Direct DB Table Upsert into public.authors for instant persistence
+      const dbAuthorPayload = {
+        id: authorId,
+        name: author.name,
+        email: author.email || '',
+        role: author.role || 'Author',
+        avatar_url: author.avatar_url || '',
+        bio: author.bio || '',
+      };
 
-      if (isNew) {
-        if (!author.email || !author.password || author.password.length < 6) {
-          alert('Email and a password of at least 6 characters are required for new authors.');
-          return false;
-        }
+      try {
+        await supabase.from('authors').upsert(dbAuthorPayload);
+      } catch (dbErr) {
+        console.warn('Authors table upsert notice:', dbErr);
+      }
 
-        const { data, error } = await supabase.functions.invoke('manage-users', {
-          body: {
-            action: 'create-user',
-            email: author.email,
-            password: author.password,
-            role: 'author',
-            updates: {
-              name: author.name,
-              role: author.role || 'Author',
+      // 2. Update public.profiles only if a matching row exists (CMS authors may not have platform accounts)
+      if (author.email) {
+        const cleanEmail = author.email.trim().toLowerCase();
+        try {
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('email', cleanEmail)
+            .maybeSingle();
+
+          if (existingProfile) {
+            await supabase.from('profiles').update({
+              fullName: author.name,
+              job_title: author.role,
               avatar_url: author.avatar_url || '',
               bio: author.bio || '',
-            }
+            }).eq('email', cleanEmail);
           }
-        });
-
-        if (error || data?.error) {
-          console.error('Error creating author via Edge Function:', error || data?.error);
-          let errorMsg = 'Failed to create author.';
-          if (error) {
-            try {
-              const errBody = await (error as any).context.json();
-              errorMsg = errBody.error || error.message;
-            } catch {
-              errorMsg = error.message;
-            }
-          } else if (data?.error) {
-            errorMsg = data.error;
-          }
-          alert(errorMsg);
-          return false;
+        } catch (profErr) {
+          console.warn('Profiles update notice:', profErr);
         }
-      } else {
-        const { data, error } = await supabase.functions.invoke('manage-users', {
-          body: {
-            action: 'update-user',
-            userId: author.id,
-            email: author.email,
-            password: author.password || undefined,
-            role: 'author',
-            updates: {
-              name: author.name,
-              role: author.role,
-              avatar_url: author.avatar_url,
-              bio: author.bio,
-            }
-          }
-        });
+      }
 
-        if (error || data?.error) {
-          console.error('Error updating author via Edge Function:', error || data?.error);
-          let errorMsg = 'Failed to update author.';
-          if (error) {
-            try {
-              const errBody = await (error as any).context.json();
-              errorMsg = errBody.error || error.message;
-            } catch {
-              errorMsg = error.message;
+      // 3. Optional Edge Function sync attempt (never blocks UI if user is admin or not found in Auth)
+      if (author.email && author.password && author.password.length >= 6) {
+        try {
+          const isUuid = author.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(author.id);
+          await supabase.functions.invoke('manage-users', {
+            body: {
+              action: isUuid ? 'update-user' : 'create-user',
+              userId: isUuid ? author.id : undefined,
+              email: author.email,
+              password: author.password,
+              role: 'author',
+              updates: {
+                name: author.name,
+                role: author.role || 'Author',
+                avatar_url: author.avatar_url || '',
+                bio: author.bio || '',
+              }
             }
-          } else if (data?.error) {
-            errorMsg = data.error;
-          }
-          alert(errorMsg);
-          return false;
+          });
+        } catch (efErr) {
+          console.warn('Edge Function auth sync notice:', efErr);
         }
       }
 
@@ -525,21 +542,20 @@ export const cmsService = {
 
   async uploadAuthorAvatar(file: File): Promise<string | null> {
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `avatar-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const fileName = `author-${Date.now()}.${fileExt}`;
 
-      const { error } = await supabase.storage.from('invoices').upload(filePath, file, {
+      const { error } = await supabase.storage.from('avatars').upload(fileName, file, {
         cacheControl: '3600',
         upsert: true,
       });
 
       if (error) {
         console.error('Avatar upload error:', error);
-        return null;
+        throw error;
       }
 
-      const { data } = supabase.storage.from('invoices').getPublicUrl(filePath);
+      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
       return data?.publicUrl || null;
     } catch (err) {
       console.error('Unexpected error uploading avatar:', err);

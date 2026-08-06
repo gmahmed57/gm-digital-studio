@@ -205,14 +205,13 @@ export function AdminBlogEditor() {
     if (!file) return;
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop() || 'jpg';
       const fileName = `article-${Date.now()}.${fileExt}`;
-      const filePath = `article-covers/${fileName}`;
-      const { error: uploadError } = await supabase.storage.from('invoices').upload(filePath, file, { cacheControl: '3600', upsert: true });
+      const { error: uploadError } = await supabase.storage.from('article-covers').upload(fileName, file, { cacheControl: '3600', upsert: true });
       if (uploadError) {
         alert('Image upload failed: ' + uploadError.message);
       } else {
-        const { data: publicUrlData } = supabase.storage.from('invoices').getPublicUrl(filePath);
+        const { data: publicUrlData } = supabase.storage.from('article-covers').getPublicUrl(fileName);
         if (publicUrlData?.publicUrl) {
           setFormData((prev) => ({ ...prev, imageUrl: publicUrlData.publicUrl }));
         }

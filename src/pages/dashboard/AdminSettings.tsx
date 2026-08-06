@@ -140,15 +140,15 @@ export function AdminSettings() {
     setIsUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `settings/logo_${Date.now()}.${fileExt}`;
+      const fileName = `logo_${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('invoices')
-        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+        .from('logos')
+        .upload(fileName, file, { cacheControl: '3600', upsert: true });
 
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage.from('invoices').getPublicUrl(filePath);
+      const { data } = supabase.storage.from('logos').getPublicUrl(fileName);
       if (data && data.publicUrl) {
         setGeneralSettings((prev) => ({ ...prev, logoUrl: data.publicUrl }));
         await settingsService.updateLogoUrl(data.publicUrl);
@@ -169,34 +169,23 @@ export function AdminSettings() {
 
     setIsUploading(true);
     try {
+      let finalFaviconUrl = generalSettings.faviconUrl || '';
       const uploadedList: string[] = [];
       
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const filePath = `settings/favicons/${file.name}`;
+        const fileName = `favicon_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
         
         const { error: uploadError } = await supabase.storage
-          .from('invoices')
-          .upload(filePath, file, { cacheControl: '3600', upsert: true });
+          .from('favicons')
+          .upload(fileName, file, { cacheControl: '3600', upsert: true });
 
         if (uploadError) throw uploadError;
         uploadedList.push(file.name);
-      }
 
-      let finalFaviconUrl = generalSettings.faviconUrl || '';
-      const mainFavicon = Array.from(files).find((f) => f.name === 'favicon.ico');
-      if (mainFavicon) {
-        const { data } = supabase.storage.from('invoices').getPublicUrl('settings/favicons/favicon.ico');
+        const { data } = supabase.storage.from('favicons').getPublicUrl(fileName);
         if (data && data.publicUrl) {
           finalFaviconUrl = data.publicUrl;
-        }
-      } else {
-        const anyFav = Array.from(files).find((f) => f.name.includes('favicon'));
-        if (anyFav && !finalFaviconUrl) {
-          const { data } = supabase.storage.from('invoices').getPublicUrl(`settings/favicons/${anyFav.name}`);
-          if (data && data.publicUrl) {
-            finalFaviconUrl = data.publicUrl;
-          }
         }
       }
 

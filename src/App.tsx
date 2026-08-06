@@ -44,6 +44,7 @@ import { AdminCMS } from './pages/dashboard/AdminCMS';
 import { AdminBlogEditor } from './pages/dashboard/AdminBlogEditor';
 import { AdminPortfolioEditor } from './pages/dashboard/AdminPortfolioEditor';
 import { AdminSettings } from './pages/dashboard/AdminSettings';
+import { ProfileSettings } from './pages/dashboard/ProfileSettings';
 
 function App() {
   return (
@@ -96,6 +97,7 @@ function App() {
               <Route path="cms/portfolio/new" element={<AdminPortfolioEditor />} />
               <Route path="cms/portfolio/edit/:id" element={<AdminPortfolioEditor />} />
               <Route path="settings" element={<AdminSettings />} />
+              <Route path="profile" element={<ProfileSettings />} />
             </Route>
 
             {/* Author Protected Dashboard Routes */}
@@ -133,6 +135,8 @@ function App() {
               <Route path="invoices" element={<ClientInvoices />} />
               <Route path="files" element={<SharedFiles />} />
               <Route path="messages" element={<ClientMessages />} />
+              <Route path="profile" element={<ProfileSettings />} />
+              <Route path="settings" element={<ProfileSettings />} />
             </Route>
 
             {/* Fallback 404 Route */}

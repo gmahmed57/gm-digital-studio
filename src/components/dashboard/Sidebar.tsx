@@ -16,7 +16,8 @@ import {
   FileCheck2,
   LogOut,
   Wrench,
-  Bell
+  Bell,
+  User,
 } from 'lucide-react';
 import logo from '../../assets/icon-logo.png';
 import { settingsService } from '../../services/settingsService';
@@ -81,6 +82,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
     { label: 'Messages', path: '/admin/messages', icon: MessageSquare },
     { label: 'Analytics', path: '/admin/analytics', icon: BarChart2 },
     { label: 'Blog & CMS', path: '/admin/cms', icon: FileCheck2 },
+    { label: 'My Profile', path: '/admin/profile', icon: User },
     { label: 'Settings', path: '/admin/settings', icon: Settings },
   ];
 
@@ -96,6 +98,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
     { label: 'Invoices', path: '/client/invoices', icon: FileText },
     { label: 'Shared Files', path: '/client/files', icon: FolderOpen },
     { label: 'Messages', path: '/client/messages', icon: MessageSquare },
+    { label: 'My Profile', path: '/client/profile', icon: User },
   ];
 
   const navItems = isAdmin 
@@ -207,10 +210,10 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
                   <img
                     src={user.avatarUrl}
                     alt={user.fullName}
-                    className="w-8 h-8 rounded-xl object-cover border border-gray-200 dark:border-dark-border flex-shrink-0"
+                    className="w-8 h-8 rounded-full object-cover object-center border border-gray-200 dark:border-dark-border flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 font-bold flex items-center justify-center text-xs flex-shrink-0">
                     {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
                   </div>
                 )}

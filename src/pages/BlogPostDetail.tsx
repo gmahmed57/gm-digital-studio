@@ -12,10 +12,25 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import SEO from '../components/common/SEO';
-import { BLOG_POSTS } from '../constants/portfolioData';
 import { cmsService, type BlogComment } from '../services/cmsService';
 import type { BlogPost } from '../types/portfolio';
 import { BlogContentRenderer } from '../components/common/BlogContentRenderer';
+
+// Author avatar — initials derived purely from DB name, no hardcoded strings
+const AuthorAvatar: React.FC<{ src?: string; name?: string; className?: string }> = ({ src, name, className = 'w-12 h-12' }) => {
+  const [imgError, setImgError] = useState(false);
+  const initials = name
+    ? name.trim().split(/\s+/).map((n) => n[0]).slice(0, 2).join('').toUpperCase()
+    : '';
+  if (!src || imgError) {
+    return (
+      <div className={`${className} rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-lg border border-brand-500/50 flex-shrink-0`}>
+        {initials}
+      </div>
+    );
+  }
+  return <img src={src} alt={name || ''} onError={() => setImgError(true)} className={`${className} rounded-full object-cover border border-brand-500/50 flex-shrink-0`} />;
+};
 
 // TOC Heading item with id & display text from the live DOM
 interface TocHeading {
@@ -27,9 +42,8 @@ interface TocHeading {
 const BlogPostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
 
-  const [post, setPost] = useState<BlogPost>(
-    BLOG_POSTS.find((p) => p.id === id || p.slug === id) || BLOG_POSTS[0]
-  );
+  const [post, setPost] = useState<BlogPost | null>(null);
+  const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<BlogComment[]>([]);
   const [authorName, setAuthorName] = useState('');
   const [authorEmail, setAuthorEmail] = useState('');
@@ -42,19 +56,20 @@ const BlogPostDetail: React.FC = () => {
   const articleRef = useRef<HTMLDivElement>(null);
 
 
-  // Fetch live post + comments from Supabase
+  // Fetch live post + comments from Supabase — no static fallbacks
   useEffect(() => {
     const fetchLivePostAndComments = async () => {
       if (!id) return;
+      setLoading(true);
       const livePost = await cmsService.getBlogBySlug(id);
       if (livePost) {
         setPost(livePost);
         const liveComments = await cmsService.getCommentsForBlog(livePost.id);
         setComments(liveComments);
       } else {
-        const fallback = BLOG_POSTS.find((p) => p.id === id || p.slug === id) || BLOG_POSTS[0];
-        setPost(fallback);
+        setPost(null);
       }
+      setLoading(false);
     };
     fetchLivePostAndComments();
   }, [id]);
@@ -62,7 +77,7 @@ const BlogPostDetail: React.FC = () => {
   // ── DOM-based TOC extraction — runs AFTER article renders into DOM ──
   // Wait 3 render ticks to ensure BlogContentRenderer has mounted & injected IDs
   useEffect(() => {
-    if (!post.content) return;
+    if (!post?.content) return;
 
     const extractTocFromDom = () => {
       if (!articleRef.current) return;
@@ -85,7 +100,7 @@ const BlogPostDetail: React.FC = () => {
     // Small delay to ensure React has fully committed the DOM
     const timer = setTimeout(extractTocFromDom, 300);
     return () => clearTimeout(timer);
-  }, [post.content]);
+  }, [post?.content]);
 
   // ── Scroll-event scrollspy — reliably tracks active heading as user scrolls ──
   useEffect(() => {
@@ -140,6 +155,28 @@ const BlogPostDetail: React.FC = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center bg-white dark:bg-dark-bg">
+        <div className="flex flex-col items-center gap-4 text-gray-400 dark:text-gray-500">
+          <div className="w-10 h-10 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm font-semibold">Loading article…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!post) {
+    return (
+      <div className="w-full min-h-screen flex flex-col items-center justify-center gap-6 bg-white dark:bg-dark-bg">
+        <p className="text-gray-500 dark:text-gray-400 text-lg font-semibold">Article not found.</p>
+        <Link to="/blog" className="px-6 py-3 rounded-xl bg-brand-600 text-white font-bold text-sm hover:bg-brand-700 transition">
+          Back to Blog
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full bg-white dark:bg-dark-bg text-gray-900 dark:text-white font-sans">
       <SEO title={`${post.title} | Blog`} description={post.description} />
@@ -179,20 +216,10 @@ const BlogPostDetail: React.FC = () => {
 
           {/* Author Card */}
           <div className="flex items-center gap-3">
-            {post.author?.avatarUrl ? (
-              <img
-                src={post.author.avatarUrl}
-                alt={post.author.name}
-                className="w-12 h-12 rounded-full object-cover border border-brand-500/50"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-lg border border-brand-500/50">
-                {post.author?.name ? post.author.name.charAt(0).toUpperCase() : 'A'}
-              </div>
-            )}
+            <AuthorAvatar src={post.author?.avatarUrl} name={post.author?.name || ''} className="w-12 h-12" />
             <div>
-              <h4 className="text-sm font-bold text-white">{post.author?.name || 'Studio Admin'}</h4>
-              <span className="text-xs text-gray-400">{post.author?.role || 'Solutions Architect'}</span>
+              <h4 className="text-sm font-bold text-white">{post.author?.name}</h4>
+              <span className="text-xs text-gray-400">{post.author?.role}</span>
             </div>
           </div>
         </div>

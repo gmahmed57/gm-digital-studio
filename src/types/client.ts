@@ -27,4 +27,17 @@ export interface ClientItem {
   assignedPackage: string;
   allowedToolIds: string[]; // List of tool IDs enabled by Admin for this client
   requestedToolIds?: string[]; // List of tool IDs requested by client pending Admin approval
+  whatsapp?: string;
+  secondaryEmail?: string;
+  jobTitle?: string;
+  timezone?: string;
+  bio?: string;
+  socialLinks?: {
+    linkedin?: string;
+    twitter?: string;
+    instagram?: string;
+    facebook?: string;
+    github?: string;
+    website?: string;
+  };
 }

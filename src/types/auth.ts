@@ -8,6 +8,19 @@ export interface UserProfile {
   company?: string;
   avatarUrl?: string;
   phone?: string;
+  whatsapp?: string;
+  secondaryEmail?: string;
+  jobTitle?: string;
+  timezone?: string;
+  bio?: string;
+  socialLinks?: {
+    linkedin?: string;
+    twitter?: string;
+    instagram?: string;
+    facebook?: string;
+    github?: string;
+    website?: string;
+  };
   createdAt?: string;
 }
 
@@ -22,4 +35,5 @@ export interface AuthContextType extends AuthState {
   login: (email: string, password?: string) => Promise<void>;
   logout: () => Promise<void>;
   setRole: (role: UserRole) => void;
+  updateAuthUser: (updatedData: Partial<UserProfile>) => void;
 }

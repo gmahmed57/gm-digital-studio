@@ -105,11 +105,10 @@ export function AdminPortfolioEditor() {
 
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop() || 'jpg';
       const fileName = `portfolio-${Date.now()}.${fileExt}`;
-      const filePath = `portfolio-covers/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage.from('invoices').upload(filePath, file, {
+      const { error: uploadError } = await supabase.storage.from('logos').upload(fileName, file, {
         cacheControl: '3600',
         upsert: true,
       });
@@ -118,7 +117,7 @@ export function AdminPortfolioEditor() {
         console.error('Storage Upload Error:', uploadError);
         alert('Upload failed: ' + uploadError.message);
       } else {
-        const { data: publicUrlData } = supabase.storage.from('invoices').getPublicUrl(filePath);
+        const { data: publicUrlData } = supabase.storage.from('logos').getPublicUrl(fileName);
         if (publicUrlData?.publicUrl) {
           setFormData((prev) => ({
             ...prev,
@@ -140,17 +139,16 @@ export function AdminPortfolioEditor() {
     if (!file) return;
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop() || 'jpg';
       const fileName = `avatar-${Date.now()}.${fileExt}`;
-      const filePath = `testimonial-avatars/${fileName}`;
-      const { error: uploadError } = await supabase.storage.from('invoices').upload(filePath, file, {
+      const { error: uploadError } = await supabase.storage.from('testimonial-avatars').upload(fileName, file, {
         cacheControl: '3600',
         upsert: true,
       });
       if (uploadError) {
         alert('Avatar upload failed: ' + uploadError.message);
       } else {
-        const { data: publicUrlData } = supabase.storage.from('invoices').getPublicUrl(filePath);
+        const { data: publicUrlData } = supabase.storage.from('testimonial-avatars').getPublicUrl(fileName);
         if (publicUrlData?.publicUrl) {
           setFormData((prev) => ({ ...prev, quoteAvatarUrl: publicUrlData.publicUrl }));
         }

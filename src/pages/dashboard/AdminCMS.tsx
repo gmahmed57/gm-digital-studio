@@ -792,7 +792,8 @@ export function AdminCMS() {
       {/* AUTHOR EDIT / ADD MODAL */}
       {isAuthorModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-dark-surface w-full max-w-md rounded-2xl border border-gray-100 dark:border-dark-border shadow-2xl p-6 space-y-4">
+          <div className="bg-white dark:bg-dark-surface w-full max-w-md rounded-2xl border border-gray-100 dark:border-dark-border shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div className="p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border pb-3">
               <h3 className="font-bold text-gray-900 dark:text-white text-base">
                 {editingAuthor ? 'Edit Author Profile' : 'Add New Author Profile'}
@@ -852,6 +853,17 @@ export function AdminCMS() {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Bio / Description</label>
+                <textarea
+                  rows={3}
+                  placeholder="Short professional bio shown on author cards and blog posts..."
+                  value={authorForm.bio}
+                  onChange={(e) => setAuthorForm({ ...authorForm, bio: e.target.value })}
+                  className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500 resize-none text-gray-900 dark:text-white"
+                />
+              </div>
+
               {/* Avatar Upload */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Author Profile Avatar</label>
@@ -887,6 +899,7 @@ export function AdminCMS() {
                 </button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}

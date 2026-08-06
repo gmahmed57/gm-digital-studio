@@ -28,6 +28,12 @@ export const clientService = {
         assignedPackage: row.assignedPackage || row.assignedpackage || 'Standard Package',
         allowedToolIds: row.allowedToolIds || row.allowedtoolids || row.allowed_tool_ids || [],
         requestedToolIds: row.requestedToolIds || row.requestedtoolids || row.requested_tool_ids || [],
+        whatsapp: row.whatsapp || '',
+        secondaryEmail: row.secondary_email || row.secondaryEmail || '',
+        jobTitle: row.job_title || row.jobTitle || '',
+        timezone: row.timezone || '',
+        bio: row.bio || '',
+        socialLinks: row.social_links || row.socialLinks || {},
       }));
     }
     

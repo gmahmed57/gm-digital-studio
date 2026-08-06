@@ -269,10 +269,10 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
               <img
                 src={user.avatarUrl}
                 alt={user.fullName}
-                className="w-9 h-9 rounded-xl object-cover border border-gray-200 dark:border-dark-border shadow-xs"
+                className="w-9 h-9 rounded-full object-cover object-center border border-gray-200 dark:border-dark-border shadow-xs"
               />
             ) : (
-              <div className="w-9 h-9 rounded-xl bg-brand-500 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+              <div className="w-9 h-9 rounded-full bg-brand-500 text-white font-bold text-xs flex items-center justify-center shadow-xs">
                 {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
               </div>
             )}
@@ -294,17 +294,21 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
               </div>
 
               <div className="p-1 space-y-0.5">
-                <button
-                  onClick={() => {
-                    navigate(role === 'admin' ? '/admin/profile' : '/client/profile');
-                    setShowUserMenu(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface cursor-pointer text-left font-medium"
-                >
-                  <User className="w-4 h-4 text-gray-400" /> Account Settings
-                </button>
+                {role !== 'author' && (
+                  <button
+                    onClick={() => {
+                      navigate(role === 'admin' ? '/admin/profile' : '/client/profile');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface cursor-pointer text-left font-medium"
+                  >
+                    <User className="w-4 h-4 text-gray-400" /> Account Settings
+                  </button>
+                )}
 
-                <div className="border-t border-gray-100 dark:border-dark-border my-1" />
+                {role !== 'author' && (
+                  <div className="border-t border-gray-100 dark:border-dark-border my-1" />
+                )}
 
                 <button
                   onClick={handleLogout}

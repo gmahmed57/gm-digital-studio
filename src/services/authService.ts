@@ -2,8 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { UserProfile, UserRole } from '../types/auth';
 import { clientService } from './clientService';
-import avatar1 from '../assets/avatars/avatar-1.jpg';
-import avatar3 from '../assets/avatars/avatar-3.jpg';
 
 export const authService = {
   async signIn(email: string, password?: string): Promise<UserProfile> {
@@ -44,7 +42,7 @@ export const authService = {
           fullName: matchedClient.fullName,
           role: 'client',
           company: matchedClient.company,
-          avatarUrl: matchedClient.avatarUrl || avatar3,
+          avatarUrl: matchedClient.avatarUrl || '',
           phone: matchedClient.phone,
           createdAt: matchedClient.joinedDate,
         };
@@ -53,13 +51,44 @@ export const authService = {
       }
     }
 
+    let avatarUrl = data.user.user_metadata?.avatar_url || '';
+    let fullName = data.user.user_metadata?.full_name || 'Studio Admin';
+
+    try {
+      if (role === 'author') {
+        const { data: authorDb } = await supabase
+          .from('authors')
+          .select('name, avatar_url')
+          .eq('email', cleanEmail)
+          .maybeSingle();
+
+        if (authorDb) {
+          if (authorDb.name) fullName = authorDb.name;
+          if (authorDb.avatar_url) avatarUrl = authorDb.avatar_url;
+        }
+      } else {
+        const { data: profileDb } = await supabase
+          .from('profiles')
+          .select('fullName, avatar_url')
+          .eq('email', cleanEmail)
+          .maybeSingle();
+
+        if (profileDb) {
+          if (profileDb.fullName) fullName = profileDb.fullName;
+          if (profileDb.avatar_url) avatarUrl = profileDb.avatar_url;
+        }
+      }
+    } catch (err) {
+      console.warn('Profile fetch during signIn notice:', err);
+    }
+
     return {
       id: data.user.id,
       email: data.user.email || cleanEmail,
-      fullName: data.user.user_metadata?.full_name || 'Studio Admin',
+      fullName,
       role,
       company: data.user.user_metadata?.company,
-      avatarUrl: data.user.user_metadata?.avatar_url || avatar1,
+      avatarUrl,
     };
   },
 
