@@ -45,6 +45,7 @@ import { AdminBlogEditor } from './pages/dashboard/AdminBlogEditor';
 import { AdminPortfolioEditor } from './pages/dashboard/AdminPortfolioEditor';
 import { AdminSettings } from './pages/dashboard/AdminSettings';
 import { ProfileSettings } from './pages/dashboard/ProfileSettings';
+import { AdminEmailPage } from './pages/dashboard/AdminEmailPage';
 
 function App() {
   return (
@@ -89,6 +90,7 @@ function App() {
               <Route path="projects" element={<Projects />} />
               <Route path="projects/edit/:id" element={<ProjectEditPage />} />
               <Route path="invoices" element={<AdminInvoices />} />
+              <Route path="emails" element={<AdminEmailPage />} />
               <Route path="analytics" element={<AdminAnalytics />} />
               <Route path="messages" element={<AdminMessages />} />
               <Route path="cms" element={<AdminCMS />} />

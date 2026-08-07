@@ -1,28 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TESTIMONIALS } from '../../constants/homeData';
+import { cmsService, type TestimonialItem } from '../../services/cmsService';
+import { TESTIMONIALS as SEED_TESTIMONIALS } from '../../constants/homeData';
 import { Star, Quote, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const TestimonialsSection: React.FC = () => {
+  const [testimonials, setTestimonials] = useState<TestimonialItem[]>(SEED_TESTIMONIALS);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Auto-advance carousel every 4 seconds across all 6 testimonials
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % TESTIMONIALS.length);
-    }, 4000);
-    return () => clearInterval(timer);
+    cmsService.getTestimonials().then((data) => {
+      if (data && data.length > 0) {
+        setTestimonials(data);
+      }
+    });
   }, []);
 
+  // Auto-advance carousel every 4 seconds across all testimonials
+  useEffect(() => {
+    if (testimonials.length === 0) return;
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % testimonials.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [testimonials.length]);
+
   const handlePrev = () => {
-    setCurrentIndex((prev) => (prev === 0 ? TESTIMONIALS.length - 1 : prev - 1));
+    setCurrentIndex((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1));
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % TESTIMONIALS.length);
+    setCurrentIndex((prev) => (prev + 1) % testimonials.length);
   };
 
-  const activeTestimonial = TESTIMONIALS[currentIndex];
+  const activeTestimonial = testimonials[currentIndex] || testimonials[0];
 
   return (
     <section className="py-24 relative overflow-hidden bg-white dark:bg-dark-bg">
@@ -94,7 +105,7 @@ const TestimonialsSection: React.FC = () => {
 
             {/* Slide Indicators */}
             <div className="flex items-center space-x-2">
-              {TESTIMONIALS.map((_, idx) => (
+              {testimonials.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentIndex(idx)}

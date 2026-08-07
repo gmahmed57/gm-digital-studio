@@ -4,6 +4,7 @@ import { settingsService, type WebsiteSettings } from '../../services/settingsSe
 import { contactService, type ContactSubmission } from '../../services/contactService';
 import { clientService } from '../../services/clientService';
 import { notificationService } from '../../services/notificationService';
+import { sendToolRequestAlertEmail } from '../../services/resendService';
 import type { ClientItem, StudioTool } from '../../types/client';
 import SEO from '../../components/common/SEO';
 import { supabase } from '../../services/supabase';
@@ -34,7 +35,7 @@ export function AdminSettings() {
   // Tab 1: General Settings state
   const [generalSettings, setGeneralSettings] = useState<WebsiteSettings>({
     siteName: 'GM DIGITAL STUDIO',
-    contactEmail: 'info@gmstudio.com',
+    contactEmail: 'support@gmdigitalstudio.app',
     contactPhone: '+1 (555) 019-2834',
     contactAddress: '123 Creative Suite, Tech City',
     socialFacebook: '',
@@ -274,6 +275,13 @@ export function AdminSettings() {
       link: '/client/tools',
     });
 
+    sendToolRequestAlertEmail({
+      clientName: client.fullName,
+      clientEmail: client.email,
+      toolName,
+      status: 'approved',
+    }).catch((err) => console.warn('Tool approve email alert notice:', err));
+
     setFeedbackMsg(`Access to "${toolName}" granted to ${client.fullName}!`);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
@@ -297,6 +305,13 @@ export function AdminSettings() {
       targetEmail: client.email,
       link: '/client/tools',
     });
+
+    sendToolRequestAlertEmail({
+      clientName: client.fullName,
+      clientEmail: client.email,
+      toolName,
+      status: 'declined',
+    }).catch((err) => console.warn('Tool decline email alert notice:', err));
 
     setFeedbackMsg(`Access request to "${toolName}" declined for ${client.fullName}.`);
     setSaveSuccess(true);

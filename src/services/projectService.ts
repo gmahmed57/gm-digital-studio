@@ -63,6 +63,9 @@ export const projectService = {
           milestones: metrics.milestones,
           deliverables: row.deliverables || [],
           techStack: row.techStack || row.tech_stack || [],
+          feedbackRating: row.feedbackRating || row.feedback_rating || undefined,
+          feedbackComment: row.feedbackComment || row.feedback_comment || undefined,
+          feedbackSubmittedAt: row.feedbackSubmittedAt || row.feedback_submitted_at || undefined,
         };
       });
     }
@@ -138,12 +141,65 @@ export const projectService = {
       milestones: targetItem.milestones,
       deliverables: targetItem.deliverables,
       tech_stack: targetItem.techStack,
+      feedback_rating: targetItem.feedbackRating,
+      feedback_comment: targetItem.feedbackComment,
+      feedback_submitted_at: targetItem.feedbackSubmittedAt,
     };
 
     const { error } = await supabase.from('projects').upsert(dbPayload);
     if (error) throw error;
 
     return await projectService.getProjects();
+  },
+
+  // Submit Client Project Feedback & Star Rating
+  submitProjectFeedback: async (
+    projectId: string,
+    rating: number,
+    comment: string
+  ): Promise<ProjectItem | null> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+
+    const submittedAt = new Date().toISOString();
+    const existing = await projectService.getProjects();
+    const current = existing.find((p) => p.id === projectId);
+
+    if (!current) return null;
+
+    const updatedProject: ProjectItem = {
+      ...current,
+      feedbackRating: rating,
+      feedbackComment: comment,
+      feedbackSubmittedAt: submittedAt,
+    };
+
+    const dbPayload = {
+      id: updatedProject.id,
+      title: updatedProject.title,
+      description: updatedProject.description,
+      category: updatedProject.category,
+      client_id: updatedProject.clientId,
+      client_name: updatedProject.clientName,
+      client_company: updatedProject.clientCompany,
+      client_email: updatedProject.clientEmail,
+      status: updatedProject.status,
+      progress: updatedProject.progress,
+      budget: updatedProject.budget,
+      spent: updatedProject.spent,
+      start_date: updatedProject.startDate,
+      due_date: updatedProject.dueDate,
+      milestones: updatedProject.milestones,
+      deliverables: updatedProject.deliverables,
+      tech_stack: updatedProject.techStack,
+      feedback_rating: rating,
+      feedback_comment: comment,
+      feedback_submitted_at: submittedAt,
+    };
+
+    const { error } = await supabase.from('projects').upsert(dbPayload);
+    if (error) throw error;
+
+    return updatedProject;
   },
 
   // Update specific milestone status & comment

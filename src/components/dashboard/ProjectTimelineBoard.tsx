@@ -62,7 +62,7 @@ export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
   const progressPercent = milestones.length > 0 ? Math.round((approvedCount / milestones.length) * 100) : 0;
 
   return (
-    <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6 font-sans">
+    <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6 font-sans overflow-hidden">
       {/* Header & Overall Summary */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100 dark:border-dark-border">
         <div>
@@ -83,14 +83,17 @@ export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
 
       {/* Visual Step-by-Step Horizontal Progress Bar */}
       {milestones.length > 0 && (
-        <div className="hidden md:block py-2">
-          <div className="relative flex items-center justify-between">
+        <div className="hidden md:block py-2 overflow-hidden">
+          <div className="relative flex items-center justify-between px-4">
             {/* Connecting Line Background */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-100 dark:bg-dark-surface -z-0" />
+            <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-1 bg-gray-100 dark:bg-dark-surface -z-0" />
             <div
-              className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-brand-600 transition-all duration-500 -z-0"
+              className="absolute left-6 top-1/2 -translate-y-1/2 h-1 bg-brand-600 transition-all duration-500 -z-0"
               style={{
-                width: `${(approvedCount / (milestones.length > 1 ? milestones.length - 1 : 1)) * 100}%`,
+                width: milestones.length <= 1
+                  ? '0%'
+                  : `${Math.min(100, Math.round((approvedCount / milestones.length) * 100))}%`,
+                maxWidth: 'calc(100% - 48px)',
               }}
             />
 

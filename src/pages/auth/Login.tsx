@@ -1,27 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { settingsService, type WebsiteSettings } from '../../services/settingsService';
 import { Lock, Mail, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SEO from '../../components/common/SEO';
 import logo from '../../assets/icon-logo.png';
 
-// Clean headline slides
+// Clean portal feature slides
 const SLIDES = [
   {
     id: 1,
-    heading: 'Streamlining Products, Delivering Excellence.',
-    subtext: 'Track real-time engineering milestones, review sprint deliverables, and collaborate with senior studio engineers.',
+    heading: 'Interactive Project Milestones & Progress.',
+    subtext: 'Track real-time project phases, review sprint deliverables, approve milestones, and leave revision notes directly to our team.',
   },
   {
     id: 2,
-    heading: 'Real-Time Visibility & Code Deployments.',
-    subtext: 'Stay synchronized with live staging builds, automated QA checks, and direct technical updates.',
+    heading: 'Transparent Invoices & Instant Billing.',
+    subtext: 'View itemized invoice breakdowns, upload payment proof receipts, track payment status, and download official PDF statements.',
   },
   {
     id: 3,
-    heading: 'Transparent Financials & Instant Billing.',
-    subtext: 'Access detailed milestone breakdowns, invoice history, and instant PDF exports with zero friction.',
+    heading: 'Secure Shared Folders & Asset Storage.',
+    subtext: 'Access dedicated project files, brand guidelines, design assets, and shared deliverables in your encrypted workspace folder.',
+  },
+  {
+    id: 4,
+    heading: 'Studio Tools Catalog & Custom Add-ons.',
+    subtext: 'Explore agency digital tools, request premium add-ons, and streamline your business operations with one-click access.',
   },
 ];
 
@@ -37,6 +43,11 @@ export function Login() {
 
   // Active slide index for text rotation
   const [activeSlide, setActiveSlide] = useState(0);
+  const [settings, setSettings] = useState<WebsiteSettings | null>(null);
+
+  useEffect(() => {
+    settingsService.getSettings().then((s) => setSettings(s));
+  }, []);
 
   // Auto-rotate text slides
   useEffect(() => {
@@ -288,8 +299,8 @@ export function Login() {
             {/* Tightly Integrated Footer Support Link */}
             <div className="pt-3 border-t border-gray-100 dark:border-dark-border text-center text-xs text-gray-500 dark:text-gray-400">
               Need assistance? Contact support at{' '}
-              <a href="mailto:support@gmdigitalstudio.com" className="text-brand-600 dark:text-brand-400 font-semibold hover:underline">
-                support@gmdigitalstudio.com
+              <a href={`mailto:${settings?.contactEmail || 'support@gmdigitalstudio.app'}`} className="text-brand-600 dark:text-brand-400 font-semibold hover:underline">
+                {settings?.contactEmail || 'support@gmdigitalstudio.app'}
               </a>
             </div>
           </div>

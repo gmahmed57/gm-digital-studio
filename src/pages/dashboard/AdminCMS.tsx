@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { cmsService, type BlogComment, type AuthorItem } from '../../services/cmsService';
+import { cmsService, type BlogComment, type AuthorItem, type TestimonialItem } from '../../services/cmsService';
 import type { BlogPost, CaseStudy } from '../../types/portfolio';
 import SEO from '../../components/common/SEO';
 import { useAuth } from '../../context/AuthContext';
@@ -19,6 +19,8 @@ import {
   Upload,
   X,
   CornerDownRight,
+  Quote,
+  Star,
 } from 'lucide-react';
 
 export function AdminCMS() {
@@ -27,11 +29,11 @@ export function AdminCMS() {
   const basePath = role === 'author' ? '/author/cms' : '/admin/cms';
   const [searchParams, setSearchParams] = useSearchParams();
   const defaultTab = (searchParams.get('tab') as any) || 'blogs';
-  const [activeTab, setActiveTab] = useState<'blogs' | 'portfolio' | 'comments' | 'authors'>(
-    ['blogs', 'portfolio', 'comments', 'authors'].includes(defaultTab) ? defaultTab : 'blogs'
+  const [activeTab, setActiveTab] = useState<'blogs' | 'portfolio' | 'comments' | 'authors' | 'testimonials'>(
+    ['blogs', 'portfolio', 'comments', 'authors', 'testimonials'].includes(defaultTab) ? defaultTab : 'blogs'
   );
 
-  const handleTabChange = (tab: 'blogs' | 'portfolio' | 'comments' | 'authors') => {
+  const handleTabChange = (tab: 'blogs' | 'portfolio' | 'comments' | 'authors' | 'testimonials') => {
     setActiveTab(tab);
     setSearchParams({ tab });
   };
@@ -68,23 +70,102 @@ export function AdminCMS() {
     password: '',
   });
 
+  // Testimonials State
+  const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
+  const [testimonialSearch, setTestimonialSearch] = useState('');
+  const [isTestimonialModalOpen, setIsTestimonialModalOpen] = useState(false);
+  const [editingTestimonial, setEditingTestimonial] = useState<TestimonialItem | null>(null);
+
+  const [testimonialForm, setTestimonialForm] = useState<TestimonialItem>({
+    id: '',
+    name: '',
+    role: '',
+    company: '',
+    content: '',
+    rating: 5,
+    avatarUrl: '',
+    displayOrder: 0,
+  });
+
   // Loading & Action State
   const [isLoading, setIsLoading] = useState(true);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const loadAllData = async () => {
     setIsLoading(true);
-    const [fetchedBlogs, fetchedCaseStudies, fetchedComments, fetchedAuthors] = await Promise.all([
+    const [fetchedBlogs, fetchedCaseStudies, fetchedComments, fetchedAuthors, fetchedTestimonials] = await Promise.all([
       cmsService.getBlogs(),
       cmsService.getCaseStudies(),
       cmsService.getAllComments(),
       cmsService.getAuthors(),
+      cmsService.getTestimonials(),
     ]);
     setBlogs(fetchedBlogs);
     setCaseStudies(fetchedCaseStudies);
     setComments(fetchedComments);
     setAuthors(fetchedAuthors);
+    setTestimonials(fetchedTestimonials);
     setIsLoading(false);
+  };
+
+  const handleOpenTestimonialModal = (item?: TestimonialItem) => {
+    if (item) {
+      setEditingTestimonial(item);
+      setTestimonialForm(item);
+    } else {
+      setEditingTestimonial(null);
+      setTestimonialForm({
+        id: '',
+        name: '',
+        role: '',
+        company: '',
+        content: '',
+        rating: 5,
+        avatarUrl: '',
+        displayOrder: testimonials.length,
+      });
+    }
+    setIsTestimonialModalOpen(true);
+  };
+
+  const handleTestimonialAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingAvatar(true);
+    const publicUrl = await cmsService.uploadTestimonialAvatar(file);
+    setIsUploadingAvatar(false);
+    if (publicUrl) {
+      setTestimonialForm((prev) => ({ ...prev, avatarUrl: publicUrl }));
+    } else {
+      alert('Failed to upload testimonial avatar to testimonial-avatars storage bucket.');
+    }
+  };
+
+  const handleSaveTestimonial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testimonialForm.name || !testimonialForm.content) {
+      alert('Please fill out the client name and testimonial content.');
+      return;
+    }
+
+    const success = await cmsService.saveTestimonial(testimonialForm);
+    if (success) {
+      setIsTestimonialModalOpen(false);
+      triggerSuccess(editingTestimonial ? 'Client testimonial updated!' : 'New client testimonial added!');
+      loadAllData();
+    } else {
+      alert('Failed to save testimonial.');
+    }
+  };
+
+  const handleDeleteTestimonial = async (id: string) => {
+    if (confirm('Are you sure you want to delete this testimonial?')) {
+      const success = await cmsService.deleteTestimonial(id);
+      if (success) {
+        triggerSuccess('Testimonial deleted successfully.');
+        loadAllData();
+      }
+    }
   };
 
   useEffect(() => {
@@ -351,6 +432,18 @@ export function AdminCMS() {
               </span>
             )}
           </button>
+
+          <button
+            onClick={() => handleTabChange('testimonials')}
+            className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 ${
+              activeTab === 'testimonials'
+                ? 'bg-white dark:bg-dark-bg text-brand-600 dark:text-brand-500 shadow-xs'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <Quote className="w-4 h-4" />
+            Testimonials ({testimonials.length})
+          </button>
         </div>
       </div>
 
@@ -401,7 +494,7 @@ export function AdminCMS() {
 
           <div className="bg-white dark:bg-dark-surface rounded-xl border border-gray-100 dark:border-dark-border overflow-hidden">
             {isLoading ? (
-              <div className="p-8 text-center text-gray-500">Loading Blog CMS articles from Supabase...</div>
+              <div className="p-8 text-center text-gray-500">Loading articles...</div>
             ) : filteredBlogs.length === 0 ? (
               <div className="p-12 text-center text-gray-500 dark:text-gray-400">
                 No blog articles found. Click "Create Blog Article" to add one!
@@ -518,7 +611,7 @@ export function AdminCMS() {
 
           <div className="bg-white dark:bg-dark-surface rounded-xl border border-gray-100 dark:border-dark-border overflow-hidden">
             {isLoading ? (
-              <div className="p-8 text-center text-gray-500">Loading Case Studies from Supabase...</div>
+              <div className="p-8 text-center text-gray-500">Loading case studies...</div>
             ) : filteredCaseStudies.length === 0 ? (
               <div className="p-12 text-center text-gray-500 dark:text-gray-400">
                 No case studies found. Click "Add Case Study" to create one!
@@ -789,6 +882,116 @@ export function AdminCMS() {
         </div>
       )}
 
+      {/* TESTIMONIALS TAB */}
+      {activeTab === 'testimonials' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white dark:bg-dark-card p-4 rounded-2xl border border-gray-200 dark:border-dark-border shadow-xs">
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search testimonials by client name or company..."
+                value={testimonialSearch}
+                onChange={(e) => setTestimonialSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-xs text-gray-900 dark:text-white outline-none focus:ring-1 focus:ring-brand-500 font-medium"
+              />
+            </div>
+
+            <button
+              onClick={() => handleOpenTestimonialModal()}
+              className="w-full sm:w-auto px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Add Testimonial
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-dark-card rounded-2xl border border-gray-200 dark:border-dark-border shadow-xs overflow-hidden">
+            {isLoading ? (
+              <div className="p-8 text-center text-xs text-gray-400 italic">Loading testimonials...</div>
+            ) : testimonials.filter((t) =>
+                t.name.toLowerCase().includes(testimonialSearch.toLowerCase()) ||
+                t.company.toLowerCase().includes(testimonialSearch.toLowerCase()) ||
+                t.content.toLowerCase().includes(testimonialSearch.toLowerCase())
+              ).length === 0 ? (
+              <div className="p-12 text-center text-xs text-gray-400 space-y-2">
+                <Quote className="w-8 h-8 mx-auto text-gray-300" />
+                <p>No testimonials found.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/50 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                      <th className="py-3 px-4">Client</th>
+                      <th className="py-3 px-4">Role & Company</th>
+                      <th className="py-3 px-4">Rating</th>
+                      <th className="py-3 px-4">Testimonial Quote</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-dark-border text-xs">
+                    {testimonials
+                      .filter((t) =>
+                        t.name.toLowerCase().includes(testimonialSearch.toLowerCase()) ||
+                        t.company.toLowerCase().includes(testimonialSearch.toLowerCase()) ||
+                        t.content.toLowerCase().includes(testimonialSearch.toLowerCase())
+                      )
+                      .map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-dark-surface/50 transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={item.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                                alt={item.name}
+                                className="w-9 h-9 rounded-full object-cover border border-brand-500/30 flex-shrink-0"
+                              />
+                              <div>
+                                <p className="font-bold text-gray-900 dark:text-white">{item.name}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-gray-600 dark:text-gray-400">
+                            <p className="font-semibold text-gray-800 dark:text-gray-200">{item.role}</p>
+                            <p className="text-[11px] text-brand-600 dark:text-brand-400 font-bold">{item.company}</p>
+                          </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-0.5">
+                              {Array.from({ length: item.rating }).map((_, i) => (
+                                <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 max-w-sm">
+                            <p className="text-gray-700 dark:text-gray-300 italic line-clamp-2">"{item.content}"</p>
+                          </td>
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleOpenTestimonialModal(item)}
+                                className="p-1.5 rounded-lg text-gray-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors cursor-pointer"
+                                title="Edit Testimonial"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTestimonial(item.id)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                                title="Delete Testimonial"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* AUTHOR EDIT / ADD MODAL */}
       {isAuthorModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -812,19 +1015,19 @@ export function AdminCMS() {
                   placeholder="e.g. Alex Morgan"
                   value={authorForm.name}
                   onChange={(e) => setAuthorForm({ ...authorForm, name: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500"
+                  className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500 font-medium text-gray-900 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Author Email *</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Email Address *</label>
                 <input
                   type="email"
                   required
-                  placeholder="alex@gmdigital.com"
+                  placeholder="alex@gmdigitalstudio.com"
                   value={authorForm.email}
                   onChange={(e) => setAuthorForm({ ...authorForm, email: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500 text-gray-900 dark:text-white"
+                  className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500 font-medium text-gray-900 dark:text-white"
                 />
               </div>
 
@@ -843,7 +1046,7 @@ export function AdminCMS() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Role / Job Title</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Role / Designation</label>
                 <input
                   type="text"
                   placeholder="Principal Solutions Architect"
@@ -899,6 +1102,123 @@ export function AdminCMS() {
                 </button>
               </div>
             </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TESTIMONIAL EDIT / ADD MODAL */}
+      {isTestimonialModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-dark-surface w-full max-w-lg rounded-2xl border border-gray-100 dark:border-dark-border shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border pb-3">
+                <h3 className="font-bold text-gray-900 dark:text-white text-base">
+                  {editingTestimonial ? 'Edit Client Testimonial' : 'Add New Client Testimonial'}
+                </h3>
+                <button onClick={() => setIsTestimonialModalOpen(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveTestimonial} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Client Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Sarah Jenkins"
+                    value={testimonialForm.name}
+                    onChange={(e) => setTestimonialForm({ ...testimonialForm, name: e.target.value })}
+                    className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500 font-medium text-gray-900 dark:text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Job Title / Role</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Head of Product"
+                      value={testimonialForm.role}
+                      onChange={(e) => setTestimonialForm({ ...testimonialForm, role: e.target.value })}
+                      className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Vanguard Tech"
+                      value={testimonialForm.company}
+                      onChange={(e) => setTestimonialForm({ ...testimonialForm, company: e.target.value })}
+                      className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Star Rating (1 - 5 Stars)</label>
+                  <select
+                    value={testimonialForm.rating}
+                    onChange={(e) => setTestimonialForm({ ...testimonialForm, rating: parseInt(e.target.value, 10) })}
+                    className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500 text-gray-900 dark:text-white font-bold cursor-pointer"
+                  >
+                    <option value={5}>5 Stars (★★★★★)</option>
+                    <option value={4}>4 Stars (★★★★☆)</option>
+                    <option value={3}>3 Stars (★★★☆☆)</option>
+                    <option value={2}>2 Stars (★★☆☆☆)</option>
+                    <option value={1}>1 Star (★☆☆☆☆)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Testimonial Quote Content *</label>
+                  <textarea
+                    required
+                    rows={4}
+                    placeholder="Write the client testimonial quote..."
+                    value={testimonialForm.content}
+                    onChange={(e) => setTestimonialForm({ ...testimonialForm, content: e.target.value })}
+                    className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500 leading-relaxed text-gray-900 dark:text-white"
+                  />
+                </div>
+
+                {/* Avatar Photo Upload */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Client Avatar Photo</label>
+                  <div className="flex items-center gap-3">
+                    <label className="cursor-pointer px-3.5 py-2 bg-gray-900 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5">
+                      <Upload className="w-3.5 h-3.5" />
+                      {isUploadingAvatar ? 'Uploading...' : 'Upload Photo'}
+                      <input type="file" accept="image/*" onChange={handleTestimonialAvatarUpload} className="hidden" />
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Image URL..."
+                      value={testimonialForm.avatarUrl}
+                      onChange={(e) => setTestimonialForm({ ...testimonialForm, avatarUrl: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-dark-border">
+                  <button
+                    type="button"
+                    onClick={() => setIsTestimonialModalOpen(false)}
+                    className="px-4 py-2 text-xs font-semibold text-gray-500 hover:text-gray-800 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs rounded-xl shadow-xs cursor-pointer"
+                  >
+                    Save Testimonial
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

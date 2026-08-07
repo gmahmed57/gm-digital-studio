@@ -41,4 +41,7 @@ export interface ProjectItem {
   milestones: MilestoneItem[];
   deliverables: string[];
   techStack: string[];
+  feedbackRating?: number; // 1 to 5
+  feedbackComment?: string;
+  feedbackSubmittedAt?: string;
 }

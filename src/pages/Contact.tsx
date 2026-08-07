@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,6 +7,7 @@ import { Mail, Phone, MapPin, Clock, Send, CheckCircle2, AlertCircle, ChevronDow
 import { sendContactEmail } from '../services/resendService';
 import { contactService } from '../services/contactService';
 import { notificationService } from '../services/notificationService';
+import { settingsService, type WebsiteSettings } from '../services/settingsService';
 import contactBgVideo from '../assets/videos/contact-bg.mp4';
 import contactGif from '../assets/animation/contact us.gif';
 import TrustedLogosBar from '../components/home/TrustedLogosBar';
@@ -47,6 +48,11 @@ const Contact: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [settings, setSettings] = useState<WebsiteSettings | null>(null);
+
+  useEffect(() => {
+    settingsService.getSettings().then((data) => setSettings(data));
+  }, []);
 
   const {
     register,
@@ -171,8 +177,8 @@ const Contact: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-0.5">Email Us</h4>
-                    <a href="mailto:contact@gmdigitalstudio.com" className="text-xs text-gray-900 dark:text-white font-bold hover:text-brand-600 transition-colors break-all">
-                      contact@gmdigitalstudio.com
+                    <a href={`mailto:${settings?.contactEmail || 'support@gmdigitalstudio.app'}`} className="text-xs text-gray-900 dark:text-white font-bold hover:text-brand-600 transition-colors break-all">
+                      {settings?.contactEmail || 'support@gmdigitalstudio.app'}
                     </a>
                   </div>
                 </div>
@@ -183,7 +189,7 @@ const Contact: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-0.5">Call Us</h4>
-                    <p className="text-xs text-gray-900 dark:text-white font-bold">+1 (800) 555-0199</p>
+                    <p className="text-xs text-gray-900 dark:text-white font-bold">{settings?.contactPhone || '+1 (555) 019-2834'}</p>
                   </div>
                 </div>
 
@@ -193,7 +199,7 @@ const Contact: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-0.5">Studio Location</h4>
-                    <p className="text-xs text-gray-900 dark:text-white font-bold leading-tight">100 Tech Plaza, Suite 400<br />San Francisco, CA</p>
+                    <p className="text-xs text-gray-900 dark:text-white font-bold leading-tight">{settings?.contactAddress || '123 Creative Suite, Tech City'}</p>
                   </div>
                 </div>
 

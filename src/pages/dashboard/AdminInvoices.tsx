@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { invoiceService } from '../../services/invoiceService';
 import { clientService } from '../../services/clientService';
 import { notificationService } from '../../services/notificationService';
+import { sendInvoiceAlertEmail } from '../../services/resendService';
 import { downloadInvoicePDF } from '../../utils/pdfGenerator';
 import type { InvoiceItem, InvoiceStatus, InvoiceLineItem } from '../../types/invoice';
 import type { ClientItem } from '../../types/client';
@@ -126,6 +127,15 @@ export function AdminInvoices() {
       notes: customNotes,
     });
 
+    sendInvoiceAlertEmail({
+      invoiceNumber: reviewingRequest.invoiceNumber,
+      clientName: reviewingRequest.clientName,
+      clientEmail: reviewingRequest.clientEmail,
+      amount: reviewingRequest.amount,
+      dueDate: customDueDate,
+      status: 'Pending',
+    }).catch((err) => console.warn('Invoice approve email notice:', err));
+
     setInvoices(updated);
     setReviewingRequest(null);
     setRequestRejectMode(false);
@@ -136,6 +146,16 @@ export function AdminInvoices() {
     if (!reviewingRequest || !requestRejectReason.trim()) return;
 
     const updated = await invoiceService.rejectInvoiceRequest(reviewingRequest.id, requestRejectReason.trim());
+
+    sendInvoiceAlertEmail({
+      invoiceNumber: reviewingRequest.invoiceNumber,
+      clientName: reviewingRequest.clientName,
+      clientEmail: reviewingRequest.clientEmail,
+      amount: reviewingRequest.amount,
+      status: 'Request Rejected',
+      rejectionReason: requestRejectReason.trim(),
+    }).catch((err) => console.warn('Invoice reject email notice:', err));
+
     setInvoices(updated);
     setReviewingRequest(null);
     setRequestRejectMode(false);
@@ -247,12 +267,33 @@ export function AdminInvoices() {
         targetEmail: matchedClient.email,
         link: '/client/invoices',
       });
+
+      sendInvoiceAlertEmail({
+        invoiceNumber: created[0]?.invoiceNumber || 'INV-NEW',
+        clientName: matchedClient.fullName || matchedClient.company || 'Client User',
+        clientEmail: matchedClient.email,
+        amount: formattedAmountStr,
+        dueDate,
+        status: 'Pending',
+      }).catch((err) => console.warn('Invoice issued email notice:', err));
     }
   };
 
   const handleStatusChange = async (id: string, newStatus: InvoiceStatus) => {
+    const targetInv = invoices.find((i) => i.id === id);
     const updated = await invoiceService.updateInvoiceStatus(id, newStatus);
     setInvoices(updated);
+
+    if (targetInv && newStatus === 'Paid') {
+      sendInvoiceAlertEmail({
+        invoiceNumber: targetInv.invoiceNumber,
+        clientName: targetInv.clientName,
+        clientEmail: targetInv.clientEmail,
+        amount: targetInv.amount,
+        status: 'Paid',
+      }).catch((err) => console.warn('Invoice paid email notice:', err));
+    }
+
     if (inspectingInvoice && inspectingInvoice.id === id) {
       setInspectingInvoice(null);
     }

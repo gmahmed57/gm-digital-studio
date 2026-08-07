@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import type { BlogPost, CaseStudy } from '../types/portfolio';
 import { CASE_STUDIES } from '../constants/portfolioData';
+import { TESTIMONIALS } from '../constants/homeData';
 
 export interface AuthorItem {
   id: string;
@@ -10,6 +11,18 @@ export interface AuthorItem {
   avatar_url?: string;
   bio?: string;
   created_at?: string;
+}
+
+export interface TestimonialItem {
+  id: string;
+  name: string;
+  role: string;
+  company: string;
+  content: string;
+  rating: number;
+  avatarUrl: string;
+  displayOrder?: number;
+  createdAt?: string;
 }
 
 export interface BlogComment {
@@ -559,6 +572,100 @@ export const cmsService = {
       return data?.publicUrl || null;
     } catch (err) {
       console.error('Unexpected error uploading avatar:', err);
+      return null;
+    }
+  },
+
+  // ==================== TESTIMONIALS ====================
+  async getTestimonials(): Promise<TestimonialItem[]> {
+    try {
+      const { data, error } = await supabase
+        .from('testimonials')
+        .select('*')
+        .order('display_order', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        return data.map((row) => ({
+          id: row.id,
+          name: row.name,
+          role: row.role || '',
+          company: row.company || '',
+          content: row.content,
+          rating: row.rating || 5,
+          avatarUrl: row.avatar_url || '',
+          displayOrder: row.display_order || 0,
+          createdAt: row.created_at,
+        }));
+      }
+    } catch (err) {
+      console.warn('[CMS Service] Testimonials fetch notice:', err);
+    }
+    // Fallback to initial seed array
+    return TESTIMONIALS.map((item, idx) => ({
+      ...item,
+      displayOrder: idx,
+    }));
+  },
+
+  async saveTestimonial(item: Partial<TestimonialItem>): Promise<boolean> {
+    try {
+      const id = item.id || `testi-${Date.now()}`;
+      const payload = {
+        id,
+        name: item.name,
+        role: item.role || '',
+        company: item.company || '',
+        content: item.content,
+        rating: item.rating || 5,
+        avatar_url: item.avatarUrl || '',
+        display_order: item.displayOrder || 0,
+      };
+
+      const { error } = await supabase.from('testimonials').upsert(payload);
+      if (error) {
+        console.error('Error saving testimonial:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('Unexpected error saving testimonial:', err);
+      return false;
+    }
+  },
+
+  async deleteTestimonial(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.from('testimonials').delete().eq('id', id);
+      if (error) {
+        console.error('Error deleting testimonial:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('Unexpected error deleting testimonial:', err);
+      return false;
+    }
+  },
+
+  async uploadTestimonialAvatar(file: File): Promise<string | null> {
+    try {
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const fileName = `testimonial-${Date.now()}.${fileExt}`;
+
+      const { error } = await supabase.storage.from('testimonial-avatars').upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+      if (error) {
+        console.error('Testimonial avatar upload error:', error);
+        throw error;
+      }
+
+      const { data } = supabase.storage.from('testimonial-avatars').getPublicUrl(fileName);
+      return data?.publicUrl || null;
+    } catch (err) {
+      console.error('Unexpected error uploading testimonial avatar:', err);
       return null;
     }
   },

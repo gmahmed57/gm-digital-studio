@@ -8,7 +8,7 @@ export function DashboardLayout() {
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-dark-bg text-gray-900 dark:text-white font-sans flex">
+    <div className="min-h-screen bg-gray-100 dark:bg-dark-bg text-gray-900 dark:text-white font-sans flex overflow-x-hidden">
       {/* Sidebar Navigation */}
       <Sidebar
         isCollapsed={isCollapsed}
@@ -19,7 +19,7 @@ export function DashboardLayout() {
 
       {/* Main Content Workspace Wrapper */}
       <div
-        className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${
+        className={`flex-1 flex flex-col min-h-screen min-w-0 overflow-x-hidden transition-all duration-300 ${
           isCollapsed ? 'lg:ml-20' : 'lg:ml-64'
         }`}
       >

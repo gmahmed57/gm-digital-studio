@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { clientService } from '../../services/clientService';
 import { notificationService } from '../../services/notificationService';
+import { sendWelcomeClientEmail, sendToolRequestAlertEmail } from '../../services/resendService';
 import type { ClientItem } from '../../types/client';
 import { folderService, type SharedFolder } from '../../services/folderService';
 import { MASTER_STUDIO_TOOLS } from '../../constants/toolsData';
@@ -106,6 +107,7 @@ export function ClientEditPage() {
           targetEmail: email,
           link: '/client/tools',
         });
+        sendToolRequestAlertEmail({ clientName: fullName, clientEmail: email, toolName, status: 'approved' }).catch((e) => console.warn(e));
       }
     } else {
       setRequestedToolIds(requestedToolIds.filter((t) => t !== toolId));
@@ -119,6 +121,7 @@ export function ClientEditPage() {
           targetEmail: email,
           link: '/client/tools',
         });
+        sendToolRequestAlertEmail({ clientName: fullName, clientEmail: email, toolName, status: 'declined' }).catch((e) => console.warn(e));
       }
     }
   };
@@ -145,6 +148,17 @@ export function ClientEditPage() {
         allowedToolIds,
         requestedToolIds: isEditing ? requestedToolIds : [],
       });
+
+      if (!isEditing) {
+        sendWelcomeClientEmail({
+          fullName,
+          email,
+          company,
+          assignedPackage,
+          portalPassword,
+        }).catch((emailErr) => console.warn('Welcome email dispatch notice:', emailErr));
+      }
+
       navigate('/admin/clients');
     } catch (err: any) {
       setFormError(err.message || 'Failed to provision client account.');

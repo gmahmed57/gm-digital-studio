@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { notificationService, formatNotificationTime } from '../../services/notificationService';
@@ -11,7 +11,6 @@ interface HeaderProps {
 }
 
 export function Header({ onToggleMobileSidebar }: HeaderProps) {
-  const location = useLocation();
   const navigate = useNavigate();
   const { user, role, logout } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -89,32 +88,32 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
     navigate('/login');
   };
 
-  const getBreadcrumb = () => {
-    const path = location.pathname;
-    if (path.includes('/notifications')) return 'Notifications & Activity Log';
-    if (path.includes('/admin/clients/edit')) return 'Client Account Provisioning';
-    if (path.includes('/admin/clients')) return 'Client Directory & Accounts';
-    if (path.includes('/admin/projects/edit')) return 'Project Workspace Builder';
-    if (path.includes('/admin/projects')) return 'Project Directory & Roadmap';
-    if (path.includes('/admin/invoices')) return 'Invoices & Billing Telemetry';
-    if (path.includes('/admin/analytics')) return 'Platform Performance Analytics';
-    if (path.includes('/admin/tools')) return 'Studio Tools Access Engine';
-    if (path.includes('/client/projects/view')) return 'Client Project Deliverables';
-    if (path.includes('/client/projects')) return 'Client Assigned Workspace';
-    if (path.includes('/client/invoices')) return 'Client Invoices & Statements';
-    if (path.includes('/client/tools')) return 'Client Granted Tools Suite';
-    if (path.includes('/client/profile')) return 'Account Profile & Security';
-    if (path.includes('/admin')) return 'Executive Studio Control Center';
-    if (path.includes('/client')) return 'Client Operational Portal';
-    return 'GM Digital Studio Portal';
+  const getPortalHeaderInfo = () => {
+    if (role === 'admin') {
+      return {
+        title: 'Executive Control Workspace',
+        tagline: 'Real-time studio operations, analytics & client telemetry',
+      };
+    }
+    if (role === 'author') {
+      return {
+        title: 'Editorial Content Workspace',
+        tagline: 'Articles, media assets & blog publishing management',
+      };
+    }
+    return {
+      title: 'Client Deliverables Workspace',
+      tagline: 'Active projects, milestones & direct studio telemetry',
+    };
   };
 
+  const headerInfo = getPortalHeaderInfo();
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border-b border-gray-200 dark:border-dark-border px-4 md:px-6 flex items-center justify-between font-sans shadow-xs transition-colors">
       
-      {/* Left: Mobile Sidebar Trigger & Page Title */}
+      {/* Left: Mobile Sidebar Trigger & Executive Workspace Header */}
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleMobileSidebar}
@@ -125,11 +124,11 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
         </button>
 
         <div>
-          <h1 className="text-lg md:text-xl font-heading font-bold text-gray-900 dark:text-white leading-tight">
-            {getBreadcrumb()}
+          <h1 className="text-base md:text-lg font-heading font-extrabold text-gray-900 dark:text-white leading-tight">
+            {headerInfo.title}
           </h1>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 hidden sm:block">
-            GM Digital Studio Platform • Live Operational Workspace
+          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 hidden sm:block">
+            {headerInfo.tagline}
           </p>
         </div>
       </div>

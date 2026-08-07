@@ -91,7 +91,7 @@ export function ClientOverview() {
         <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-heading font-extrabold text-gray-900 dark:text-white">
-              Welcome back, {user?.fullName || 'Valued Client'}
+              Welcome back, <span className="text-brand-500 dark:text-brand-400 font-extrabold">{user?.fullName || 'Valued Client'}</span>
             </h1>
             <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-2xl leading-relaxed">
               Here is your active engineering overview, sprint milestone progress, and billing history for{' '}

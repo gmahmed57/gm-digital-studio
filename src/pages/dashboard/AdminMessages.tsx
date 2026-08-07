@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { clientService } from '../../services/clientService';
 import { messageService, type Message } from '../../services/messageService';
 import type { ClientItem } from '../../types/client';
-import { MessageSquare, Search, Send, User, Trash2 } from 'lucide-react';
+import { MessageSquare, Search, Send, User, Trash2, Mail } from 'lucide-react';
 import SEO from '../../components/common/SEO';
+import ComposeEmailModal from '../../components/dashboard/ComposeEmailModal';
 
 export function AdminMessages() {
   const [clients, setClients] = useState<ClientItem[]>([]);
@@ -15,6 +16,9 @@ export function AdminMessages() {
   const [isSending, setIsSending] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [lastMessageTimes, setLastMessageTimes] = useState<Record<string, number>>({});
+
+  // Compose Email Modal state
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -136,10 +140,19 @@ export function AdminMessages() {
         
         {/* Left Sidebar: Contact List */}
         <div className="w-full md:w-80 flex-shrink-0 flex flex-col bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl overflow-hidden shadow-xs">
-          <div className="p-5 border-b border-gray-100 dark:border-dark-border">
-            <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-white mb-4">
-              Client Inbox
-            </h2>
+          <div className="p-5 border-b border-gray-100 dark:border-dark-border space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-white">
+                Client Inbox
+              </h2>
+              <button
+                onClick={() => setIsComposeOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title="Compose Custom Email from support@gmdigitalstudio.app"
+              >
+                <Mail className="w-3.5 h-3.5" /> Compose Email
+              </button>
+            </div>
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3.5 top-2.5 text-gray-400" />
               <input
@@ -285,6 +298,13 @@ export function AdminMessages() {
           )}
         </div>
       </div>
+
+      <ComposeEmailModal
+        isOpen={isComposeOpen}
+        onClose={() => setIsComposeOpen(false)}
+        initialRecipientEmail={selectedClient?.email}
+        initialRecipientName={selectedClient?.fullName}
+      />
     </>
   );
 }

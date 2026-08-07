@@ -18,6 +18,7 @@ import {
   Wrench,
   Bell,
   User,
+  Mail,
 } from 'lucide-react';
 import logo from '../../assets/icon-logo.png';
 import { settingsService } from '../../services/settingsService';
@@ -79,6 +80,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
     { label: 'Clients', path: '/admin/clients', icon: Users },
     { label: 'Projects', path: '/admin/projects', icon: FolderKanban },
     { label: 'Invoices', path: '/admin/invoices', icon: FileText },
+    { label: 'Email Studio', path: '/admin/emails', icon: Mail },
     { label: 'Messages', path: '/admin/messages', icon: MessageSquare },
     { label: 'Analytics', path: '/admin/analytics', icon: BarChart2 },
     { label: 'Blog & CMS', path: '/admin/cms', icon: FileCheck2 },
@@ -125,9 +127,9 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Top Header & Logo */}
-        <div>
-          <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-dark-border">
+        {/* Top Header & Navigation Links */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-dark-border flex-shrink-0">
             <Link to={isAdmin ? '/admin/dashboard' : isAuthor ? '/author/cms' : '/client/dashboard'} className="flex items-center gap-3">
               <img src={logoUrl || logo} alt="Logo" className="w-8 h-8 object-contain" />
               {!isCollapsed && (
@@ -162,8 +164,8 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
             </button>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="p-3 space-y-1">
+          {/* Navigation Links (Independent Scrollbar) */}
+          <nav className="p-3 space-y-1 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -201,8 +203,8 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
           </nav>
         </div>
 
-        {/* User Card & Logout Footer */}
-        <div className="p-3 border-t border-gray-200 dark:border-dark-border space-y-2">
+        {/* User Card & Logout Footer (Pinned Bottom) */}
+        <div className="p-3 border-t border-gray-200 dark:border-dark-border space-y-2 flex-shrink-0 bg-white dark:bg-dark-card">
           {!isCollapsed && (
             <div className="p-3 rounded-2xl bg-gray-50 dark:bg-dark-surface border border-gray-100 dark:border-dark-border flex items-center justify-between">
               <div className="flex items-center gap-2.5 overflow-hidden">

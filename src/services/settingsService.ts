@@ -24,7 +24,7 @@ const TOOLS_KEY = 'gm_studio_tools_cache';
 
 const DEFAULT_SETTINGS: WebsiteSettings = {
   siteName: 'GM DIGITAL STUDIO',
-  contactEmail: 'info@gmstudio.com',
+  contactEmail: 'support@gmdigitalstudio.app',
   contactPhone: '+1 (555) 019-2834',
   contactAddress: '123 Creative Suite, Tech City',
   socialFacebook: 'https://facebook.com/gmstudio',

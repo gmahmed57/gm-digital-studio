@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { projectService } from '../../services/projectService';
 import { clientService } from '../../services/clientService';
 import { notificationService } from '../../services/notificationService';
+import { sendProjectStatusAlertEmail } from '../../services/resendService';
 import type { ProjectCategory, ProjectStatus, MilestoneItem, MilestoneStatus } from '../../types/project';
 import type { ClientItem } from '../../types/client';
 import {
@@ -18,6 +19,7 @@ import {
   Package,
   MessageSquare,
   Send,
+  Star,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 
@@ -34,6 +36,9 @@ export function ProjectEditPage() {
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState(new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]);
   const [deliverablesText, setDeliverablesText] = useState('');
+  const [feedbackRating, setFeedbackRating] = useState<number | undefined>(undefined);
+  const [feedbackComment, setFeedbackComment] = useState<string | undefined>(undefined);
+  const [feedbackSubmittedAt, setFeedbackSubmittedAt] = useState<string | undefined>(undefined);
 
   // Client Selection
   const [clientsList, setClientsList] = useState<ClientItem[]>([]);
@@ -61,6 +66,9 @@ export function ProjectEditPage() {
           setSelectedClientId(found.clientId);
           setMilestones(found.milestones || []);
           setDeliverablesText((found.deliverables || []).join(', '));
+          setFeedbackRating(found.feedbackRating);
+          setFeedbackComment(found.feedbackComment);
+          setFeedbackSubmittedAt(found.feedbackSubmittedAt);
         }
       } else if (allClients.length > 0) {
         setSelectedClientId(allClients[0].id);
@@ -150,6 +158,14 @@ export function ProjectEditPage() {
       targetEmail: targetEmail,
       link: `/client/projects/view/${targetProjectId}`,
     });
+
+    sendProjectStatusAlertEmail({
+      projectTitle: title,
+      clientName: matchedClient?.fullName || matchedClient?.company || 'Valued Client',
+      clientEmail: targetEmail,
+      status: status,
+      notes: `Project status updated to ${status.toUpperCase()}. Overall progress: ${computedProgress}%.`,
+    }).catch((err) => console.warn('Project update email notice:', err));
 
     navigate('/admin/projects');
   };
@@ -472,6 +488,34 @@ export function ProjectEditPage() {
               </div>
 
             </div>
+
+            {/* Submitted Client Feedback & Star Rating Card */}
+            {feedbackRating ? (
+              <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-200 dark:border-amber-900/40 space-y-3">
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> Client Star Rating & Review
+                </h3>
+                <div className="flex items-center gap-1 text-amber-500">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-4 h-4 ${star <= feedbackRating ? 'fill-amber-500 text-amber-500' : 'text-gray-300 dark:text-gray-700'}`}
+                    />
+                  ))}
+                  <span className="ml-2 text-xs font-bold text-gray-900 dark:text-white">{feedbackRating}/5 Stars</span>
+                </div>
+                {feedbackComment && (
+                  <p className="text-xs text-gray-700 dark:text-gray-300 italic p-3 rounded-xl bg-white/70 dark:bg-dark-card border border-amber-200/50 dark:border-amber-900/20">
+                    "{feedbackComment}"
+                  </p>
+                )}
+                {feedbackSubmittedAt && (
+                  <div className="text-[10px] text-gray-400">
+                    Submitted on: {new Date(feedbackSubmittedAt).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
 
         </form>

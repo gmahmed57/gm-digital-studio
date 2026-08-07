@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { invoiceService } from '../../services/invoiceService';
 import { projectService } from '../../services/projectService';
+import { sendInvoiceAlertEmail } from '../../services/resendService';
 import { downloadInvoicePDF } from '../../utils/pdfGenerator';
 import type { InvoiceItem, InvoiceStatus, InvoiceLineItem } from '../../types/invoice';
 import type { ProjectItem } from '../../types/project';
@@ -196,6 +197,14 @@ export function ClientInvoices() {
       tipAmount: tipVal,
     });
 
+    sendInvoiceAlertEmail({
+      invoiceNumber: 'REQ-NEW',
+      clientName: user?.fullName || user?.company || 'Valued Client',
+      clientEmail: user?.email || 'client@company.com',
+      amount: '$0 (Custom Request)',
+      status: 'Under Approval',
+    }).catch((err) => console.warn('Invoice request email notice:', err));
+
     setRequestSent(true);
     setTimeout(() => {
       setShowRequestModal(false);
@@ -261,6 +270,15 @@ export function ClientInvoices() {
       paymentNotesInput,
       uploadedUrl
     );
+
+    sendInvoiceAlertEmail({
+      invoiceNumber: payingInvoice.invoiceNumber,
+      clientName: payingInvoice.clientName,
+      clientEmail: payingInvoice.clientEmail,
+      amount: payingInvoice.amount,
+      status: 'Under Approval',
+      paymentProofUrl: uploadedUrl,
+    }).catch((err) => console.warn('Payment proof email notice:', err));
 
     setIsUploading(false);
     setPaymentProofSent(true);

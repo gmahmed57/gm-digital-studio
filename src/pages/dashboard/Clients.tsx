@@ -17,8 +17,10 @@ import {
   ShieldCheck,
   CheckCircle2,
   Trash2,
+  Mail,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
+import ComposeEmailModal from '../../components/dashboard/ComposeEmailModal';
 
 export function Clients() {
   const navigate = useNavigate();
@@ -27,6 +29,18 @@ export function Clients() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  // Compose Email Modal state
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [composeEmail, setComposeEmail] = useState<string | undefined>(undefined);
+  const [composeName, setComposeName] = useState<string | undefined>(undefined);
+
+  const handleOpenCompose = (email?: string, name?: string) => {
+    setComposeEmail(email);
+    setComposeName(name);
+    setIsComposeOpen(true);
+    setActiveMenuId(null);
+  };
 
   // Load clients
   const loadClientData = async () => {
@@ -297,6 +311,12 @@ export function Clients() {
                                 <Edit2 className="w-3.5 h-3.5 text-brand-600" /> Edit Profile & Tools
                               </button>
                               <button
+                                onClick={() => handleOpenCompose(client.email, client.fullName)}
+                                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface text-left cursor-pointer font-medium"
+                              >
+                                <Mail className="w-3.5 h-3.5 text-brand-600" /> Send Direct Email
+                              </button>
+                              <button
                                 onClick={() => handleToggleStatus(client.id)}
                                 className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface text-left cursor-pointer font-medium"
                               >
@@ -325,6 +345,13 @@ export function Clients() {
         </div>
 
       </div>
+
+      <ComposeEmailModal
+        isOpen={isComposeOpen}
+        onClose={() => setIsComposeOpen(false)}
+        initialRecipientEmail={composeEmail}
+        initialRecipientName={composeName}
+      />
     </>
   );
 }
