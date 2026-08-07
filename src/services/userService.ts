@@ -149,13 +149,19 @@ export const userService = {
       }
     }
 
-    // 2. Update password in Supabase Auth
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
+    // 2. Update password in Supabase Auth (passing both camelCase and snake_case properties to satisfy Supabase Auth GoTrue API requirements)
+    const { error } = await supabase.auth.updateUser(
+      {
+        password: newPassword,
+        current_password: currentPassword,
+      } as any,
+      {
+        currentPassword: currentPassword,
+      } as any
+    );
 
     if (error) {
-      console.error('Supabase Auth password update error:', error);
+      console.error('Password update error:', error.message);
       throw error;
     }
   },

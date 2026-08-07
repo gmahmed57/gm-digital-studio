@@ -42,7 +42,7 @@ export const generateInvoicePDF = (invoice: InvoiceItem): jsPDF => {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(textGray[0], textGray[1], textGray[2]);
-  doc.text('Enterprise Digital Product Agency • www.gmdigitalstudio.com', 32, 25);
+  doc.text('Digital Product & Creative Studio • www.gmdigitalstudio.app', 32, 25);
 
   // Invoice Title & Number
   doc.setFont('helvetica', 'bold');

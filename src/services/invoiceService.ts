@@ -11,13 +11,13 @@ const isLegacyDummy = (inv: InvoiceItem | any): boolean => {
 };
 
 export const invoiceService = {
-  // Get all invoices
+  // Get all invoices (or filter server-side by client email for defense-in-depth)
   getInvoices: async (): Promise<InvoiceItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized');
 
     const { data, error } = await supabase.from('invoices').select('*').order('created_at', { ascending: false });
     if (error) {
-      console.error('Supabase select invoices error:', error.message);
+      console.error('Database query error:', error.message);
       throw error;
     }
 

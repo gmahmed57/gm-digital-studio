@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { clientService } from '../../services/clientService';
 import { sendCustomComposeEmail, renderEmailShell } from '../../services/resendService';
 import { notificationService } from '../../services/notificationService';
@@ -192,8 +193,8 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto font-sans">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto font-sans">
       <div className="relative w-full max-w-4xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl shadow-2xl overflow-hidden my-6">
         
         {/* Modal Header */}
@@ -531,7 +532,8 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

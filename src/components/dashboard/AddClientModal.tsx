@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { ClientItem } from '../../types/client';
 import { MASTER_STUDIO_TOOLS } from '../../constants/toolsData';
 import { X, ShieldCheck, User, Building, Mail, Phone, Package, Wrench, CheckCircle2 } from 'lucide-react';
@@ -64,8 +65,8 @@ export function AddClientModal({ isOpen, onClose, onSave, editingClient }: AddCl
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-sans overflow-y-auto">
       <div className="w-full max-w-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-2xl my-8 relative">
         
         {/* Header */}
@@ -295,7 +296,8 @@ export function AddClientModal({ isOpen, onClose, onSave, editingClient }: AddCl
         </form>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

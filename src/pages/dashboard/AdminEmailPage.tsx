@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { emailRecordService, type SentEmailRecord } from '../../services/emailRecordService';
 import InlineEmailComposer from '../../components/dashboard/InlineEmailComposer';
 import SEO from '../../components/common/SEO';
@@ -247,11 +248,11 @@ export function AdminEmailPage() {
 
       </div>
 
-      {/* View Email Preview Modal with Full z-[9999] Fixed Backdrop */}
-      {previewRecord && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 overflow-y-auto font-sans">
-          <div className="relative w-full max-w-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl shadow-2xl overflow-hidden my-6">
-            <div className="p-5 bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 text-white flex items-center justify-between border-b border-gray-800">
+      {/* View Email Preview Modal with Full z-[99999] Fixed Backdrop (Portal to document.body) */}
+      {previewRecord && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto font-sans">
+          <div className="relative w-full max-w-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl shadow-2xl overflow-hidden my-6 max-h-[90vh] flex flex-col">
+            <div className="p-5 bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 text-white flex items-center justify-between border-b border-gray-800 shrink-0">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <Mail className="w-4 h-4 text-brand-400" /> Sent Email Record Details
@@ -268,14 +269,14 @@ export function AdminEmailPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="p-3 rounded-2xl bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-xs space-y-1">
                 <p><strong>Subject:</strong> {previewRecord.subject}</p>
                 <p><strong>Sender:</strong> {previewRecord.sender}</p>
                 <p><strong>Recipient:</strong> {previewRecord.recipient_name ? `${previewRecord.recipient_name} (${previewRecord.recipient_email})` : previewRecord.recipient_email}</p>
               </div>
 
-              <div className="w-full h-[400px] rounded-2xl border border-gray-200 dark:border-dark-border bg-gray-100 p-2">
+              <div className="w-full h-[320px] md:h-[380px] rounded-2xl border border-gray-200 dark:border-dark-border bg-gray-100 p-2">
                 <iframe
                   title="Sent Email Rendered HTML"
                   srcDoc={previewRecord.raw_html || previewRecord.body_message}
@@ -288,7 +289,7 @@ export function AdminEmailPage() {
                   onClick={() => handleDeleteRecord(previewRecord.id)}
                   className="px-4 py-2 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-600 border border-red-200 dark:border-red-900 font-bold text-xs hover:bg-red-100 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Trash2 className="w-4 h-4" /> Delete Record from Supabase
+                  <Trash2 className="w-4 h-4" /> Delete Record
                 </button>
                 <button
                   onClick={() => setPreviewRecord(null)}
@@ -299,7 +300,8 @@ export function AdminEmailPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

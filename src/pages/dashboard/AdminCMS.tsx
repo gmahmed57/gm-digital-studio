@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { cmsService, type BlogComment, type AuthorItem, type TestimonialItem } from '../../services/cmsService';
 import type { BlogPost, CaseStudy } from '../../types/portfolio';
@@ -993,8 +994,8 @@ export function AdminCMS() {
       )}
 
       {/* AUTHOR EDIT / ADD MODAL */}
-      {isAuthorModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      {isAuthorModalOpen && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-dark-surface w-full max-w-md rounded-2xl border border-gray-100 dark:border-dark-border shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border pb-3">
@@ -1024,7 +1025,7 @@ export function AdminCMS() {
                 <input
                   type="email"
                   required
-                  placeholder="alex@gmdigitalstudio.com"
+                  placeholder="alex@gmdigitalstudio.app"
                   value={authorForm.email}
                   onChange={(e) => setAuthorForm({ ...authorForm, email: e.target.value })}
                   className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500 font-medium text-gray-900 dark:text-white"
@@ -1104,12 +1105,13 @@ export function AdminCMS() {
             </form>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* TESTIMONIAL EDIT / ADD MODAL */}
-      {isTestimonialModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      {isTestimonialModalOpen && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-dark-surface w-full max-w-lg rounded-2xl border border-gray-100 dark:border-dark-border shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border pb-3">
@@ -1221,7 +1223,8 @@ export function AdminCMS() {
               </form>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

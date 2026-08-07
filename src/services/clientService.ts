@@ -2,13 +2,12 @@ import type { ClientItem } from '../types/client';
 import { supabase } from './supabase';
 
 export const clientService = {
-  // Get all clients (Supabase live database)
   getClients: async (): Promise<ClientItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized');
 
     const { data, error } = await supabase.from('clients').select('*');
     if (error) {
-      console.error('Supabase select clients error:', error.message);
+      console.error('Database query error:', error.message);
       throw error;
     }
 

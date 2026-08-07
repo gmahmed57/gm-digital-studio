@@ -1,22 +1,35 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const getCorsHeaders = (req: Request) => {
+  const origin = req.headers.get('origin') || ''
+  const allowedOrigins = [
+    'https://gmdigitalstudio.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173',
+  ]
+  const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.gmdigitalstudio.app')
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://gmdigitalstudio.app',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  }
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req)
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const resendApiKey = Deno.env.get('RESEND_API_KEY') || Deno.env.get('VITE_RESEND_API_KEY')
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
     const { to, subject, html, from } = await req.json()
 
     if (!resendApiKey) {
-      console.log('[Serverless Send-Email] No RESEND_API_KEY set in Deno env. Simulating dispatch:', { to, subject })
+      console.log('[Serverless Send-Email] No RESEND_API_KEY set in server environment secrets. Simulating dispatch:', { to, subject })
       return new Response(
         JSON.stringify({ success: true, message: 'Email dispatch simulated on serverless backend.' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

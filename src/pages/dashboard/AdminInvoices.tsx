@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { invoiceService } from '../../services/invoiceService';
 import { clientService } from '../../services/clientService';
 import { notificationService } from '../../services/notificationService';
@@ -669,9 +670,9 @@ export function AdminInvoices() {
         </div>
 
         {/* Payment Proof Inspector Modal */}
-        {inspectingInvoice && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-            <div className="w-full max-w-lg bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in fade-in zoom-in-95">
+        {inspectingInvoice && createPortal(
+          <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto font-sans">
+            <div className="w-full max-w-lg bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 my-8 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95">
               
               <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-dark-border">
                 <div className="flex items-center gap-3">
@@ -834,12 +835,13 @@ export function AdminInvoices() {
               </div>
 
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Modal for Creating New Invoice (Advanced Multi-Item & Tax Builder) */}
-        {showModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        {showModal && createPortal(
+          <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
             <div className="w-full max-w-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
               
               {/* Header */}
@@ -1107,12 +1109,13 @@ export function AdminInvoices() {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Modal for Reviewing & Customizing Client Invoice Requests BEFORE Approval */}
-        {reviewingRequest && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        {reviewingRequest && createPortal(
+          <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
             <div className="w-full max-w-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
               
               {/* Header */}
@@ -1398,7 +1401,8 @@ export function AdminInvoices() {
               )}
 
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
       </div>

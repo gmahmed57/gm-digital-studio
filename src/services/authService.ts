@@ -13,7 +13,7 @@ export const authService = {
 
     // 1. Authenticate with Supabase Auth API
     if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      throw new Error('Supabase configuration is missing. Cannot authenticate.');
+      throw new Error('Authentication configuration is missing. Cannot authenticate.');
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -25,9 +25,9 @@ export const authService = {
       throw new Error(error?.message || 'Invalid email address or password. Please check your credentials.');
     }
 
-    const role = (data.user.user_metadata?.role as UserRole) || 'admin';
+    const role = (data.user.app_metadata?.role as UserRole) || 'client';
     
-    // If role is client, we use their ID from the clients table to match where messages/projects are assigned
+    // If role is client, strictly resolve profile from database public.clients table
     if (role === 'client') {
       const clients = await clientService.getClients();
       const matchedClient = clients.find((c) => c.email.toLowerCase() === cleanEmail);
@@ -47,7 +47,7 @@ export const authService = {
           createdAt: matchedClient.joinedDate,
         };
       } else {
-        throw new Error('No client profile found matching this email address.');
+        throw new Error('No client profile found matching this email address in the database.');
       }
     }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { invoiceService } from '../../services/invoiceService';
 import { projectService } from '../../services/projectService';
@@ -554,8 +555,8 @@ export function ClientInvoices() {
         )}
 
         {/* Request Invoice Modal (Itemized, Custom Project & Tip Builder) */}
-        {showRequestModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        {showRequestModal && createPortal(
+          <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
             <div className="w-full max-w-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-dark-border">
                 <div className="flex items-center gap-3">
@@ -781,13 +782,14 @@ export function ClientInvoices() {
                 </form>
               )}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
 
         {/* Submit Payment Proof Modal */}
-        {payingInvoice && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        {payingInvoice && createPortal(
+          <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="w-full max-w-md bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-dark-border">
                 <div className="flex items-center gap-3">
@@ -944,7 +946,8 @@ export function ClientInvoices() {
                 </form>
               )}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
       </div>

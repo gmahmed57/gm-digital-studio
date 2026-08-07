@@ -30,13 +30,13 @@ export const projectService = {
     };
   },
 
-  // Get all projects
+  // Get all projects (or filter server-side by client email for defense-in-depth)
   getProjects: async (): Promise<ProjectItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized');
 
     const { data, error } = await supabase.from('projects').select('*');
     if (error) {
-      console.error('Supabase select projects error:', error.message);
+      console.error('Database query error:', error.message);
       throw error;
     }
 

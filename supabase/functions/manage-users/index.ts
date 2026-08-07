@@ -1,12 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.110.7"
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const getCorsHeaders = (req: Request) => {
+  const origin = req.headers.get('origin') || ''
+  const allowedOrigins = [
+    'https://gmdigitalstudio.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173',
+  ]
+  const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.gmdigitalstudio.app')
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://gmdigitalstudio.app',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  }
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -27,7 +40,7 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
-    // 2. Get the user data and metadata to confirm they are an Admin
+    // 2. Get the user data and app_metadata to confirm they are an Admin
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized: Invalid user session' }), {
@@ -36,7 +49,8 @@ serve(async (req) => {
       })
     }
 
-    const userRole = user.user_metadata?.role
+    // Role MUST come from server-controlled app_metadata to prevent client privilege escalation
+    const userRole = user.app_metadata?.role
     const isSuperAdmin = user.email === ''
     if (userRole !== 'admin' && !isSuperAdmin) {
       console.warn(`User ${user.email} (role: ${userRole}) attempted admin action but was blocked.`)
@@ -64,13 +78,15 @@ serve(async (req) => {
         })
       }
 
-      // Create auth user with pre-confirmed email
+      // Create auth user with pre-confirmed email; store role strictly in app_metadata
       const { data: { user: newUser }, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: email.trim().toLowerCase(),
         password,
         email_confirm: true,
-        user_metadata: {
+        app_metadata: {
           role,
+        },
+        user_metadata: {
           full_name: updates?.fullName ?? updates?.name ?? 'New User',
           company: updates?.company ?? '',
         }
@@ -143,18 +159,18 @@ serve(async (req) => {
       if (password) {
         updateData.password = password
       }
-      if (updates) {
+      if (updates || role) {
+        updateData.app_metadata = { role }
         updateData.user_metadata = {
-          role,
-          full_name: updates.fullName ?? updates.name ?? '',
-          company: updates.company ?? '',
+          full_name: updates?.fullName ?? updates?.name ?? '',
+          company: updates?.company ?? '',
         }
       }
 
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
 
       // Update auth user if updating password or auth metadata AND is a valid UUID
-      if (isUUID && (password || updates)) {
+      if (isUUID && (password || updates || role)) {
         const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, updateData)
         if (updateError) {
           return new Response(JSON.stringify({ error: updateError.message }), {

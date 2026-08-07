@@ -81,7 +81,7 @@ const PrivacyPolicy: React.FC = () => {
           <section>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">5. Contact Privacy Office</h2>
             <p>
-              If you have any questions regarding our Privacy Policy or wish to request data updates, please contact our data privacy officer at <a href="mailto:privacy@gmdigitalstudio.com" className="text-brand-600 dark:text-brand-400 font-bold hover:underline">privacy@gmdigitalstudio.com</a>.
+              If you have any questions regarding our Privacy Policy or wish to request data updates, please contact our data privacy officer at <a href="mailto:privacy@gmdigitalstudio.app" className="text-brand-600 dark:text-brand-400 font-bold hover:underline">privacy@gmdigitalstudio.app</a>.
             </p>
           </section>
         </div>

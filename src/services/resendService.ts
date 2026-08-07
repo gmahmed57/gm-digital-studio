@@ -82,6 +82,19 @@ export interface SendEmailResponse {
   message: string;
 }
 
+/**
+ * Utility function to sanitize user-submitted strings against HTML injection in email templates
+ */
+export const escapeHtml = (str: string | undefined | null): string => {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
 // Default verified sender addresses using custom domain gmdigitalstudio.app
 const SENDER = 'GM Digital Studio <notifications@gmdigitalstudio.app>';
 const SUPPORT_SENDER = 'GM Digital Studio Support <support@gmdigitalstudio.app>';
@@ -142,93 +155,70 @@ export const renderEmailShell = (title: string, bodyHtml: string, ctaText?: stri
 </html>
 `;
 
-// Helper to execute 100% real-time email dispatches via Resend API (via Vite Proxy & Supabase Edge Function)
+// Secure email dispatch routing 100% via Supabase Serverless Edge Function (No client API key exposure)
 const sendViaResend = async (to: string[], subject: string, html: string, fromSender?: string): Promise<SendEmailResponse> => {
-  const resendApiKey = (import.meta.env.VITE_RESEND_API_KEY || '').trim();
   const activeSender = fromSender || SENDER;
 
-  if (!resendApiKey) {
-    throw new Error('VITE_RESEND_API_KEY is missing in .env configuration. Please add your real Resend API Key to send emails.');
+  if (!supabase) {
+    throw new Error('Database service is not initialized. Cannot send email notification.');
   }
 
-  // 1. Try Supabase Serverless Edge Function first if deployed
   try {
-    if (supabase) {
-      const { data: edgeData, error: edgeError } = await supabase.functions.invoke('send-email', {
-        body: { to, subject, html, from: activeSender },
-      });
+    const { data: edgeData, error: edgeError } = await supabase.functions.invoke('send-email', {
+      body: { to, subject, html, from: activeSender },
+    });
 
-      if (!edgeError && edgeData) {
-        if (edgeData.success) {
-          console.log('[Resend Service] Dispatched via Edge Function ID:', edgeData.data?.id);
-          return { success: true, message: 'Email notification sent successfully.' };
-        }
-        if (edgeData.error) {
-          throw new Error(`Resend Edge Function Error: ${edgeData.error}`);
-        }
-      }
+    if (edgeError) {
+      console.error('[Resend Service] Edge Function Dispatch Error:', edgeError);
+      throw new Error(`Email service error: ${edgeError.message || 'Serverless edge function call failed'}`);
     }
-  } catch (edgeErr: any) {
-    if (edgeErr.message && !edgeErr.message.includes('FunctionsFetchError')) {
-      console.warn('[Resend Service] Edge function notice:', edgeErr.message);
+
+    if (edgeData && !edgeData.success && edgeData.error) {
+      throw new Error(`Email dispatch failed: ${edgeData.error}`);
     }
+
+    return {
+      success: true,
+      message: edgeData?.message || 'Email notification dispatched successfully.',
+    };
+  } catch (err: any) {
+    console.error('[Resend Service] Dispatch Exception:', err);
+    throw new Error(err.message || 'Failed to send email notification.');
   }
-
-  // 2. Direct real-time HTTP dispatch to Resend API via Vite Server Proxy (/api/resend/emails)
-  const response = await fetch('/api/resend/emails', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${resendApiKey}`,
-    },
-    body: JSON.stringify({
-      from: activeSender,
-      to,
-      subject,
-      html,
-    }),
-  });
-
-  const resendData = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const errorMsg = resendData.message || resendData.name || `Resend API HTTP ${response.status}`;
-    console.error('[Resend Service] Production API Error:', resendData);
-    throw new Error(`Resend API Dispatch Failed: ${errorMsg}`);
-  }
-
-  console.log('[Resend Service] Dispatched via Resend API ID:', resendData.id);
-  return {
-    success: true,
-    message: 'Email notification sent successfully.',
-  };
 };
 
 /**
  * 1. Send Contact Form Inquiries (Admin notification + Auto-reply to visitor)
  */
 export const sendContactEmail = async (formData: ContactFormData): Promise<SendEmailResponse> => {
+  const safeName = escapeHtml(formData.name);
+  const safeEmail = escapeHtml(formData.email);
+  const safeCompany = escapeHtml(formData.company || 'N/A');
+  const safeService = escapeHtml(formData.service || (formData.services ? formData.services.join(', ') : 'General Inquiry'));
+  const safeBudget = escapeHtml(formData.budget || 'N/A');
+  const safeMessage = escapeHtml(formData.message);
+
   const adminHtml = renderEmailShell(
-    `New Contact Inquiry from ${formData.name}`,
+    `New Contact Inquiry from ${safeName}`,
     `
       <p>A new project inquiry has been submitted via the contact form on GM Digital Studio:</p>
       <table class="info-table">
-        <tr><td class="label">Full Name</td><td class="value">${formData.name}</td></tr>
-        <tr><td class="label">Email Address</td><td class="value">${formData.email}</td></tr>
-        <tr><td class="label">Company</td><td class="value">${formData.company || 'N/A'}</td></tr>
-        <tr><td class="label">Service Required</td><td class="value"><span class="badge">${formData.service}</span></td></tr>
-        <tr><td class="label">Budget Range</td><td class="value">${formData.budget || 'N/A'}</td></tr>
+        <tr><td class="label">Full Name</td><td class="value">${safeName}</td></tr>
+        <tr><td class="label">Email Address</td><td class="value">${safeEmail}</td></tr>
+        <tr><td class="label">Company</td><td class="value">${safeCompany}</td></tr>
+        <tr><td class="label">Service Required</td><td class="value"><span class="badge">${safeService}</span></td></tr>
+        <tr><td class="label">Budget Range</td><td class="value">${safeBudget}</td></tr>
       </table>
       <p><strong>Message / Project Description:</strong></p>
       <div class="quote-box">
-        ${formData.message}
+        ${safeMessage}
       </div>
     `,
     'View Contact Submissions',
     'https://gmdigitalstudio.app/admin/dashboard'
   );
 
-  const res = await sendViaResend([ADMIN_EMAIL], `New Inquiry from ${formData.name}`, adminHtml);
+  const res = await sendViaResend([ADMIN_EMAIL], `New Inquiry from ${safeName}`, adminHtml);
   return {
     success: res.success,
     message: 'Thank you! Your inquiry has been sent successfully. Our team will contact you shortly.',
@@ -239,22 +229,28 @@ export const sendContactEmail = async (formData: ContactFormData): Promise<SendE
  * 2. Send Client Welcome Onboarding Email (When Admin creates a Client account)
  */
 export const sendWelcomeClientEmail = async (clientData: WelcomeClientData): Promise<SendEmailResponse> => {
+  const safeFullName = escapeHtml(clientData.fullName);
+  const safeCompany = escapeHtml(clientData.company);
+  const safePackage = escapeHtml(clientData.assignedPackage || 'Standard Agency Service');
+  const safeEmail = escapeHtml(clientData.email);
+  const safePassword = clientData.portalPassword ? escapeHtml(clientData.portalPassword) : '';
+
   const html = renderEmailShell(
     `Welcome to GM Digital Studio Client Portal!`,
     `
-      <p>Hello <strong>${clientData.fullName}</strong>,</p>
-      <p>Your client portal account for <strong>${clientData.company}</strong> has been successfully provisioned on the GM Digital Studio platform.</p>
+      <p>Hello <strong>${safeFullName}</strong>,</p>
+      <p>Your client portal account for <strong>${safeCompany}</strong> has been successfully provisioned on the GM Digital Studio platform.</p>
       <table class="info-table">
-        <tr><td class="label">Client Name</td><td class="value">${clientData.fullName}</td></tr>
-        <tr><td class="label">Company</td><td class="value">${clientData.company}</td></tr>
-        <tr><td class="label">Assigned Package</td><td class="value"><span class="badge">${clientData.assignedPackage || 'Standard Agency Service'}</span></td></tr>
-        <tr><td class="label">Portal Email</td><td class="value">${clientData.email}</td></tr>
-        ${clientData.portalPassword ? `<tr><td class="label">Initial Password</td><td class="value" style="font-family: monospace; color: #ea580c;">${clientData.portalPassword}</td></tr>` : ''}
+        <tr><td class="label">Client Name</td><td class="value">${safeFullName}</td></tr>
+        <tr><td class="label">Company</td><td class="value">${safeCompany}</td></tr>
+        <tr><td class="label">Assigned Package</td><td class="value"><span class="badge">${safePackage}</span></td></tr>
+        <tr><td class="label">Portal Email</td><td class="value">${safeEmail}</td></tr>
+        ${safePassword ? `<tr><td class="label">Initial Password</td><td class="value" style="font-family: monospace; color: #ea580c;">${safePassword}</td></tr>` : ''}
       </table>
       <p>You can now log into your private client workspace to track active project progress, view interactive milestones, download invoices, and communicate directly with our team.</p>
     `,
     'Access Client Portal',
-    'https://gmdigitalstudio.com/login'
+    'https://gmdigitalstudio.app/login'
   );
 
   return await sendViaResend([clientData.email], `Welcome to GM Digital Studio - Portal Account Ready`, html);
@@ -264,20 +260,27 @@ export const sendWelcomeClientEmail = async (clientData: WelcomeClientData): Pro
  * 3. Send Invoice Billing Telemetry Alerts (Issuance, Payment Proof, Approvals, Rejections)
  */
 export const sendInvoiceAlertEmail = async (invoiceData: InvoiceAlertData): Promise<SendEmailResponse> => {
-  let title = `Invoice Update: ${invoiceData.invoiceNumber}`;
+  const safeInvoiceNum = escapeHtml(invoiceData.invoiceNumber);
+  const safeClientName = escapeHtml(invoiceData.clientName);
+  const safeClientEmail = escapeHtml(invoiceData.clientEmail);
+  const safeAmount = escapeHtml(invoiceData.amount);
+  const safeDueDate = invoiceData.dueDate ? escapeHtml(invoiceData.dueDate) : '';
+  const safeRejectionReason = invoiceData.rejectionReason ? escapeHtml(invoiceData.rejectionReason) : '';
+
+  let title = `Invoice Update: ${safeInvoiceNum}`;
   let recipient = invoiceData.clientEmail;
   let bodyContent = '';
 
   switch (invoiceData.status) {
     case 'Pending':
-      title = `New Invoice Issued: ${invoiceData.invoiceNumber}`;
+      title = `New Invoice Issued: ${safeInvoiceNum}`;
       bodyContent = `
-        <p>Dear <strong>${invoiceData.clientName}</strong>,</p>
+        <p>Dear <strong>${safeClientName}</strong>,</p>
         <p>A new invoice has been issued for your active project scope at GM Digital Studio.</p>
         <table class="info-table">
-          <tr><td class="label">Invoice Number</td><td class="value">${invoiceData.invoiceNumber}</td></tr>
-          <tr><td class="label">Total Amount</td><td class="value" style="color: #ea580c; font-size: 16px;">${invoiceData.amount}</td></tr>
-          ${invoiceData.dueDate ? `<tr><td class="label">Due Date</td><td class="value">${invoiceData.dueDate}</td></tr>` : ''}
+          <tr><td class="label">Invoice Number</td><td class="value">${safeInvoiceNum}</td></tr>
+          <tr><td class="label">Total Amount</td><td class="value" style="color: #ea580c; font-size: 16px;">${safeAmount}</td></tr>
+          ${safeDueDate ? `<tr><td class="label">Due Date</td><td class="value">${safeDueDate}</td></tr>` : ''}
           <tr><td class="label">Status</td><td class="value"><span class="badge">Payment Pending</span></td></tr>
         </table>
         <p>Please log into your client portal to review the itemized breakdown and submit your payment proof.</p>
@@ -285,14 +288,14 @@ export const sendInvoiceAlertEmail = async (invoiceData: InvoiceAlertData): Prom
       break;
 
     case 'Under Approval':
-      title = `Payment Proof Received: ${invoiceData.invoiceNumber}`;
+      title = `Payment Proof Received: ${safeInvoiceNum}`;
       recipient = ADMIN_EMAIL;
       bodyContent = `
-        <p>Client <strong>${invoiceData.clientName}</strong> has submitted payment proof for invoice <strong>${invoiceData.invoiceNumber}</strong>.</p>
+        <p>Client <strong>${safeClientName}</strong> has submitted payment proof for invoice <strong>${safeInvoiceNum}</strong>.</p>
         <table class="info-table">
-          <tr><td class="label">Invoice Number</td><td class="value">${invoiceData.invoiceNumber}</td></tr>
-          <tr><td class="label">Client Email</td><td class="value">${invoiceData.clientEmail}</td></tr>
-          <tr><td class="label">Amount</td><td class="value">${invoiceData.amount}</td></tr>
+          <tr><td class="label">Invoice Number</td><td class="value">${safeInvoiceNum}</td></tr>
+          <tr><td class="label">Client Email</td><td class="value">${safeClientEmail}</td></tr>
+          <tr><td class="label">Amount</td><td class="value">${safeAmount}</td></tr>
           <tr><td class="label">Status</td><td class="value"><span class="badge" style="background: #eab308; color: #000;">Under Review</span></td></tr>
         </table>
         <p>Please inspect the payment proof document in the Admin Invoices dashboard.</p>
@@ -300,13 +303,13 @@ export const sendInvoiceAlertEmail = async (invoiceData: InvoiceAlertData): Prom
       break;
 
     case 'Paid':
-      title = `Invoice Payment Confirmed: ${invoiceData.invoiceNumber}`;
+      title = `Invoice Payment Confirmed: ${safeInvoiceNum}`;
       bodyContent = `
-        <p>Dear <strong>${invoiceData.clientName}</strong>,</p>
-        <p>Your payment for invoice <strong>${invoiceData.invoiceNumber}</strong> has been verified and confirmed by GM Digital Studio.</p>
+        <p>Dear <strong>${safeClientName}</strong>,</p>
+        <p>Your payment for invoice <strong>${safeInvoiceNum}</strong> has been verified and confirmed by GM Digital Studio.</p>
         <table class="info-table">
-          <tr><td class="label">Invoice Number</td><td class="value">${invoiceData.invoiceNumber}</td></tr>
-          <tr><td class="label">Amount Paid</td><td class="value" style="color: #22c55e;">${invoiceData.amount}</td></tr>
+          <tr><td class="label">Invoice Number</td><td class="value">${safeInvoiceNum}</td></tr>
+          <tr><td class="label">Amount Paid</td><td class="value" style="color: #22c55e;">${safeAmount}</td></tr>
           <tr><td class="label">Status</td><td class="value"><span class="badge" style="background: #22c55e;">PAID & VERIFIED</span></td></tr>
         </table>
         <p>Thank you for your prompt payment! A copy of your verified PDF invoice is available for download in your portal.</p>
@@ -314,18 +317,18 @@ export const sendInvoiceAlertEmail = async (invoiceData: InvoiceAlertData): Prom
       break;
 
     case 'Request Rejected':
-      title = `Invoice Request Action Required: ${invoiceData.invoiceNumber}`;
+      title = `Invoice Request Action Required: ${safeInvoiceNum}`;
       bodyContent = `
-        <p>Dear <strong>${invoiceData.clientName}</strong>,</p>
-        <p>Your custom invoice request or payment submission for invoice <strong>${invoiceData.invoiceNumber}</strong> requires attention.</p>
+        <p>Dear <strong>${safeClientName}</strong>,</p>
+        <p>Your custom invoice request or payment submission for invoice <strong>${safeInvoiceNum}</strong> requires attention.</p>
         <table class="info-table">
-          <tr><td class="label">Invoice Number</td><td class="value">${invoiceData.invoiceNumber}</td></tr>
+          <tr><td class="label">Invoice Number</td><td class="value">${safeInvoiceNum}</td></tr>
           <tr><td class="label">Status</td><td class="value"><span class="badge" style="background: #ef4444;">Action Required</span></td></tr>
         </table>
-        ${invoiceData.rejectionReason ? `
+        ${safeRejectionReason ? `
           <p><strong>Admin Rejection Notes:</strong></p>
           <blockquote style="background: #1e293b; padding: 12px; border-left: 4px solid #ef4444; color: #f8fafc;">
-            ${invoiceData.rejectionReason}
+            ${safeRejectionReason}
           </blockquote>
         ` : ''}
         <p>Please update your invoice details or re-submit valid payment proof in your portal workspace.</p>
@@ -333,7 +336,7 @@ export const sendInvoiceAlertEmail = async (invoiceData: InvoiceAlertData): Prom
       break;
 
     default:
-      bodyContent = `<p>Invoice status updated to <strong>${invoiceData.status}</strong> for invoice ${invoiceData.invoiceNumber}.</p>`;
+      bodyContent = `<p>Invoice status updated to <strong>${escapeHtml(invoiceData.status)}</strong> for invoice ${safeInvoiceNum}.</p>`;
   }
 
   const html = renderEmailShell(title, bodyContent, 'View Invoices in Portal', 'https://gmdigitalstudio.app/client/invoices');
@@ -344,20 +347,27 @@ export const sendInvoiceAlertEmail = async (invoiceData: InvoiceAlertData): Prom
  * 4. Send Project Milestone & Status Update Alerts
  */
 export const sendProjectStatusAlertEmail = async (projectData: ProjectAlertData): Promise<SendEmailResponse> => {
-  const title = `Project Update: ${projectData.projectTitle}`;
+  const safeTitle = escapeHtml(projectData.projectTitle);
+  const safeClientName = escapeHtml(projectData.clientName);
+  const safeStatus = escapeHtml(projectData.status);
+  const safeMilestoneTitle = projectData.milestoneTitle ? escapeHtml(projectData.milestoneTitle) : '';
+  const safeMilestoneStatus = projectData.milestoneStatus ? escapeHtml(projectData.milestoneStatus) : '';
+  const safeNotes = projectData.notes ? escapeHtml(projectData.notes) : '';
+
+  const title = `Project Update: ${safeTitle}`;
   const bodyContent = `
-    <p>Dear <strong>${projectData.clientName}</strong>,</p>
-    <p>There is a status update on your active project <strong>${projectData.projectTitle}</strong> at GM Digital Studio.</p>
+    <p>Dear <strong>${safeClientName}</strong>,</p>
+    <p>There is a status update on your active project <strong>${safeTitle}</strong> at GM Digital Studio.</p>
     <table class="info-table">
-      <tr><td class="label">Project Title</td><td class="value">${projectData.projectTitle}</td></tr>
-      <tr><td class="label">Current Status</td><td class="value"><span class="badge">${projectData.status.toUpperCase()}</span></td></tr>
-      ${projectData.milestoneTitle ? `<tr><td class="label">Milestone</td><td class="value">${projectData.milestoneTitle}</td></tr>` : ''}
-      ${projectData.milestoneStatus ? `<tr><td class="label">Phase Status</td><td class="value">${projectData.milestoneStatus}</td></tr>` : ''}
+      <tr><td class="label">Project Title</td><td class="value">${safeTitle}</td></tr>
+      <tr><td class="label">Current Status</td><td class="value"><span class="badge">${safeStatus.toUpperCase()}</span></td></tr>
+      ${safeMilestoneTitle ? `<tr><td class="label">Milestone</td><td class="value">${safeMilestoneTitle}</td></tr>` : ''}
+      ${safeMilestoneStatus ? `<tr><td class="label">Phase Status</td><td class="value">${safeMilestoneStatus}</td></tr>` : ''}
     </table>
-    ${projectData.notes ? `
+    ${safeNotes ? `
       <p><strong>Update Notes:</strong></p>
       <blockquote style="background: #1e293b; padding: 12px; border-left: 4px solid #ea580c; color: #f8fafc;">
-        ${projectData.notes}
+        ${safeNotes}
       </blockquote>
     ` : ''}
     <p>Log into your interactive project board to review progress updates or sign off on deliverables.</p>
@@ -371,44 +381,49 @@ export const sendProjectStatusAlertEmail = async (projectData: ProjectAlertData)
  * 5. Send Studio Tool Request Email Alerts (Requests, Approvals, Rejections)
  */
 export const sendToolRequestAlertEmail = async (data: ToolRequestAlertData): Promise<SendEmailResponse> => {
-  let title = `Studio Tool Access: ${data.toolName}`;
+  const safeClientName = escapeHtml(data.clientName);
+  const safeClientEmail = escapeHtml(data.clientEmail);
+  const safeToolName = escapeHtml(data.toolName);
+  const safeNotes = data.notes ? escapeHtml(data.notes) : '';
+
+  let title = `Studio Tool Access: ${safeToolName}`;
   let recipient = data.clientEmail;
   let bodyContent = '';
 
   if (data.status === 'requested') {
-    title = `New Studio Tool Requested: ${data.toolName}`;
+    title = `New Studio Tool Requested: ${safeToolName}`;
     recipient = ADMIN_EMAIL;
     bodyContent = `
-      <p>Client <strong>${data.clientName}</strong> (${data.clientEmail}) has requested access to the studio tool: <strong>${data.toolName}</strong>.</p>
+      <p>Client <strong>${safeClientName}</strong> (${safeClientEmail}) has requested access to the studio tool: <strong>${safeToolName}</strong>.</p>
       <table class="info-table">
-        <tr><td class="label">Client Name</td><td class="value">${data.clientName}</td></tr>
-        <tr><td class="label">Client Email</td><td class="value">${data.clientEmail}</td></tr>
-        <tr><td class="label">Requested Tool</td><td class="value"><span class="badge">${data.toolName}</span></td></tr>
+        <tr><td class="label">Client Name</td><td class="value">${safeClientName}</td></tr>
+        <tr><td class="label">Client Email</td><td class="value">${safeClientEmail}</td></tr>
+        <tr><td class="label">Requested Tool</td><td class="value"><span class="badge">${safeToolName}</span></td></tr>
         <tr><td class="label">Status</td><td class="value">Pending Admin Review</td></tr>
       </table>
       <p>Please log into the Admin Control Center to grant or decline tool access.</p>
     `;
   } else if (data.status === 'approved') {
-    title = `Studio Tool Access Unlocked: ${data.toolName}`;
+    title = `Studio Tool Access Unlocked: ${safeToolName}`;
     bodyContent = `
-      <p>Hello <strong>${data.clientName}</strong>,</p>
-      <p>Your access request for <strong>${data.toolName}</strong> has been approved by the Admin team!</p>
+      <p>Hello <strong>${safeClientName}</strong>,</p>
+      <p>Your access request for <strong>${safeToolName}</strong> has been approved by the Admin team!</p>
       <table class="info-table">
-        <tr><td class="label">Studio Tool</td><td class="value">${data.toolName}</td></tr>
+        <tr><td class="label">Studio Tool</td><td class="value">${safeToolName}</td></tr>
         <tr><td class="label">Access Status</td><td class="value"><span class="badge" style="background: #16a34a; color: #fff;">Unlocked & Active</span></td></tr>
       </table>
       <p>You can now launch and use this tool directly inside your private Client Portal workspace.</p>
     `;
   } else {
-    title = `Studio Tool Access Request Update: ${data.toolName}`;
+    title = `Studio Tool Access Request Update: ${safeToolName}`;
     bodyContent = `
-      <p>Hello <strong>${data.clientName}</strong>,</p>
-      <p>Your access request for <strong>${data.toolName}</strong> was reviewed by the Admin team and could not be approved at this time.</p>
+      <p>Hello <strong>${safeClientName}</strong>,</p>
+      <p>Your access request for <strong>${safeToolName}</strong> was reviewed by the Admin team and could not be approved at this time.</p>
       <table class="info-table">
-        <tr><td class="label">Studio Tool</td><td class="value">${data.toolName}</td></tr>
+        <tr><td class="label">Studio Tool</td><td class="value">${safeToolName}</td></tr>
         <tr><td class="label">Request Status</td><td class="value"><span class="badge" style="background: #dc2626; color: #fff;">Declined</span></td></tr>
       </table>
-      ${data.notes ? `<p><strong>Admin Feedback:</strong> ${data.notes}</p>` : ''}
+      ${safeNotes ? `<p><strong>Admin Feedback:</strong> ${safeNotes}</p>` : ''}
     `;
   }
 
@@ -430,18 +445,23 @@ export const sendProjectFeedbackAlertEmail = async (data: {
   rating: number;
   comment: string;
 }): Promise<SendEmailResponse> => {
+  const safeTitle = escapeHtml(data.projectTitle);
+  const safeClientName = escapeHtml(data.clientName);
+  const safeClientEmail = escapeHtml(data.clientEmail);
+  const safeComment = escapeHtml(data.comment);
+
   const stars = '★'.repeat(data.rating) + '☆'.repeat(5 - data.rating);
-  const title = `New Client Feedback Received: ${data.projectTitle}`;
+  const title = `New Client Feedback Received: ${safeTitle}`;
   const bodyContent = `
-    <p>Client <strong>${data.clientName}</strong> (${data.clientEmail}) has submitted feedback for completed project <strong>${data.projectTitle}</strong>!</p>
+    <p>Client <strong>${safeClientName}</strong> (${safeClientEmail}) has submitted feedback for completed project <strong>${safeTitle}</strong>!</p>
     <table class="info-table">
-      <tr><td class="label">Project Title</td><td class="value">${data.projectTitle}</td></tr>
-      <tr><td class="label">Client Name</td><td class="value">${data.clientName}</td></tr>
+      <tr><td class="label">Project Title</td><td class="value">${safeTitle}</td></tr>
+      <tr><td class="label">Client Name</td><td class="value">${safeClientName}</td></tr>
       <tr><td class="label">Star Rating</td><td class="value" style="color: #eab308; font-size: 18px;">${stars} (${data.rating}/5)</td></tr>
     </table>
     <p><strong>Client Review Message:</strong></p>
     <div class="quote-box">
-      ${data.comment}
+      ${safeComment}
     </div>
     <p>You can view all project feedback inside the Admin Control Center.</p>
   `;
@@ -458,6 +478,9 @@ export const sendProjectFeedbackAlertEmail = async (data: {
  * 7. Send Custom Composed Email / Announcement from support@gmdigitalstudio.app
  */
 export const sendCustomComposeEmail = async (data: CustomComposeEmailData): Promise<SendEmailResponse> => {
+  const safeSubject = escapeHtml(data.subject);
+  const safeRecipientName = data.recipientName ? escapeHtml(data.recipientName) : '';
+
   let html = '';
   if (data.rawHtml && data.rawHtml.trim()) {
     html = data.rawHtml.trim();
@@ -465,18 +488,18 @@ export const sendCustomComposeEmail = async (data: CustomComposeEmailData): Prom
     const formattedParagraphs = data.bodyMessage
       .split('\n')
       .filter((p) => p.trim())
-      .map((p) => `<p style="margin-bottom: 12px; color: #334155; line-height: 1.6;">${p}</p>`)
+      .map((p) => `<p style="margin-bottom: 12px; color: #334155; line-height: 1.6;">${escapeHtml(p)}</p>`)
       .join('');
 
     const bodyContent = `
-      ${data.recipientName ? `<p style="margin-bottom: 16px; font-size: 15px;">Dear <strong>${data.recipientName}</strong>,</p>` : ''}
+      ${safeRecipientName ? `<p style="margin-bottom: 16px; font-size: 15px;">Dear <strong>${safeRecipientName}</strong>,</p>` : ''}
       ${formattedParagraphs}
     `;
 
-    html = renderEmailShell(data.subject, bodyContent, data.ctaText, data.ctaUrl);
+    html = renderEmailShell(safeSubject, bodyContent, data.ctaText, data.ctaUrl);
   }
 
-  const res = await sendViaResend(data.to, data.subject, html, SUPPORT_SENDER);
+  const res = await sendViaResend(data.to, safeSubject, html, SUPPORT_SENDER);
 
   // Automatically record each dispatched recipient in Supabase database
   if (res.success) {
