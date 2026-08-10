@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { UserProfile, UserRole } from '../types/auth';
 import { clientService } from './clientService';
+import { activityLogService } from './activityLogService';
 
 export const authService = {
   async signIn(email: string, password?: string): Promise<UserProfile> {
@@ -27,7 +28,9 @@ export const authService = {
 
     const role = (data.user.app_metadata?.role as UserRole) || 'client';
     
-    // If role is client, strictly resolve profile from database public.clients table
+    let userProfile: UserProfile;
+
+    // 2. If role is client, strictly resolve profile from database public.clients table
     if (role === 'client') {
       const clients = await clientService.getClients();
       const matchedClient = clients.find((c) => c.email.toLowerCase() === cleanEmail);
@@ -36,7 +39,7 @@ export const authService = {
         if (matchedClient.status === 'inactive') {
           throw new Error('Your client portal account has been deactivated. Please contact support.');
         }
-        return {
+        userProfile = {
           id: matchedClient.id,
           email: matchedClient.email,
           fullName: matchedClient.fullName,
@@ -49,47 +52,61 @@ export const authService = {
       } else {
         throw new Error('No client profile found matching this email address in the database.');
       }
-    }
+    } else {
+      let avatarUrl = data.user.user_metadata?.avatar_url || '';
+      let fullName = data.user.user_metadata?.full_name || 'Studio Admin';
 
-    let avatarUrl = data.user.user_metadata?.avatar_url || '';
-    let fullName = data.user.user_metadata?.full_name || 'Studio Admin';
+      try {
+        if (role === 'author') {
+          const { data: authorDb } = await supabase
+            .from('authors')
+            .select('name, avatar_url')
+            .eq('email', cleanEmail)
+            .maybeSingle();
 
-    try {
-      if (role === 'author') {
-        const { data: authorDb } = await supabase
-          .from('authors')
-          .select('name, avatar_url')
-          .eq('email', cleanEmail)
-          .maybeSingle();
+          if (authorDb) {
+            if (authorDb.name) fullName = authorDb.name;
+            if (authorDb.avatar_url) avatarUrl = authorDb.avatar_url;
+          }
+        } else {
+          const { data: profileDb } = await supabase
+            .from('profiles')
+            .select('fullName, avatar_url')
+            .eq('email', cleanEmail)
+            .maybeSingle();
 
-        if (authorDb) {
-          if (authorDb.name) fullName = authorDb.name;
-          if (authorDb.avatar_url) avatarUrl = authorDb.avatar_url;
+          if (profileDb) {
+            if (profileDb.fullName) fullName = profileDb.fullName;
+            if (profileDb.avatar_url) avatarUrl = profileDb.avatar_url;
+          }
         }
-      } else {
-        const { data: profileDb } = await supabase
-          .from('profiles')
-          .select('fullName, avatar_url')
-          .eq('email', cleanEmail)
-          .maybeSingle();
-
-        if (profileDb) {
-          if (profileDb.fullName) fullName = profileDb.fullName;
-          if (profileDb.avatar_url) avatarUrl = profileDb.avatar_url;
-        }
+      } catch (err) {
+        console.warn('Profile fetch during signIn notice:', err);
       }
-    } catch (err) {
-      console.warn('Profile fetch during signIn notice:', err);
+
+      userProfile = {
+        id: data.user.id,
+        email: data.user.email || cleanEmail,
+        fullName,
+        role,
+        company: data.user.user_metadata?.company,
+        avatarUrl,
+      };
     }
 
-    return {
-      id: data.user.id,
-      email: data.user.email || cleanEmail,
-      fullName,
-      role,
-      company: data.user.user_metadata?.company,
-      avatarUrl,
-    };
+    // Log sign-in activity to Supabase for ALL roles (Client, Admin, Author)
+    activityLogService.logActivity({
+      user_id: userProfile.id,
+      user_name: userProfile.fullName,
+      user_email: userProfile.email,
+      user_role: userProfile.role,
+      action: 'USER_LOGIN',
+      entity_type: 'auth',
+      entity_id: userProfile.id,
+      details: `User ${userProfile.fullName} (${userProfile.role.toUpperCase()}) logged in successfully.`
+    });
+
+    return userProfile;
   },
 
   async adminCreateClientUser(email: string, password?: string): Promise<string> {

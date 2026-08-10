@@ -37,6 +37,8 @@ import NotificationsPage from './pages/dashboard/NotificationsPage';
 import AdminInvoices from './pages/dashboard/AdminInvoices';
 import ClientInvoices from './pages/dashboard/ClientInvoices';
 import { AdminAnalytics } from './pages/dashboard/AdminAnalytics';
+import { ActivityLogsPage } from './pages/dashboard/ActivityLogsPage';
+import { AdvancedReportsPage } from './pages/dashboard/AdvancedReportsPage';
 import { AdminMessages } from './pages/dashboard/AdminMessages';
 import { ClientMessages } from './pages/dashboard/ClientMessages';
 import { SharedFiles } from './pages/dashboard/SharedFiles';
@@ -92,6 +94,8 @@ function App() {
               <Route path="invoices" element={<AdminInvoices />} />
               <Route path="emails" element={<AdminEmailPage />} />
               <Route path="analytics" element={<AdminAnalytics />} />
+              <Route path="activity-logs" element={<ActivityLogsPage />} />
+              <Route path="reports" element={<AdvancedReportsPage />} />
               <Route path="messages" element={<AdminMessages />} />
               <Route path="cms" element={<AdminCMS />} />
               <Route path="cms/blog/new" element={<AdminBlogEditor />} />

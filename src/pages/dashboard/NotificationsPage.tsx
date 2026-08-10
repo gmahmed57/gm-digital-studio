@@ -37,10 +37,10 @@ export function NotificationsPage() {
     loadNotifications();
 
     const handleUpdate = () => loadNotifications();
-    window.addEventListener('gm_notifications_updated', handleUpdate);
+    window.addEventListener('studio_notifications_updated', handleUpdate);
 
     return () => {
-      window.removeEventListener('gm_notifications_updated', handleUpdate);
+      window.removeEventListener('studio_notifications_updated', handleUpdate);
     };
   }, [user, role]);
 

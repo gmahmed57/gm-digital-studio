@@ -104,6 +104,14 @@ export function AdminSettings() {
 
   useEffect(() => {
     fetchData();
+
+    const handleUpdate = () => fetchData();
+    window.addEventListener('studio_client_updated', handleUpdate);
+    window.addEventListener('studio_tools_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('studio_client_updated', handleUpdate);
+      window.removeEventListener('studio_tools_updated', handleUpdate);
+    };
   }, []);
 
   const handleTabChange = (tabName: string) => {

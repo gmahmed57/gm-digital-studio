@@ -57,7 +57,7 @@ export const folderService = {
       throw new Error(error?.message || 'Failed to assign folder');
     }
 
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_folders_updated'));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('studio_folders_updated'));
     
     return {
       id: data.id,
@@ -82,6 +82,6 @@ export const folderService = {
       throw error;
     }
     
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_folders_updated'));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('studio_folders_updated'));
   }
 };

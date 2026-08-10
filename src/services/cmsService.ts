@@ -156,7 +156,7 @@ export const cmsService = {
         return false;
       }
 
-      window.dispatchEvent(new Event('gm_cms_updated'));
+      window.dispatchEvent(new Event('studio_cms_updated'));
       return true;
     } catch (err) {
       console.error('Unexpected error saving blog:', err);
@@ -173,7 +173,7 @@ export const cmsService = {
         return false;
       }
 
-      window.dispatchEvent(new Event('gm_cms_updated'));
+      window.dispatchEvent(new Event('studio_cms_updated'));
       return true;
     } catch (err) {
       console.error('Unexpected error deleting blog:', err);
@@ -300,7 +300,7 @@ export const cmsService = {
         return false;
       }
 
-      window.dispatchEvent(new Event('gm_cms_updated'));
+      window.dispatchEvent(new Event('studio_cms_updated'));
       return true;
     } catch (err) {
       console.error('Unexpected error saving case study:', err);
@@ -317,7 +317,7 @@ export const cmsService = {
         return false;
       }
 
-      window.dispatchEvent(new Event('gm_cms_updated'));
+      window.dispatchEvent(new Event('studio_cms_updated'));
       return true;
     } catch (err) {
       console.error('Unexpected error deleting case study:', err);
@@ -371,7 +371,7 @@ export const cmsService = {
         return false;
       }
 
-      window.dispatchEvent(new Event('gm_cms_updated'));
+      window.dispatchEvent(new Event('studio_cms_updated'));
       return true;
     } catch (err) {
       console.error('Unexpected error submitting comment:', err);
@@ -387,7 +387,7 @@ export const cmsService = {
         .eq('id', commentId);
 
       if (error) return false;
-      window.dispatchEvent(new Event('gm_cms_updated'));
+      window.dispatchEvent(new Event('studio_cms_updated'));
       return true;
     } catch {
       return false;
@@ -402,7 +402,7 @@ export const cmsService = {
         .eq('id', commentId);
 
       if (error) return false;
-      window.dispatchEvent(new Event('gm_cms_updated'));
+      window.dispatchEvent(new Event('studio_cms_updated'));
       return true;
     } catch {
       return false;
@@ -423,7 +423,7 @@ export const cmsService = {
         console.error('Error replying to comment:', error);
         return false;
       }
-      window.dispatchEvent(new Event('gm_cms_updated'));
+      window.dispatchEvent(new Event('studio_cms_updated'));
       return true;
     } catch (err) {
       console.error('Unexpected error replying to comment:', err);
@@ -517,7 +517,7 @@ export const cmsService = {
         }
       }
 
-      window.dispatchEvent(new Event('gm_cms_updated'));
+      window.dispatchEvent(new Event('studio_cms_updated'));
       return true;
     } catch (err) {
       console.error('Unexpected error saving author:', err);
@@ -546,7 +546,7 @@ export const cmsService = {
         if (error) return false;
       }
       
-      window.dispatchEvent(new Event('gm_cms_updated'));
+      window.dispatchEvent(new Event('studio_cms_updated'));
       return true;
     } catch {
       return false;

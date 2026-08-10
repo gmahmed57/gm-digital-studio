@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { messageService, type Message } from '../../services/messageService';
-import { MessageSquare, Send, Building } from 'lucide-react';
+import { MessageSquare, Send, Building, Download } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 
 export function ClientMessages() {
@@ -31,7 +31,7 @@ export function ClientMessages() {
         const hasUnread = msgs.some(m => !m.isRead && m.senderRole === 'admin');
         if (hasUnread) {
           await messageService.markThreadAsRead(user.id, 'client');
-          window.dispatchEvent(new Event('gm_messages_updated'));
+          window.dispatchEvent(new Event('studio_messages_updated'));
         }
         
         if (!silent) setIsLoading(false);
@@ -40,10 +40,10 @@ export function ClientMessages() {
     loadMessages();
 
     const handleUpdate = () => loadMessages(true);
-    window.addEventListener('gm_messages_updated', handleUpdate);
+    window.addEventListener('studio_messages_updated', handleUpdate);
     const interval = setInterval(handleUpdate, 3000); // Poll active chat every 3s
     return () => {
-      window.removeEventListener('gm_messages_updated', handleUpdate);
+      window.removeEventListener('studio_messages_updated', handleUpdate);
       clearInterval(interval);
     };
   }, [user]);
@@ -66,6 +66,17 @@ export function ClientMessages() {
     scrollToBottom();
   };
 
+  const handleExportChat = () => {
+    if (!user) return;
+    messageService.exportChatTranscript(
+      messages,
+      user.fullName || 'Client User',
+      user.email || 'client@company.com',
+      user.fullName || 'Client User',
+      'client'
+    );
+  };
+
   return (
     <>
       <SEO 
@@ -76,18 +87,28 @@ export function ClientMessages() {
       <div className="h-[calc(100vh-8rem)] font-sans flex flex-col bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl overflow-hidden shadow-xs">
         
         {/* Chat Header */}
-        <div className="p-5 border-b border-gray-100 dark:border-dark-border flex items-center gap-4 bg-gray-50/50 dark:bg-dark-surface/50">
-          <div className="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center font-bold shadow-sm">
-            <Building className="w-6 h-6" />
+        <div className="p-5 border-b border-gray-100 dark:border-dark-border flex items-center justify-between gap-4 bg-gray-50/50 dark:bg-dark-surface/50">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
+              <Building className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-xl font-heading font-bold text-gray-900 dark:text-white truncate">
+                GM Digital Studio Team
+              </h1>
+              <p className="text-sm text-brand-600 dark:text-brand-400 font-medium truncate">
+                We typically reply within a few hours.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-heading font-bold text-gray-900 dark:text-white">
-              GM Digital Studio Team
-            </h1>
-            <p className="text-sm text-brand-600 dark:text-brand-400 font-medium">
-              We typically reply within a few hours.
-            </p>
-          </div>
+
+          <button
+            onClick={handleExportChat}
+            title="Export & Download Chat Transcript"
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-gray-100 dark:bg-dark-card dark:hover:bg-dark-surface border border-gray-200 dark:border-dark-border text-gray-700 dark:text-gray-200 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs shrink-0"
+          >
+            <Download className="w-4 h-4 text-brand-500" /> Export Chat Transcript
+          </button>
         </div>
 
         {/* Messages Area */}

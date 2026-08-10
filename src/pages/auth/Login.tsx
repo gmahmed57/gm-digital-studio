@@ -70,7 +70,7 @@ export function Login() {
     try {
       await login(email, password);
 
-      const savedUser = localStorage.getItem('gm_auth_user');
+      const savedUser = localStorage.getItem('studio_auth_user');
       if (savedUser) {
         try {
           const parsed = JSON.parse(savedUser);

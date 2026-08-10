@@ -172,8 +172,8 @@ export function AdminCMS() {
   useEffect(() => {
     loadAllData();
     const handleCmsUpdate = () => loadAllData();
-    window.addEventListener('gm_cms_updated', handleCmsUpdate);
-    return () => window.removeEventListener('gm_cms_updated', handleCmsUpdate);
+    window.addEventListener('studio_cms_updated', handleCmsUpdate);
+    return () => window.removeEventListener('studio_cms_updated', handleCmsUpdate);
   }, []);
 
   useEffect(() => {

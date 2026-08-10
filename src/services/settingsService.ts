@@ -19,8 +19,8 @@ export interface WebsiteSettings {
   footerName?: string;
 }
 
-const SETTINGS_KEY = 'gm_website_settings';
-const TOOLS_KEY = 'gm_studio_tools_cache';
+const SETTINGS_KEY = 'studio_website_settings';
+const TOOLS_KEY = 'studio_tools_cache';
 
 const DEFAULT_SETTINGS: WebsiteSettings = {
   siteName: 'GM DIGITAL STUDIO',

@@ -173,11 +173,11 @@ export function ClientInvoices() {
       loadData();
     };
 
-    window.addEventListener('gm_invoice_updated', handleUpdate);
+    window.addEventListener('studio_invoice_updated', handleUpdate);
     window.addEventListener('storage', handleUpdate);
 
     return () => {
-      window.removeEventListener('gm_invoice_updated', handleUpdate);
+      window.removeEventListener('studio_invoice_updated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
   }, [user]);
@@ -225,38 +225,41 @@ export function ClientInvoices() {
     setIsUploading(true);
     let uploadedUrl: string | undefined = undefined;
 
-    if (proofFileInput && supabase) {
-      const fileExt = proofFileInput.name.split('.').pop();
+    if (proofFileInput) {
+      const fileExt = proofFileInput.name.split('.').pop() || 'png';
       const fileName = `proof-${Date.now()}.${fileExt}`;
-      const { data, error } = await supabase.storage
-        .from('invoices')
-        .upload(fileName, proofFileInput, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      
+      let uploadSuccess = false;
+      if (supabase) {
+        try {
+          const { data, error } = await supabase.storage
+            .from('invoices')
+            .upload(fileName, proofFileInput, {
+              cacheControl: '3600',
+              upsert: true
+            });
 
-      if (!error && data) {
-        const { data: publicUrlData } = supabase.storage
-          .from('invoices')
-          .getPublicUrl(fileName);
-        uploadedUrl = publicUrlData.publicUrl;
-
-        // Cleanup old image if one existed to save bucket storage
-        if (payingInvoice.proofUrl && payingInvoice.proofUrl.includes('/storage/v1/object/public/invoices/')) {
-          try {
-            const oldFileName = payingInvoice.proofUrl.split('/').pop();
-            if (oldFileName) {
-              await supabase.storage.from('invoices').remove([oldFileName]);
-            }
-          } catch (cleanupError) {
-            console.warn('Failed to cleanup old proof image:', cleanupError);
+          if (!error && data) {
+            const { data: publicUrlData } = supabase.storage
+              .from('invoices')
+              .getPublicUrl(fileName);
+            uploadedUrl = publicUrlData.publicUrl;
+            uploadSuccess = true;
+          } else {
+            console.warn('Supabase storage upload notice:', error?.message);
           }
+        } catch (storageErr) {
+          console.warn('Storage upload error:', storageErr);
         }
-      } else {
-        console.error('Proof upload failed:', error);
-        alert(`Supabase Storage Error: ${error.message}\n\nPlease run the storage bucket SQL from supabase_schema.md!`);
-        setIsUploading(false);
-        return;
+      }
+
+      if (!uploadSuccess) {
+        // Automatic smooth Base64 fallback so clients are NEVER blocked by bucket policies
+        uploadedUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(proofFileInput);
+        });
       }
     }
 
@@ -264,13 +267,17 @@ export function ClientInvoices() {
       ? (customPaymentMethodInput.trim() || 'Custom Payment Method')
       : paymentMethodInput;
 
-    await invoiceService.submitPaymentProof(
-      payingInvoice.id,
+    const updatedInvoices = await invoiceService.submitPaymentProof(
+      payingInvoice.id || payingInvoice.invoiceNumber,
       transactionIdInput || `TXN-${Date.now().toString().slice(-6)}`,
       finalPaymentMethod,
       paymentNotesInput,
       uploadedUrl
     );
+
+    if (updatedInvoices && updatedInvoices.length > 0) {
+      setInvoices(updatedInvoices);
+    }
 
     sendInvoiceAlertEmail({
       invoiceNumber: payingInvoice.invoiceNumber,
@@ -292,7 +299,7 @@ export function ClientInvoices() {
       setUseCustomPaymentMethod(false);
       setProofFileInput(null);
       loadData();
-    }, 1500);
+    }, 1200);
   };
 
   const filteredInvoices = invoices.filter((inv) => {
@@ -530,8 +537,25 @@ export function ClientInvoices() {
                     )}
                   </div>
 
-                  {/* Submit Payment Proof Button (Enabled ONLY after Admin Approval: Pending or Overdue) */}
-                  {(inv.status === 'Pending' || inv.status === 'Overdue') && (
+                  {/* Payment Proof Action Button States */}
+                  {inv.status === 'Pending Verification' ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="px-4 py-2.5 rounded-xl bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-300/50 dark:border-purple-800/50 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed opacity-90"
+                      title="Proof submitted and currently under review by Studio Admin"
+                    >
+                      <Clock className="w-3.5 h-3.5 animate-spin text-purple-600 dark:text-purple-400" /> Proof Submitted (Verification Pending)
+                    </button>
+                  ) : inv.adminRejectionReason && (inv.status === 'Pending' || inv.status === 'Overdue') ? (
+                    <button
+                      type="button"
+                      onClick={() => setPayingInvoice(inv)}
+                      className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" /> Resubmit Payment Proof
+                    </button>
+                  ) : (inv.status === 'Pending' || inv.status === 'Overdue') ? (
                     <button
                       type="button"
                       onClick={() => setPayingInvoice(inv)}
@@ -539,7 +563,7 @@ export function ClientInvoices() {
                     >
                       <CreditCard className="w-3.5 h-3.5" /> Submit Payment Proof
                     </button>
-                  )}
+                  ) : null}
 
                   <button
                     type="button"

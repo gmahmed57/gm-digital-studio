@@ -3,7 +3,9 @@ import { useAuth } from '../../context/AuthContext';
 import { clientService } from '../../services/clientService';
 import { notificationService } from '../../services/notificationService';
 import { settingsService } from '../../services/settingsService';
+import { activityLogService } from '../../services/activityLogService';
 import type { ClientItem, StudioTool } from '../../types/client';
+import { normalizeToolId } from '../../constants/toolsData';
 import { 
   Wrench, Sparkles, Search, RefreshCw, LayoutGrid, FileSpreadsheet, Lock, ArrowRight, CheckCircle2,
   Palette, ShieldCheck, ArrowLeft, Copy, Upload, AlertTriangle,
@@ -75,6 +77,14 @@ export function ClientTools() {
 
   useEffect(() => {
     fetchClientAndCatalog();
+
+    const handleUpdate = () => fetchClientAndCatalog();
+    window.addEventListener('studio_client_updated', handleUpdate);
+    window.addEventListener('studio_tools_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('studio_client_updated', handleUpdate);
+      window.removeEventListener('studio_tools_updated', handleUpdate);
+    };
   }, [user]);
 
   const handleRequestAccess = async (toolId: string, toolName: string) => {
@@ -100,6 +110,19 @@ export function ClientTools() {
     setTimeout(() => setIsCopied(null), 2000);
   };
 
+  const handleLaunchTool = (toolId: string, toolName: string) => {
+    setActiveToolId(toolId);
+    activityLogService.logActivity({
+      user_name: clientData?.fullName || user?.email || 'Studio User',
+      user_email: clientData?.email || user?.email || 'user@gmstudio.com',
+      user_role: 'client',
+      action: 'TOOL_LAUNCHED',
+      entity_type: 'tools',
+      entity_id: toolId,
+      details: `User launched Studio Tool workspace for "${toolName}".`
+    });
+  };
+
   // ==========================================
   // SAAS TOOL 1: AI CAROUSEL MAKER ACTIONS
   // ==========================================
@@ -110,6 +133,16 @@ export function ClientTools() {
     setAuditStep(1);
     setAuditResults(null);
     setAuditLog([]);
+
+    activityLogService.logActivity({
+      user_name: clientData?.fullName || user?.email || 'Studio User',
+      user_email: clientData?.email || user?.email || 'user@gmstudio.com',
+      user_role: 'client',
+      action: 'TOOL_EXECUTED',
+      entity_type: 'tools',
+      entity_id: 'seo-auditor',
+      details: `Executed SEO & Core Web Vitals Audit for target URL: ${auditUrl}.`
+    });
 
     const steps = [
       { msg: 'Connecting to target host & testing handshake...', delay: 600 },
@@ -165,6 +198,16 @@ export function ClientTools() {
     };
 
     setCopyResults(prompts[copyType] || [`Failed to generate outline for ${copyTopic}`]);
+
+    activityLogService.logActivity({
+      user_name: clientData?.fullName || user?.email || 'Studio User',
+      user_email: clientData?.email || user?.email || 'user@gmstudio.com',
+      user_role: 'client',
+      action: 'TOOL_EXECUTED',
+      entity_type: 'tools',
+      entity_id: 'ai-copywriter',
+      details: `Generated AI Copywriting templates (${copyType}) for topic: "${copyTopic}".`
+    });
   };
 
   // ==========================================
@@ -203,6 +246,16 @@ export function ClientTools() {
       const md = `# Text Document\n\nGenerated on: ${new Date().toLocaleDateString()}\n\n---\n\n${converterInputText}`;
       setConverterOutput(md);
     }
+
+    activityLogService.logActivity({
+      user_name: clientData?.fullName || user?.email || 'Studio User',
+      user_email: clientData?.email || user?.email || 'user@gmstudio.com',
+      user_role: 'client',
+      action: 'TOOL_EXECUTED',
+      entity_type: 'tools',
+      entity_id: 'file-converter',
+      details: `Executed Media & File Conversion (${converterMode.toUpperCase()}).`
+    });
   };
 
   // ==========================================
@@ -217,22 +270,33 @@ export function ClientTools() {
   --brand-radius: ${brandRadius === 'sharp' ? '0px' : brandRadius === 'soft' ? '12px' : '24px'};
 }`;
     setBrandCodeOutput(code);
+
+    activityLogService.logActivity({
+      user_name: clientData?.fullName || user?.email || 'Studio User',
+      user_email: clientData?.email || user?.email || 'user@gmstudio.com',
+      user_role: 'client',
+      action: 'TOOL_EXECUTED',
+      entity_type: 'tools',
+      entity_id: 'brand-kit',
+      details: `Exported Brand Kit CSS design tokens for ${brandName}.`
+    });
   };
 
-  const allowedIds = clientData?.allowedToolIds || [];
-  const requestedIds = clientData?.requestedToolIds || [];
+  const allowedIds = (clientData?.allowedToolIds || []).map(normalizeToolId);
+  const requestedIds = (clientData?.requestedToolIds || []).map(normalizeToolId);
 
   // Filter out globally disabled catalog tools
   const activeTools = catalogTools.filter((t) => t.isActive !== false);
-  const unlockedActiveCount = activeTools.filter((t) => allowedIds.includes(t.id)).length;
+  const unlockedActiveCount = activeTools.filter((t) => allowedIds.includes(normalizeToolId(t.id))).length;
 
-  const activeTool = catalogTools.find((t) => t.id === activeToolId);
+  const activeTool = catalogTools.find((t) => normalizeToolId(t.id) === normalizeToolId(activeToolId || ''));
   const activeToolName = activeTool?.name?.toLowerCase() || '';
-  const isCarousel = activeToolId === 'carousel-maker' || activeToolName.includes('carousel');
-  const isSeo = activeToolId === 'seo-auditor' || activeToolName.includes('seo') || activeToolName.includes('auditor');
-  const isCopywriter = activeToolId === 'ai-copywriter' || activeToolName.includes('copywriter') || activeToolName.includes('assistant');
-  const isConverter = activeToolId === 'file-converter' || activeToolName.includes('converter');
-  const isBrandKit = activeToolId === 'brand-kit' || activeToolName.includes('brand');
+  const normActiveId = normalizeToolId(activeToolId || '');
+  const isCarousel = normActiveId === 'ai-carousel' || activeToolName.includes('carousel');
+  const isSeo = normActiveId === 'seo-auditor' || activeToolName.includes('seo') || activeToolName.includes('auditor');
+  const isCopywriter = normActiveId === 'ai-assistant' || activeToolName.includes('copywriter') || activeToolName.includes('assistant');
+  const isConverter = normActiveId === 'file-converter' || activeToolName.includes('converter');
+  const isBrandKit = normActiveId === 'brand-kit' || activeToolName.includes('brand');
 
   return (
     <>
@@ -319,7 +383,7 @@ export function ClientTools() {
                     <div className="pt-4 border-t border-gray-150 dark:border-dark-border">
                       {isUnlocked ? (
                         <button
-                          onClick={() => setActiveToolId(tool.id)}
+                          onClick={() => handleLaunchTool(tool.id, tool.name)}
                           className="w-full py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 group cursor-pointer"
                         >
                           Launch Workspace <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />

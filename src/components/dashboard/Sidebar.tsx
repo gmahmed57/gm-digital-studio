@@ -19,6 +19,8 @@ import {
   Bell,
   User,
   Mail,
+  ShieldCheck,
+  BarChart3,
 } from 'lucide-react';
 import logo from '../../assets/icon-logo.png';
 import { settingsService } from '../../services/settingsService';
@@ -63,11 +65,13 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
 
     fetchUnread();
     
-    window.addEventListener('gm_messages_updated', fetchUnread);
-    const interval = setInterval(fetchUnread, 15000); // Poll every 15s for WhatsApp-like real-time feel
+    window.addEventListener('studio_messages_updated', fetchUnread);
+    window.addEventListener('studio_notifications_updated', fetchUnread);
+    const interval = setInterval(fetchUnread, 10000);
 
     return () => {
-      window.removeEventListener('gm_messages_updated', fetchUnread);
+      window.removeEventListener('studio_messages_updated', fetchUnread);
+      window.removeEventListener('studio_notifications_updated', fetchUnread);
       clearInterval(interval);
     };
   }, [user, isAdmin]);
@@ -83,6 +87,8 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
     { label: 'Email Studio', path: '/admin/emails', icon: Mail },
     { label: 'Messages', path: '/admin/messages', icon: MessageSquare },
     { label: 'Analytics', path: '/admin/analytics', icon: BarChart2 },
+    { label: 'Activity Logs', path: '/admin/activity-logs', icon: ShieldCheck },
+    { label: 'Advanced Reports', path: '/admin/reports', icon: BarChart3 },
     { label: 'Blog & CMS', path: '/admin/cms', icon: FileCheck2 },
     { label: 'My Profile', path: '/admin/profile', icon: User },
     { label: 'Settings', path: '/admin/settings', icon: Settings },

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { clientService } from '../../services/clientService';
 import { messageService, type Message } from '../../services/messageService';
 import type { ClientItem } from '../../types/client';
-import { MessageSquare, Search, Send, User, Trash2, Mail } from 'lucide-react';
+import { MessageSquare, Search, Send, User, Trash2, Mail, Download } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import ComposeEmailModal from '../../components/dashboard/ComposeEmailModal';
 
@@ -42,10 +42,10 @@ export function AdminMessages() {
     loadClients();
 
     const handleUpdate = () => loadClients();
-    window.addEventListener('gm_messages_updated', handleUpdate);
+    window.addEventListener('studio_messages_updated', handleUpdate);
     const interval = setInterval(handleUpdate, 10000); // Poll list every 10s
     return () => {
-      window.removeEventListener('gm_messages_updated', handleUpdate);
+      window.removeEventListener('studio_messages_updated', handleUpdate);
       clearInterval(interval);
     };
   }, []);
@@ -69,17 +69,17 @@ export function AdminMessages() {
         if (hasUnread) {
           await messageService.markThreadAsRead(selectedClientId, 'admin');
           setUnreadCounts(prev => ({ ...prev, [selectedClientId]: 0 }));
-          window.dispatchEvent(new Event('gm_messages_updated'));
+          window.dispatchEvent(new Event('studio_messages_updated'));
         }
       }
     };
     loadMessages();
 
     const handleUpdate = () => loadMessages();
-    window.addEventListener('gm_messages_updated', handleUpdate);
+    window.addEventListener('studio_messages_updated', handleUpdate);
     const interval = setInterval(handleUpdate, 3000); // Poll active chat every 3s
     return () => {
-      window.removeEventListener('gm_messages_updated', handleUpdate);
+      window.removeEventListener('studio_messages_updated', handleUpdate);
       clearInterval(interval);
     };
   }, [selectedClientId]);
@@ -222,11 +222,29 @@ export function AdminMessages() {
                     {selectedClient?.company}
                   </p>
                 </div>
-                <div className="ml-auto">
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (selectedClient) {
+                        messageService.exportChatTranscript(
+                          messages,
+                          selectedClient.fullName,
+                          selectedClient.email,
+                          'Studio Admin',
+                          'admin'
+                        );
+                      }
+                    }}
+                    title="Export & Download Chat Transcript"
+                    className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-dark-surface dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Download className="w-4 h-4 text-brand-500" /> Export Chat
+                  </button>
+
                   <button
                     onClick={handleClearChat}
                     title="Clear Chat History"
-                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
+                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>

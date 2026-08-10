@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ClientItem } from '../../types/client';
 import { clientService } from '../../services/clientService';
+import { MASTER_STUDIO_TOOLS, normalizeToolId } from '../../constants/toolsData';
 import {
   Users,
   UserPlus,
@@ -52,6 +53,14 @@ export function Clients() {
 
   useEffect(() => {
     loadClientData();
+
+    const handleUpdate = () => loadClientData();
+    window.addEventListener('studio_client_updated', handleUpdate);
+    window.addEventListener('studio_tools_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('studio_client_updated', handleUpdate);
+      window.removeEventListener('studio_tools_updated', handleUpdate);
+    };
   }, []);
 
   const handleToggleStatus = async (id: string) => {
@@ -270,7 +279,11 @@ export function Clients() {
                           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400 font-bold text-[11px] cursor-pointer hover:bg-brand-500/20 transition-colors"
                         >
                           <Wrench className="w-3.5 h-3.5" />
-                          <span>{client.allowedToolIds?.length || 0} Tools Enabled</span>
+                          <span>
+                            {(client.allowedToolIds || [])
+                              .map(normalizeToolId)
+                              .filter((id) => MASTER_STUDIO_TOOLS.some((t) => normalizeToolId(t.id) === id)).length} Tools Enabled
+                          </span>
                         </div>
                       </td>
 

@@ -105,14 +105,14 @@ export function AdminOverview() {
     loadData();
 
     const handleUpdate = () => loadData();
-    window.addEventListener('gm_invoice_updated', handleUpdate);
-    window.addEventListener('gm_project_updated', handleUpdate);
-    window.addEventListener('gm_studio_clients_updated', handleUpdate); // Adding generic clients update if existed
+    window.addEventListener('studio_invoice_updated', handleUpdate);
+    window.addEventListener('studio_project_updated', handleUpdate);
+    window.addEventListener('studio_client_updated', handleUpdate);
 
     return () => {
-      window.removeEventListener('gm_invoice_updated', handleUpdate);
-      window.removeEventListener('gm_project_updated', handleUpdate);
-      window.removeEventListener('gm_studio_clients_updated', handleUpdate);
+      window.removeEventListener('studio_invoice_updated', handleUpdate);
+      window.removeEventListener('studio_project_updated', handleUpdate);
+      window.removeEventListener('studio_client_updated', handleUpdate);
     };
   }, []);
 

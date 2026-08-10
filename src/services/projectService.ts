@@ -1,5 +1,6 @@
 import type { ProjectItem, ProjectStatus, MilestoneItem, MilestoneStatus } from '../types/project';
 import { supabase } from './supabase';
+import { activityLogService } from './activityLogService';
 
 export const projectService = {
   // Helper to normalize milestones and compute progress based on approved milestones
@@ -148,6 +149,16 @@ export const projectService = {
 
     const { error } = await supabase.from('projects').upsert(dbPayload);
     if (error) throw error;
+
+    activityLogService.logActivity({
+      user_name: targetItem.clientName || 'Studio Admin',
+      user_email: targetItem.clientEmail || 'admin@gmstudio.com',
+      user_role: 'admin',
+      action: project.id ? 'PROJECT_UPDATED' : 'PROJECT_CREATED',
+      entity_type: 'project',
+      entity_id: targetItem.id,
+      details: `Project "${targetItem.title}" ${project.id ? 'updated' : 'created'} with status ${targetItem.status} (${targetItem.progress}% complete).`
+    });
 
     return await projectService.getProjects();
   },

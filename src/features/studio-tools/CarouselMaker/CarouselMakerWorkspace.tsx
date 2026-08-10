@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { parseSlides, FONT_PAIRS } from './carouselUtils';
 import { SlideRenderer } from './SlideRenderer';
 import { captureNodeToCanvas, exportPDF, exportImageZip } from './carouselExportUtils';
+import { useAuth } from '../../../context/AuthContext';
+import { activityLogService } from '../../../services/activityLogService';
 import './CarouselMaker.css';
 
 import { Download, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -34,6 +36,7 @@ img: quiet morning workspace
 - Guard it like it matters, because it does`;
 
 export const CarouselMakerWorkspace: React.FC = () => {
+  const { user } = useAuth();
   const [sourceText, setSourceText] = useState(EXAMPLE_TEXT);
   const [slideStyle, setSlideStyle] = useState<'photo'|'flat'>('photo');
   const [fontPairIndex, setFontPairIndex] = useState(0);
@@ -178,6 +181,16 @@ export const CarouselMakerWorkspace: React.FC = () => {
       } else {
         await exportImageZip(canvases, exportFormat, setExportProgress);
       }
+
+      activityLogService.logActivity({
+        user_name: user?.fullName || 'Client User',
+        user_email: user?.email || 'client@company.com',
+        user_role: 'client',
+        action: 'TOOL_EXECUTED',
+        entity_type: 'tools',
+        entity_id: 'carousel-maker',
+        details: `Client ${user?.fullName || 'User'} (${user?.email}) generated and downloaded a ${slidesData.length}-slide Carousel Post deck (${exportFormat.toUpperCase()}).`
+      });
     } catch (error) {
       console.error(error);
       setExportProgress('Export failed. Please try again.');

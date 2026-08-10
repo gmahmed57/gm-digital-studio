@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { activityLogService } from './activityLogService';
 
 export interface SentEmailRecord {
   id: string;
@@ -14,7 +15,7 @@ export interface SentEmailRecord {
   sent_at: string;
 }
 
-const STORAGE_KEY = 'gm_sent_emails_history';
+const STORAGE_KEY = 'studio_sent_emails_history';
 
 export const emailRecordService = {
   /**
@@ -88,6 +89,16 @@ export const emailRecordService = {
     } catch (err) {
       console.warn('[EmailRecordService] Supabase sync notice:', err);
     }
+
+    activityLogService.logActivity({
+      user_name: 'Studio Admin',
+      user_email: newRecord.sender,
+      user_role: 'admin',
+      action: 'EMAIL_DISPATCHED',
+      entity_type: 'email',
+      entity_id: newRecord.id,
+      details: `Transactional email "${newRecord.subject}" sent to ${newRecord.recipient_email}.`
+    });
 
     return newRecord;
   },

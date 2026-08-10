@@ -565,14 +565,14 @@ export function AdminInvoices() {
 
                       {/* Payment Proof / Txn Ref */}
                       <td className="py-4 px-6">
-                        {inv.transactionId || inv.proofUrl ? (
+                        {inv.transactionId || inv.proofUrl || inv.status === 'Pending Verification' || inv.paymentMethod ? (
                           <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 space-y-1.5 max-w-xs">
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-mono font-bold text-purple-700 dark:text-purple-300 text-[11px]">
-                                Txn: {inv.transactionId || 'Wire Ref'}
+                                Txn: {inv.transactionId || 'Submitted'}
                               </span>
                               <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                                {inv.paymentMethod || 'Wire'}
+                                {inv.paymentMethod || 'Wire/Online'}
                               </span>
                             </div>
 
@@ -582,7 +582,7 @@ export function AdminInvoices() {
                               onClick={() => setInspectingInvoice(inv)}
                               className="w-full py-1 px-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs"
                             >
-                              <Eye className="w-3 h-3" /> View Proof Document
+                              <Eye className="w-3 h-3" /> View & Verify Proof
                             </button>
                           </div>
                         ) : (
@@ -630,7 +630,8 @@ export function AdminInvoices() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-6 text-right space-x-2">
+                      <td className="py-4 px-6 text-right whitespace-nowrap space-x-2">
+
                         {inv.status === 'Under Approval' && (
                           <button
                             type="button"

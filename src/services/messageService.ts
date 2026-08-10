@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { activityLogService } from './activityLogService';
 
 export interface Message {
   id: string;
@@ -64,7 +65,7 @@ export const messageService = {
       throw new Error(error?.message || 'Failed to send message');
     }
 
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_messages_updated'));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('studio_messages_updated'));
     
     return {
       id: data.id,
@@ -109,7 +110,7 @@ export const messageService = {
       throw new Error(error.message);
     }
 
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_messages_updated'));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('studio_messages_updated'));
   },
 
   // Get total unread count for a receiver
@@ -142,5 +143,71 @@ export const messageService = {
     }
     
     return count || 0;
+  },
+
+  // Export & Download Formatted Chat Transcript
+  exportChatTranscript: (
+    messages: Message[],
+    clientName: string,
+    clientEmail: string,
+    exportedBy: string,
+    exportedRole: 'admin' | 'client'
+  ): void => {
+    if (!messages || messages.length === 0) {
+      alert('No chat messages present to export.');
+      return;
+    }
+
+    const divider = '='.repeat(70);
+    const subDivider = '-'.repeat(70);
+
+    const lines = [
+      divider,
+      'GM DIGITAL STUDIO — OFFICIAL CHAT TRANSCRIPT',
+      divider,
+      `Client Name: ${clientName}`,
+      `Client Email: ${clientEmail}`,
+      `Exported On: ${new Date().toLocaleString()}`,
+      `Exported By: ${exportedBy} (${exportedRole.toUpperCase()})`,
+      `Total Messages: ${messages.length}`,
+      divider,
+      ''
+    ];
+
+    messages.forEach((msg) => {
+      const timeStr = new Date(msg.createdAt).toLocaleString();
+      const senderLabel = msg.senderRole === 'admin' ? 'Studio Admin' : `Client (${clientName})`;
+      lines.push(`[${timeStr}] ${senderLabel}:`);
+      lines.push(msg.content);
+      lines.push(subDivider);
+    });
+
+    lines.push('');
+    lines.push(divider);
+    lines.push('END OF TRANSCRIPT — GM DIGITAL STUDIO PORTAL');
+    lines.push(divider);
+
+    const fileContent = lines.join('\n');
+    const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeClientName = clientName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    link.href = url;
+    link.download = `GM_Studio_Chat_Transcript_${safeClientName}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    // Audit log dispatch
+    activityLogService.logActivity({
+      user_name: exportedBy,
+      user_email: clientEmail,
+      user_role: exportedRole,
+      action: 'CHAT_EXPORTED',
+      entity_type: 'message',
+      entity_id: clientEmail,
+      details: `${exportedRole.toUpperCase()} user ${exportedBy} exported chat transcript (${messages.length} messages) for client ${clientName}.`
+    });
   }
 };

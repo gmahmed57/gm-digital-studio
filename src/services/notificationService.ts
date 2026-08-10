@@ -131,7 +131,7 @@ export const notificationService = {
     
     if (error) throw error;
 
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_notifications_updated'));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('studio_notifications_updated'));
 
     return await notificationService.getNotifications();
   },
@@ -147,7 +147,7 @@ export const notificationService = {
       console.error('Delete notification failed:', err);
     }
 
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_notifications_updated'));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('studio_notifications_updated'));
 
     return await notificationService.getNotifications(userEmail, userRole);
   },
@@ -159,7 +159,7 @@ export const notificationService = {
     const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id);
     if (error) throw error;
 
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_notifications_updated'));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('studio_notifications_updated'));
 
     return await notificationService.getNotifications();
   },
@@ -180,7 +180,7 @@ export const notificationService = {
       console.error('markAllAsRead failed:', err);
     }
 
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_notifications_updated'));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('studio_notifications_updated'));
 
     return await notificationService.getNotifications(userEmail, userRole);
   },
@@ -201,7 +201,7 @@ export const notificationService = {
       console.error('clearNotifications failed:', err);
     }
 
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gm_notifications_updated'));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('studio_notifications_updated'));
 
     return await notificationService.getNotifications(userEmail, userRole);
   },

@@ -1,6 +1,7 @@
 import type { InvoiceItem, InvoiceStatus } from '../types/invoice';
 import { supabase } from './supabase';
 import { notificationService } from './notificationService';
+import { activityLogService } from './activityLogService';
 
 // Helper to filter out legacy dummy/seed data explicitly by known legacy IDs
 const isLegacyDummy = (inv: InvoiceItem | any): boolean => {
@@ -136,7 +137,7 @@ export const invoiceService = {
     }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('gm_invoice_updated'));
+      window.dispatchEvent(new Event('studio_invoice_updated'));
     }
 
     return await invoiceService.getInvoices();
@@ -238,7 +239,7 @@ export const invoiceService = {
     if (error) throw error;
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('gm_invoice_updated'));
+      window.dispatchEvent(new Event('studio_invoice_updated'));
     }
 
     const updatedList = await invoiceService.getInvoices();
@@ -270,7 +271,7 @@ export const invoiceService = {
     if (error) throw error;
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('gm_invoice_updated'));
+      window.dispatchEvent(new Event('studio_invoice_updated'));
     }
 
     const updatedList = await invoiceService.getInvoices();
@@ -293,7 +294,7 @@ export const invoiceService = {
 
   // Client submits payment proof, transaction reference & proof document/image
   submitPaymentProof: async (
-    id: string,
+    idOrNum: string,
     transactionId: string,
     paymentMethod: string,
     paymentNotes: string,
@@ -301,9 +302,15 @@ export const invoiceService = {
   ): Promise<InvoiceItem[]> => {
     if (!supabase) throw new Error('Supabase client not initialized');
 
+    // Find existing invoice by id or invoice_number to get exact DB primary key id & invoice_number
+    const existingList = await invoiceService.getInvoices();
+    const targetInv = existingList.find(i => i.id === idOrNum || i.invoiceNumber === idOrNum);
+    const targetId = targetInv?.id || idOrNum;
+    const targetNum = targetInv?.invoiceNumber || idOrNum;
+
     const submittedDateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 
-    const { error } = await supabase.from('invoices').update({
+    const primaryPayload: Record<string, any> = {
       status: 'Pending Verification',
       transaction_id: transactionId,
       payment_method: paymentMethod,
@@ -311,16 +318,38 @@ export const invoiceService = {
       payment_submitted_at: submittedDateStr,
       proof_url: proofUrl || null,
       admin_rejection_reason: null
-    }).eq('id', id);
+    };
 
-    if (error) throw error;
+    // Try primary update by ID first, then by invoice_number
+    let { error } = await supabase.from('invoices').update(primaryPayload).eq('id', targetId);
+    if (error) {
+      const { error: err2 } = await supabase.from('invoices').update(primaryPayload).eq('invoice_number', targetNum);
+      if (err2) {
+        const camelPayload: Record<string, any> = {
+          status: 'Pending Verification',
+          transactionId: transactionId,
+          paymentMethod: paymentMethod,
+          paymentNotes: paymentNotes,
+          paymentSubmittedAt: submittedDateStr,
+          proofUrl: proofUrl || null,
+          adminRejectionReason: null
+        };
+        const { error: err3 } = await supabase.from('invoices').update(camelPayload).eq('id', targetId);
+        if (err3) {
+          const { error: err4 } = await supabase.from('invoices').update(camelPayload).eq('invoice_number', targetNum);
+          if (err4) {
+            throw new Error(`Database update failed: ${err4.message}`);
+          }
+        }
+      }
+    }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('gm_invoice_updated'));
+      window.dispatchEvent(new Event('studio_invoice_updated'));
     }
 
     const updatedList = await invoiceService.getInvoices();
-    const target = updatedList.find(i => i.id === id);
+    const target = updatedList.find(i => i.id === targetId || i.invoiceNumber === targetNum);
 
     if (target) {
       await notificationService.addNotification({
@@ -330,28 +359,46 @@ export const invoiceService = {
         targetRole: 'admin',
         link: '/admin/invoices',
       });
+
+      activityLogService.logActivity({
+        user_name: target.clientName || 'Client User',
+        user_email: target.clientEmail || 'client@company.com',
+        user_role: 'client',
+        action: 'PAYMENT_SUBMITTED',
+        entity_type: 'invoice',
+        entity_id: target.id,
+        details: `Client ${target.clientName} (${target.clientCompany}) submitted payment proof for Invoice #${target.invoiceNumber} (Ref: ${transactionId}).`
+      });
     }
 
     return updatedList;
   },
 
   // Reject submitted payment proof and notify client
-  rejectPaymentProof: async (id: string, reason?: string): Promise<InvoiceItem[]> => {
+  rejectPaymentProof: async (idOrNum: string, reason?: string): Promise<InvoiceItem[]> => {
     if (!supabase) throw new Error('Supabase client not initialized');
 
-    const { error } = await supabase.from('invoices').update({
+    const existingList = await invoiceService.getInvoices();
+    const targetInv = existingList.find(i => i.id === idOrNum || i.invoiceNumber === idOrNum);
+    const targetId = targetInv?.id || idOrNum;
+    const targetNum = targetInv?.invoiceNumber || idOrNum;
+
+    const payload = {
       status: 'Pending',
       admin_rejection_reason: reason || null,
-    }).eq('id', id);
+    };
 
-    if (error) throw error;
+    let { error } = await supabase.from('invoices').update(payload).eq('id', targetId);
+    if (error) {
+      await supabase.from('invoices').update(payload).eq('invoice_number', targetNum);
+    }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('gm_invoice_updated'));
+      window.dispatchEvent(new Event('studio_invoice_updated'));
     }
 
     const updatedList = await invoiceService.getInvoices();
-    const target = updatedList.find(i => i.id === id);
+    const target = updatedList.find(i => i.id === targetId || i.invoiceNumber === targetNum);
 
     if (target && target.clientEmail) {
       await notificationService.addNotification({
@@ -368,26 +415,37 @@ export const invoiceService = {
   },
 
   // Update specific invoice status
-  updateInvoiceStatus: async (id: string, status: InvoiceStatus): Promise<InvoiceItem[]> => {
+  updateInvoiceStatus: async (idOrNum: string, status: InvoiceStatus): Promise<InvoiceItem[]> => {
     if (!supabase) throw new Error('Supabase client not initialized');
 
-    const { error } = await supabase.from('invoices').update({ status, requested_by_client: false }).eq('id', id);
-    if (error) throw error;
+    const existingList = await invoiceService.getInvoices();
+    const targetInv = existingList.find(i => i.id === idOrNum || i.invoiceNumber === idOrNum);
+    const targetId = targetInv?.id || idOrNum;
+    const targetNum = targetInv?.invoiceNumber || idOrNum;
+
+    const payload = { status, requested_by_client: false };
+
+    let { error } = await supabase.from('invoices').update(payload).eq('id', targetId);
+    if (error) {
+      await supabase.from('invoices').update(payload).eq('invoice_number', targetNum);
+    }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('gm_invoice_updated'));
+      window.dispatchEvent(new Event('studio_invoice_updated'));
     }
 
     return await invoiceService.getInvoices();
   },
 
   // Delete invoice
-  deleteInvoice: async (id: string): Promise<InvoiceItem[]> => {
+  deleteInvoice: async (idOrNum: string): Promise<InvoiceItem[]> => {
     if (!supabase) throw new Error('Supabase client not initialized');
 
     // Find the invoice to check if we need to clean up a proof image
     const existing = await invoiceService.getInvoices();
-    const targetInvoice = existing.find(inv => inv.id === id);
+    const targetInvoice = existing.find(inv => inv.id === idOrNum || inv.invoiceNumber === idOrNum);
+    const targetId = targetInvoice?.id || idOrNum;
+    const targetNum = targetInvoice?.invoiceNumber || idOrNum;
     
     // Clean up orphaned payment proof image from bucket if it exists
     if (targetInvoice?.proofUrl && targetInvoice.proofUrl.includes('/storage/v1/object/public/invoices/')) {
@@ -401,11 +459,13 @@ export const invoiceService = {
       }
     }
 
-    const { error } = await supabase.from('invoices').delete().eq('id', id);
-    if (error) throw error;
+    let { error } = await supabase.from('invoices').delete().eq('id', targetId);
+    if (error) {
+      await supabase.from('invoices').delete().eq('invoice_number', targetNum);
+    }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('gm_invoice_updated'));
+      window.dispatchEvent(new Event('studio_invoice_updated'));
     }
 
     return await invoiceService.getInvoices();

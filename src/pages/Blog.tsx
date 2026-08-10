@@ -45,8 +45,8 @@ const Blog: React.FC = () => {
     };
     fetchLivePosts();
 
-    window.addEventListener('gm_cms_updated', fetchLivePosts);
-    return () => window.removeEventListener('gm_cms_updated', fetchLivePosts);
+    window.addEventListener('studio_cms_updated', fetchLivePosts);
+    return () => window.removeEventListener('studio_cms_updated', fetchLivePosts);
   }, []);
 
   const blogCategories = Array.from(new Set(['All', ...posts.map((p) => p.category)])).filter(Boolean);

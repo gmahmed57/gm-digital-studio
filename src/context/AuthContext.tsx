@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import type { UserProfile, UserRole, AuthContextType } from '../types/auth';
 import { authService } from '../services/authService';
 
-const STORAGE_KEY = 'gm_auth_user';
+const STORAGE_KEY = 'studio_auth_user';
 
 // Supabase client for live author sync
 const supabaseClient = createClient(

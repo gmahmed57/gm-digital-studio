@@ -1,8 +1,15 @@
 import type { StudioTool } from '../types/client';
 
+export const normalizeToolId = (id: string): string => {
+  if (!id) return '';
+  if (id === 'carousel-maker') return 'ai-carousel';
+  if (id === 'ai-copywriter') return 'ai-assistant';
+  return id;
+};
+
 export const MASTER_STUDIO_TOOLS: StudioTool[] = [
   {
-    id: 'carousel-maker',
+    id: 'ai-carousel',
     name: 'AI Carousel Post Maker',
     category: 'Marketing & Design',
     description: 'Automate multi-slide social media carousel generation with custom brand templates and instant exports.',
@@ -22,7 +29,7 @@ export const MASTER_STUDIO_TOOLS: StudioTool[] = [
     actionLabel: 'Convert Files',
   },
   {
-    id: 'ai-copywriter',
+    id: 'ai-assistant',
     name: 'AI Studio Content Assistant',
     category: 'Content Generation',
     description: 'Generate SEO blog drafts, landing page headlines, and email campaign copy tailored to your brand voice.',

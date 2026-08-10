@@ -21,8 +21,8 @@ export function SharedFiles() {
     loadFolders();
 
     const handleUpdate = () => loadFolders();
-    window.addEventListener('gm_folders_updated', handleUpdate);
-    return () => window.removeEventListener('gm_folders_updated', handleUpdate);
+    window.addEventListener('studio_folders_updated', handleUpdate);
+    return () => window.removeEventListener('studio_folders_updated', handleUpdate);
   }, [user]);
 
   return (

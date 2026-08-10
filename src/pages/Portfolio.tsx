@@ -24,8 +24,8 @@ const Portfolio: React.FC = () => {
     };
     fetchLiveStudies();
 
-    window.addEventListener('gm_cms_updated', fetchLiveStudies);
-    return () => window.removeEventListener('gm_cms_updated', fetchLiveStudies);
+    window.addEventListener('studio_cms_updated', fetchLiveStudies);
+    return () => window.removeEventListener('studio_cms_updated', fetchLiveStudies);
   }, []);
 
   const filteredProjects = selectedCategory === 'All'

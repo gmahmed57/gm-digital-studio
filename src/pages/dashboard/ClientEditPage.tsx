@@ -5,7 +5,7 @@ import { notificationService } from '../../services/notificationService';
 import { sendWelcomeClientEmail, sendToolRequestAlertEmail } from '../../services/resendService';
 import type { ClientItem } from '../../types/client';
 import { folderService, type SharedFolder } from '../../services/folderService';
-import { MASTER_STUDIO_TOOLS } from '../../constants/toolsData';
+import { MASTER_STUDIO_TOOLS, normalizeToolId } from '../../constants/toolsData';
 import {
   ArrowLeft,
   User,
@@ -78,6 +78,14 @@ export function ClientEditPage() {
 
   useEffect(() => {
     loadClient();
+
+    const handleUpdate = () => loadClient();
+    window.addEventListener('studio_client_updated', handleUpdate);
+    window.addEventListener('studio_tools_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('studio_client_updated', handleUpdate);
+      window.removeEventListener('studio_tools_updated', handleUpdate);
+    };
   }, [id, isEditing]);
 
   const toggleTool = (toolId: string) => {
@@ -532,14 +540,17 @@ export function ClientEditPage() {
                 </div>
 
                 <span className="text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-3 py-1.5 rounded-xl border border-brand-500/20">
-                  {allowedToolIds.filter(id => MASTER_STUDIO_TOOLS.some(t => t.id === id)).length} of {MASTER_STUDIO_TOOLS.length} Active
+                  {allowedToolIds.map(normalizeToolId).filter(id => MASTER_STUDIO_TOOLS.some(t => normalizeToolId(t.id) === id)).length} of {MASTER_STUDIO_TOOLS.length} Active
                 </span>
               </div>
 
               <div className="space-y-3">
                 {MASTER_STUDIO_TOOLS.map((tool) => {
-                  const isEnabled = allowedToolIds.includes(tool.id);
-                  const isRequested = requestedToolIds.includes(tool.id);
+                  const normToolId = normalizeToolId(tool.id);
+                  const normAllowed = allowedToolIds.map(normalizeToolId);
+                  const normRequested = requestedToolIds.map(normalizeToolId);
+                  const isEnabled = normAllowed.includes(normToolId);
+                  const isRequested = normRequested.includes(normToolId);
 
                   return (
                     <div
