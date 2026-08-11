@@ -12,8 +12,10 @@
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@supabase/supabase-js": "^2.110.7",
+    "@types/dompurify": "^3.0.5",
     "@types/quill": "^2.0.14",
     "clsx": "^2.1.1",
+    "dompurify": "^3.4.13",
     "framer-motion": "^12.42.2",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",

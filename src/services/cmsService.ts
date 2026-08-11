@@ -635,6 +635,27 @@ export const cmsService = {
 
   async deleteTestimonial(id: string): Promise<boolean> {
     try {
+      // Step 1: Fetch the testimonial to get its avatar_url before deleting
+      const { data: existing } = await supabase
+        .from('testimonials')
+        .select('avatar_url')
+        .eq('id', id)
+        .single();
+
+      // Step 2: Delete the avatar image from storage if it belongs to our bucket
+      if (existing?.avatar_url) {
+        const url = existing.avatar_url as string;
+        const bucketMarker = '/testimonial-avatars/';
+        const markerIndex = url.indexOf(bucketMarker);
+        if (markerIndex !== -1) {
+          // Strip query parameters (e.g. ?t=...) before extracting filename
+          const pathAfterBucket = url.substring(markerIndex + bucketMarker.length);
+          const fileName = pathAfterBucket.split('?')[0];
+          await supabase.storage.from('testimonial-avatars').remove([fileName]);
+        }
+      }
+
+      // Step 3: Delete the DB row
       const { error } = await supabase.from('testimonials').delete().eq('id', id);
       if (error) {
         console.error('Error deleting testimonial:', error);

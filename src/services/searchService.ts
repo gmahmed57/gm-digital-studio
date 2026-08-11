@@ -54,8 +54,8 @@ export const searchService = {
             badgeColor: p.status === 'completed' ? 'green' : 'blue'
           });
         });
-      } catch (err) {
-        console.warn('Search projects error:', err);
+      } catch {
+        // Silent search fallback
       }
 
       // 2. Search Clients (Admin Only)
@@ -80,8 +80,8 @@ export const searchService = {
               badgeColor: c.status === 'active' ? 'green' : 'gray'
             });
           });
-        } catch (err) {
-          console.warn('Search clients error:', err);
+        } catch {
+          // Silent catch
         }
       }
 
@@ -112,8 +112,8 @@ export const searchService = {
             badgeColor: inv.status === 'Paid' ? 'green' : inv.status === 'Overdue' ? 'red' : 'amber'
           });
         });
-      } catch (err) {
-        console.warn('Search invoices error:', err);
+      } catch {
+        // Silent catch
       }
 
       // 4. Search CMS Blogs & Case Studies (Admin & Author only)
@@ -138,8 +138,8 @@ export const searchService = {
               badgeColor: 'purple'
             });
           });
-        } catch (err) {
-          console.warn('Search blogs error:', err);
+        } catch {
+          // Silent catch
         }
       }
 
@@ -171,12 +171,12 @@ export const searchService = {
             badgeColor: 'amber'
           });
         });
-      } catch (err) {
-        console.warn('Search tools error:', err);
+      } catch {
+        // Silent catch
       }
 
-    } catch (err) {
-      console.error('Unified search error:', err);
+    } catch {
+      // Silent catch
     }
 
     return results;

@@ -227,21 +227,21 @@ export function ProfileSettings() {
     setSuccessMessage(null);
 
     try {
-      const uploadedUrl = await userService.uploadUserAvatar(user.id, file, avatarUrl);
+      const uploadedUrl = await userService.uploadUserAvatar(user.id, file);
       setAvatarUrl(uploadedUrl);
 
       await userService.updateUserProfile(user.email, { avatarUrl: uploadedUrl });
       updateAuthUser({ avatarUrl: uploadedUrl });
 
-      setSuccessMessage('Profile avatar updated successfully!');
-    } catch (err: any) {
-      setErrorMessage(`Avatar Upload Failed: ${err.message || 'Storage error'}`);
+      setSuccessMessage('Profile picture updated successfully!');
+    } catch {
+      setErrorMessage('Profile picture upload failed. Please verify file format and try again.');
     } finally {
       setIsUploadingAvatar(false);
     }
   };
 
-  // Handle Remove Avatar DP
+  // Handle Remove Profile Picture
   const handleRemoveAvatar = async () => {
     if (!user) return;
     setIsUploadingAvatar(true);
@@ -249,9 +249,9 @@ export function ProfileSettings() {
       await userService.updateUserProfile(user.email, { avatarUrl: '' });
       setAvatarUrl('');
       updateAuthUser({ avatarUrl: undefined });
-      setSuccessMessage('Profile picture removed.');
-    } catch (err: any) {
-      setErrorMessage(`Failed to remove avatar: ${err.message}`);
+      setSuccessMessage('Profile picture removed successfully.');
+    } catch {
+      setErrorMessage('Failed to remove profile picture.');
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -343,7 +343,7 @@ export function ProfileSettings() {
     <>
       <SEO
         title="My Profile & Settings - GM Digital Studio"
-        description="Manage your profile identity, avatar picture, contact details, and account security settings."
+        description="Manage your profile identity, profile photo, contact details, and account security settings."
       />
 
       <div className="max-w-5xl mx-auto space-y-6 font-sans pb-12">
@@ -396,7 +396,7 @@ export function ProfileSettings() {
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-1">
                 {isUploadingAvatar && (
                   <span className="text-xs font-semibold text-brand-600 animate-pulse">
-                    Uploading & updating avatar picture...
+                    Uploading profile photo...
                   </span>
                 )}
                 {avatarUrl && !isUploadingAvatar && (
@@ -510,8 +510,8 @@ export function ProfileSettings() {
               </p>
               <p className="text-[11px] text-amber-700 dark:text-amber-400">
                 {isAdmin
-                  ? 'Administrator identity, primary email, and superadmin role permissions are protected to preserve root platform authority.'
-                  : 'Primary Email, Company Name, and Account Role are locked for security compliance. Contact studio support to request organization record changes.'}
+                  ? 'Administrator identity, primary email, and root platform permissions are protected for platform security.'
+                  : 'Primary Email and Company Name are locked for security compliance. Contact studio support to request organization record changes.'}
               </p>
             </div>
 

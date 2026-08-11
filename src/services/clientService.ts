@@ -91,7 +91,7 @@ export const clientService = {
 
   // Save new client or update existing client
   saveClient: async (client: Partial<ClientItem>): Promise<ClientItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
 
 
@@ -180,7 +180,7 @@ export const clientService = {
 
   // Toggle client active/inactive status
   toggleClientStatus: async (id: string): Promise<ClientItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
     
     const existing = await clientService.getClients();
     const client = existing.find((c) => c.id === id);
@@ -203,7 +203,7 @@ export const clientService = {
     clientId: string,
     allowedToolIds: string[]
   ): Promise<ClientItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const existing = await clientService.getClients();
     const client = existing.find((c) => c.id === clientId);
@@ -236,7 +236,7 @@ export const clientService = {
     clientId: string,
     toolId: string
   ): Promise<ClientItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const existing = await clientService.getClients();
     const client = existing.find((c) => c.id === clientId);
@@ -277,7 +277,7 @@ export const clientService = {
     toolId: string,
     approve: boolean
   ): Promise<ClientItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const existing = await clientService.getClients();
     const client = existing.find((c) => c.id === clientId);
@@ -330,7 +330,7 @@ export const clientService = {
   },
 
   deleteClient: async (id: string): Promise<ClientItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const { data, error } = await supabase.functions.invoke('manage-users', {
       body: {

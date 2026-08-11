@@ -204,7 +204,7 @@ export function ClientInvoices() {
       clientEmail: user?.email || 'client@company.com',
       amount: '$0 (Custom Request)',
       status: 'Under Approval',
-    }).catch((err) => console.warn('Invoice request email notice:', err));
+    }).catch(() => {});
 
     setRequestSent(true);
     setTimeout(() => {
@@ -245,11 +245,9 @@ export function ClientInvoices() {
               .getPublicUrl(fileName);
             uploadedUrl = publicUrlData.publicUrl;
             uploadSuccess = true;
-          } else {
-            console.warn('Supabase storage upload notice:', error?.message);
           }
-        } catch (storageErr) {
-          console.warn('Storage upload error:', storageErr);
+        } catch {
+          // Handled via smooth fallback
         }
       }
 
@@ -286,7 +284,7 @@ export function ClientInvoices() {
       amount: payingInvoice.amount,
       status: 'Under Approval',
       paymentProofUrl: uploadedUrl,
-    }).catch((err) => console.warn('Payment proof email notice:', err));
+    }).catch(() => {});
 
     setIsUploading(false);
     setPaymentProofSent(true);
@@ -486,11 +484,11 @@ export function ClientInvoices() {
                     {inv.description}
                   </h3>
 
-                  <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                     <span>Client: <strong className="text-gray-700 dark:text-gray-300">{inv.clientCompany || inv.clientName}</strong></span>
-                    <span>•</span>
+                    <span className="hidden xs:inline">•</span>
                     <span>Issued: <strong className="text-gray-700 dark:text-gray-300">{inv.date}</strong></span>
-                    <span>•</span>
+                    <span className="hidden xs:inline">•</span>
                     <span>Due: <strong className="text-gray-700 dark:text-gray-300">{inv.dueDate}</strong></span>
                   </div>
 
@@ -522,8 +520,8 @@ export function ClientInvoices() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-4 justify-between sm:justify-end border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100 dark:border-dark-border flex-shrink-0">
-                  <div className="text-left sm:text-right mr-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 justify-between sm:justify-end border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100 dark:border-dark-border">
+                  <div className="flex items-center justify-between sm:block text-left sm:text-right">
                     <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
                       Amount Due
                     </span>
@@ -537,41 +535,43 @@ export function ClientInvoices() {
                     )}
                   </div>
 
-                  {/* Payment Proof Action Button States */}
-                  {inv.status === 'Pending Verification' ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="px-4 py-2.5 rounded-xl bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-300/50 dark:border-purple-800/50 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed opacity-90"
-                      title="Proof submitted and currently under review by Studio Admin"
-                    >
-                      <Clock className="w-3.5 h-3.5 animate-spin text-purple-600 dark:text-purple-400" /> Proof Submitted (Verification Pending)
-                    </button>
-                  ) : inv.adminRejectionReason && (inv.status === 'Pending' || inv.status === 'Overdue') ? (
-                    <button
-                      type="button"
-                      onClick={() => setPayingInvoice(inv)}
-                      className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <CreditCard className="w-3.5 h-3.5" /> Resubmit Payment Proof
-                    </button>
-                  ) : (inv.status === 'Pending' || inv.status === 'Overdue') ? (
-                    <button
-                      type="button"
-                      onClick={() => setPayingInvoice(inv)}
-                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <CreditCard className="w-3.5 h-3.5" /> Submit Payment Proof
-                    </button>
-                  ) : null}
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                    {/* Payment Proof Action Button States */}
+                    {inv.status === 'Pending Verification' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-300/50 dark:border-purple-800/50 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed opacity-90"
+                        title="Proof submitted and currently under review by Studio Admin"
+                      >
+                        <Clock className="w-3.5 h-3.5 animate-spin text-purple-600 dark:text-purple-400" /> Verification Pending
+                      </button>
+                    ) : inv.adminRejectionReason && (inv.status === 'Pending' || inv.status === 'Overdue') ? (
+                      <button
+                        type="button"
+                        onClick={() => setPayingInvoice(inv)}
+                        className="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" /> Resubmit Proof
+                      </button>
+                    ) : (inv.status === 'Pending' || inv.status === 'Overdue') ? (
+                      <button
+                        type="button"
+                        onClick={() => setPayingInvoice(inv)}
+                        className="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" /> Submit Proof
+                      </button>
+                    ) : null}
 
-                  <button
-                    type="button"
-                    onClick={() => downloadInvoicePDF(inv)}
-                    className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-gray-50 dark:bg-dark-surface hover:bg-gray-100 text-gray-700 dark:text-gray-300 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Download PDF
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadInvoicePDF(inv)}
+                      className="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-gray-50 dark:bg-dark-surface hover:bg-gray-100 text-gray-700 dark:text-gray-300 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Download PDF
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

@@ -5,7 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { notificationService, formatNotificationTime } from '../../services/notificationService';
 import { searchService, type SearchResultItem } from '../../services/searchService';
 import type { NotificationItem } from '../../types/notification';
-import { 
+import {
   Search, Bell, Sun, Moon, Menu, LogOut, User, CheckCheck, Trash2, ArrowRight, X, Command,
   Layers, Users, CreditCard, FileText, Wrench, Loader2
 } from 'lucide-react';
@@ -31,6 +31,8 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const notifContainerRef = useRef<HTMLDivElement>(null);
+  const userMenuContainerRef = useRef<HTMLDivElement>(null);
 
   // Global Ctrl+K / Cmd+K listener to focus inline search bar
   useEffect(() => {
@@ -63,11 +65,17 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
     return () => clearTimeout(timer);
   }, [searchQuery, role, user]);
 
-  // Click outside to close inline search dropdown
+  // Click outside to close inline search, notification bell, and user menu dropdowns
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setIsSearchFocused(false);
+      }
+      if (notifContainerRef.current && !notifContainerRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+      if (userMenuContainerRef.current && !userMenuContainerRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -178,10 +186,10 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border-b border-gray-200 dark:border-dark-border px-4 md:px-6 flex items-center justify-between font-sans shadow-xs transition-colors">
-      
+    <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border-b border-gray-200 dark:border-dark-border px-2 sm:px-4 md:px-6 flex items-center justify-between gap-1.5 sm:gap-3 font-sans shadow-xs transition-colors">
+
       {/* Left: Mobile Sidebar Trigger & Executive Workspace Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={onToggleMobileSidebar}
           className="lg:hidden p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface transition-colors cursor-pointer"
@@ -190,23 +198,23 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
           <Menu className="w-5 h-5" />
         </button>
 
-        <div>
-          <h1 className="text-base md:text-lg font-heading font-extrabold text-gray-900 dark:text-white leading-tight">
+        <div className="hidden sm:block min-w-0">
+          <h1 className="text-sm md:text-lg font-heading font-extrabold text-gray-900 dark:text-white leading-tight truncate">
             {headerInfo.title}
           </h1>
-          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 hidden sm:block">
+          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 hidden md:block truncate">
             {headerInfo.tagline}
           </p>
         </div>
       </div>
 
       {/* Right: Search, Notifications, Theme Toggle & User Avatar */}
-      <div className="flex items-center gap-3">
-        
-        {/* Real Interactive Inline Header Search Bar (No Fullscreen Popup Modal) */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+
+        {/* Real Interactive Inline Header Search Bar */}
         <div ref={searchContainerRef} className="relative">
           <div className="relative flex items-center">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute left-2.5 sm:left-3 pointer-events-none" />
             <input
               ref={searchInputRef}
               type="text"
@@ -216,14 +224,8 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
                 setSearchQuery(e.target.value);
                 setIsSearchFocused(true);
               }}
-              placeholder={
-                role === 'admin' 
-                  ? 'Search projects, invoices, clients, tools...' 
-                  : role === 'client' 
-                  ? 'Search your projects & invoices...' 
-                  : 'Search articles & CMS...'
-              }
-              className="w-48 sm:w-64 md:w-80 pl-9 pr-10 py-1.5 rounded-xl border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-surface text-xs font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all shadow-xs"
+              placeholder="Search..."
+              className="w-32 xs:w-44 sm:w-64 md:w-80 pl-7 sm:pl-9 pr-7 sm:pr-10 py-1.5 rounded-xl border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-surface text-xs font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all shadow-xs"
             />
             {isSearchLoading ? (
               <Loader2 className="w-3.5 h-3.5 text-brand-500 animate-spin absolute right-3" />
@@ -303,7 +305,7 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
 
         {/* Live Notifications Dropdown Trigger */}
         {role !== 'author' && (
-          <div className="relative">
+          <div ref={notifContainerRef} className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-dark-surface flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-brand-500 transition-colors relative cursor-pointer"
@@ -318,7 +320,7 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 md:w-96 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-96 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="flex items-center justify-between pb-3 border-b border-gray-150 dark:border-dark-border">
                   <div className="flex items-center gap-2">
                     <Bell className="w-4 h-4 text-brand-500" />
@@ -346,11 +348,10 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
                       <div
                         key={notif.id}
                         onClick={() => handleNotificationClick(notif)}
-                        className={`p-3 rounded-xl transition-colors cursor-pointer relative group flex justify-between items-start gap-2 ${
-                          !notif.read
+                        className={`p-3 rounded-xl transition-colors cursor-pointer relative group flex justify-between items-start gap-2 ${!notif.read
                             ? 'bg-brand-500/5 dark:bg-brand-500/10 hover:bg-brand-500/10'
                             : 'hover:bg-gray-50 dark:hover:bg-dark-surface'
-                        }`}
+                          }`}
                       >
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
@@ -402,7 +403,7 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
         )}
 
         {/* User Account Avatar & Dropdown */}
-        <div className="relative">
+        <div ref={userMenuContainerRef} className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-2 p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-dark-surface transition-colors cursor-pointer"

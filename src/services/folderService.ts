@@ -11,7 +11,7 @@ export interface SharedFolder {
 export const folderService = {
   // Fetch folders assigned to a specific client
   getFoldersForClient: async (clientId: string): Promise<SharedFolder[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const { data, error } = await supabase
       .from('shared_folders')
@@ -38,7 +38,7 @@ export const folderService = {
 
   // Admin assigns a new folder to a client
   addFolder: async (clientId: string, folderName: string, driveUrl: string): Promise<SharedFolder> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const dbPayload = {
       client_id: clientId,
@@ -70,7 +70,7 @@ export const folderService = {
 
   // Admin removes a folder
   removeFolder: async (folderId: string): Promise<void> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const { error } = await supabase
       .from('shared_folders')

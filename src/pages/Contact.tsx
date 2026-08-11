@@ -70,34 +70,43 @@ const Contact: React.FC = () => {
     setIsSubmitting(true);
     setFeedback(null);
 
-    // 1. Submit to database
-    await contactService.submitContactForm({
-      name: data.name,
-      email: data.email,
-      company: data.company || '',
-      service: data.service,
-      budget: data.budget || '',
-      message: data.message,
-    });
+    try {
+      // 1. Submit to database
+      await contactService.submitContactForm({
+        name: data.name,
+        email: data.email,
+        company: data.company || '',
+        service: data.service,
+        budget: data.budget || '',
+        message: data.message,
+      });
 
-    // 2. Broadcast live targeted notification to Admin
-    await notificationService.addNotification({
-      title: 'New Project Inquiry',
-      message: `${data.name} submitted a new inquiry for ${data.service}.`,
-      type: 'system',
-      targetRole: 'admin',
-      link: '/admin/settings?tab=inquiries',
-    });
+      // 2. Broadcast live targeted notification to Admin
+      try {
+        await notificationService.addNotification({
+          title: 'New Project Inquiry',
+          message: `${data.name} submitted a new inquiry for ${data.service}.`,
+          type: 'system',
+          targetRole: 'admin',
+          link: '/admin/settings?tab=inquiries',
+        });
+      } catch {
+        // Soft catch if RLS policy restricts unauthenticated insert
+      }
 
-    // 3. Send email simulation/production via Resend
-    const res = await sendContactEmail(data);
-    setIsSubmitting(false);
-
-    if (res.success) {
-      setFeedback({ type: 'success', message: res.message });
-      reset();
-    } else {
-      setFeedback({ type: 'error', message: res.message });
+      // 3. Send email via Resend
+      const res = await sendContactEmail(data);
+      if (res.success) {
+        setFeedback({ type: 'success', message: res.message });
+        reset();
+      } else {
+        setFeedback({ type: 'error', message: res.message });
+      }
+    } catch (err: any) {
+      console.error('Contact form submission error:', err);
+      setFeedback({ type: 'error', message: 'Failed to process inquiry. Please try again or contact us directly.' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

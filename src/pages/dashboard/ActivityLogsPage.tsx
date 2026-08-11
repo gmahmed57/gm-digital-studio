@@ -75,27 +75,41 @@ export function ActivityLogsPage() {
 
   const handleExportCSV = () => {
     if (logs.length === 0) return;
-    const headers = ['ID', 'Timestamp', 'User Name', 'User Email', 'Role', 'Action', 'Entity Type', 'Entity ID', 'Details'];
-    const rows = logs.map((l) => [
-      l.id,
-      `"${new Date(l.created_at).toLocaleString()}"`,
-      `"${l.user_name}"`,
-      `"${l.user_email}"`,
-      `"${l.user_role}"`,
-      `"${l.action}"`,
-      `"${l.entity_type}"`,
-      `"${l.entity_id || ''}"`,
-      `"${l.details.replace(/"/g, '""')}"`
-    ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const escape = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const headers = ['ID', 'Timestamp', 'User Name', 'User Email', 'Role', 'Action', 'Entity Type', 'Entity ID', 'Details'];
+    const lines = [
+      headers.map(escape).join(','),
+      ...logs.map((l) =>
+        [
+          l.id,
+          new Date(l.created_at).toLocaleString(),
+          l.user_name,
+          l.user_email,
+          l.user_role,
+          l.action,
+          l.entity_type,
+          l.entity_id || '',
+          l.details
+        ].map(escape).join(',')
+      )
+    ];
+
+    const csvData = '\uFEFF' + lines.join('\r\n');
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.href = url;
     link.setAttribute('download', `GM_Studio_Activity_Logs_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const getEntityIcon = (type: EntityType) => {
@@ -159,7 +173,7 @@ export function ActivityLogsPage() {
             </h1>
           </div>
           <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Enterprise database audit trail tracking user authentication, telemetry, financial operations, and system events.
+            Enterprise audit trail tracking user authentication, telemetry, financial operations, and system events.
           </p>
         </div>
 

@@ -156,7 +156,13 @@ export const renderEmailShell = (title: string, bodyHtml: string, ctaText?: stri
 `;
 
 // Secure email dispatch routing 100% via Supabase Serverless Edge Function (No client API key exposure)
-const sendViaResend = async (to: string[], subject: string, html: string, fromSender?: string): Promise<SendEmailResponse> => {
+const sendViaResend = async (
+  to: string[],
+  subject: string,
+  html: string,
+  fromSender?: string,
+  mode: 'contact_form' | 'system_notification' | 'custom_compose' = 'system_notification'
+): Promise<SendEmailResponse> => {
   const activeSender = fromSender || SENDER;
 
   if (!supabase) {
@@ -165,11 +171,11 @@ const sendViaResend = async (to: string[], subject: string, html: string, fromSe
 
   try {
     const { data: edgeData, error: edgeError } = await supabase.functions.invoke('send-email', {
-      body: { to, subject, html, from: activeSender },
+      body: { to, subject, html, from: activeSender, mode },
     });
 
     if (edgeError) {
-      console.error('[Resend Service] Edge Function Dispatch Error:', edgeError);
+      console.error('[Email Service] Edge Function Dispatch Error:', edgeError);
       throw new Error(`Email service error: ${edgeError.message || 'Serverless edge function call failed'}`);
     }
 
@@ -182,7 +188,7 @@ const sendViaResend = async (to: string[], subject: string, html: string, fromSe
       message: edgeData?.message || 'Email notification dispatched successfully.',
     };
   } catch (err: any) {
-    console.error('[Resend Service] Dispatch Exception:', err);
+    console.error('[Email Service] Dispatch Exception:', err);
     throw new Error(err.message || 'Failed to send email notification.');
   }
 };
@@ -218,7 +224,7 @@ export const sendContactEmail = async (formData: ContactFormData): Promise<SendE
     'https://gmdigitalstudio.app/admin/dashboard'
   );
 
-  const res = await sendViaResend([ADMIN_EMAIL], `New Inquiry from ${safeName}`, adminHtml);
+  const res = await sendViaResend([ADMIN_EMAIL], `New Inquiry from ${safeName}`, adminHtml, undefined, 'contact_form');
   return {
     success: res.success,
     message: 'Thank you! Your inquiry has been sent successfully. Our team will contact you shortly.',
@@ -248,6 +254,9 @@ export const sendWelcomeClientEmail = async (clientData: WelcomeClientData): Pro
         ${safePassword ? `<tr><td class="label">Initial Password</td><td class="value" style="font-family: monospace; color: #ea580c;">${safePassword}</td></tr>` : ''}
       </table>
       <p>You can now log into your private client workspace to track active project progress, view interactive milestones, download invoices, and communicate directly with our team.</p>
+      <p style="background: #fff7ed; padding: 12px 16px; border-left: 4px solid #ea580c; border-radius: 6px; color: #c2410c; font-size: 13px; margin-top: 16px;">
+        <strong>🔒 Account Security Note:</strong> For optimal account security, please log into your portal and update your initial password under <strong>Profile Settings</strong>.
+      </p>
     `,
     'Access Client Portal',
     'https://gmdigitalstudio.app/login'
@@ -499,7 +508,7 @@ export const sendCustomComposeEmail = async (data: CustomComposeEmailData): Prom
     html = renderEmailShell(safeSubject, bodyContent, data.ctaText, data.ctaUrl);
   }
 
-  const res = await sendViaResend(data.to, safeSubject, html, SUPPORT_SENDER);
+  const res = await sendViaResend(data.to, safeSubject, html, SUPPORT_SENDER, 'custom_compose');
 
   // Automatically record each dispatched recipient in Supabase database
   if (res.success) {

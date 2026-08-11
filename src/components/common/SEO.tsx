@@ -24,34 +24,28 @@ const SEO: React.FC<SEOProps> = ({ title, description }) => {
         const brandName = settings?.siteName || 'GM DIGITAL STUDIO';
         document.title = `${title} | ${brandName}`;
 
-        if (settings?.faviconUrl) {
-          const favUrl = settings.faviconUrl;
-          const baseFolder = favUrl.substring(0, favUrl.lastIndexOf('/'));
-          
-          const iconConfigs = [
-            { rel: 'icon', type: 'image/x-icon', href: `${baseFolder}/favicon.ico`, query: "link[rel='icon']:not([sizes])" },
-            { rel: 'icon', type: 'image/png', sizes: '32x32', href: `${baseFolder}/favicon-32x32.png`, query: "link[sizes='32x32']" },
-            { rel: 'icon', type: 'image/png', sizes: '16x16', href: `${baseFolder}/favicon-16x16.png`, query: "link[sizes='16x16']" },
-            { rel: 'apple-touch-icon', sizes: '180x180', href: `${baseFolder}/apple-touch-icon.png`, query: "link[rel='apple-touch-icon']" }
-          ];
-
-          const cacheBust = `?t=${Date.now()}`;
-          iconConfigs.forEach((cfg) => {
-            let tag = document.querySelector(cfg.query) as HTMLLinkElement;
-            if (!tag) {
-              tag = document.createElement('link');
-              tag.rel = cfg.rel;
-              if (cfg.sizes) tag.setAttribute('sizes', cfg.sizes);
-              document.head.appendChild(tag);
-            }
-            if (cfg.type) {
-              tag.type = cfg.type;
-            } else {
-              tag.removeAttribute('type');
-            }
-            tag.href = `${cfg.href}${cacheBust}`;
-          });
+        const isStaleStorageFavicon = settings?.faviconUrl?.includes('favicon_favicon-32x32.png');
+        const favUrl = (settings?.faviconUrl && !isStaleStorageFavicon) ? settings.faviconUrl : '/pwa-192.png';
+        const cacheBustUrl = favUrl.includes('?') ? favUrl : `${favUrl}?t=${Date.now()}`;
+        
+        let favLink = document.getElementById('app-favicon') as HTMLLinkElement | null;
+        if (!favLink) {
+          favLink = document.createElement('link');
+          favLink.id = 'app-favicon';
+          favLink.rel = 'icon';
+          document.head.appendChild(favLink);
         }
+
+        if (favUrl.endsWith('.png') || favUrl.includes('pwa-192')) {
+          favLink.type = 'image/png';
+        } else if (favUrl.endsWith('.svg')) {
+          favLink.type = 'image/svg+xml';
+        } else if (favUrl.endsWith('.webp')) {
+          favLink.type = 'image/webp';
+        } else {
+          favLink.type = 'image/x-icon';
+        }
+        favLink.href = cacheBustUrl;
       } catch (e) {
         console.error('SEO settings load failed', e);
         document.title = `${title} | GM DIGITAL STUDIO`;

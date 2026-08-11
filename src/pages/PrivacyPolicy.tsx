@@ -67,7 +67,7 @@ const PrivacyPolicy: React.FC = () => {
           <section>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">3. Data Security & Storage</h2>
             <p>
-              All client communications and database records are stored using encrypted PostgreSQL infrastructure via Supabase with strict Row-Level Security (RLS) policies. Access to internal project files is restricted to authorized project team members.
+              All client communications and record archives are stored using enterprise-grade encrypted cloud infrastructure with strict multi-layer access controls. Access to internal project files is restricted exclusively to authorized project team members.
             </p>
           </section>
 

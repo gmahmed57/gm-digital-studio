@@ -64,8 +64,8 @@ export function AdminSettings() {
   const checkFaviconAssets = async () => {
     try {
       const { data, error } = await supabase.storage
-        .from('invoices')
-        .list('settings/favicons');
+        .from('settings')
+        .list('favicons');
       if (data && !error) {
         setUploadedFavicons(data.map((f) => f.name));
       }
@@ -149,15 +149,15 @@ export function AdminSettings() {
     setIsUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `logo_${Date.now()}.${fileExt}`;
+      const fileName = `logos/logo_${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('logos')
+        .from('settings')
         .upload(fileName, file, { cacheControl: '3600', upsert: true });
 
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage.from('logos').getPublicUrl(fileName);
+      const { data } = supabase.storage.from('settings').getPublicUrl(fileName);
       if (data && data.publicUrl) {
         setGeneralSettings((prev) => ({ ...prev, logoUrl: data.publicUrl }));
         await settingsService.updateLogoUrl(data.publicUrl);
@@ -183,16 +183,17 @@ export function AdminSettings() {
       
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const fileName = `favicon_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const fileName = `favicons/${cleanFileName}`;
         
         const { error: uploadError } = await supabase.storage
-          .from('favicons')
+          .from('settings')
           .upload(fileName, file, { cacheControl: '3600', upsert: true });
 
         if (uploadError) throw uploadError;
-        uploadedList.push(file.name);
+        uploadedList.push(cleanFileName);
 
-        const { data } = supabase.storage.from('favicons').getPublicUrl(fileName);
+        const { data } = supabase.storage.from('settings').getPublicUrl(fileName);
         if (data && data.publicUrl) {
           finalFaviconUrl = data.publicUrl;
         }
@@ -203,11 +204,13 @@ export function AdminSettings() {
 
       // Update browser head immediately
       if (finalFaviconUrl) {
-        const link = (document.querySelector("link[rel*='icon']") as HTMLLinkElement) || document.createElement('link');
-        link.type = 'image/x-icon';
-        link.rel = 'icon';
-        link.href = finalFaviconUrl;
-        document.getElementsByTagName('head')[0].appendChild(link);
+        const cacheBustUrl = `${finalFaviconUrl}?t=${Date.now()}`;
+        document.querySelectorAll("link[rel*='icon']").forEach((el) => el.remove());
+        const newLink = document.createElement('link');
+        newLink.id = 'app-favicon';
+        newLink.rel = 'icon';
+        newLink.href = cacheBustUrl;
+        document.head.appendChild(newLink);
       }
 
       setUploadedFavicons((prev) => [...new Set([...prev, ...uploadedList])]);
@@ -612,7 +615,7 @@ export function AdminSettings() {
                           'apple-touch-icon.png',
                           'site.webmanifest'
                         ].map((asset) => {
-                          const isUploaded = uploadedFavicons.includes(asset);
+                          const isUploaded = uploadedFavicons.some((f) => f === asset || f.endsWith(asset) || f.includes(asset));
                           return (
                             <div key={asset} className="flex items-center gap-1">
                               <span className={`w-1.5 h-1.5 rounded-full ${isUploaded ? 'bg-emerald-500' : 'bg-gray-300'}`} />

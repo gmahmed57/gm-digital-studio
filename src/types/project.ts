@@ -10,7 +10,8 @@ export type ProjectCategory =
   | 'AI Automation Suite'
   | 'Brand Identity Strategy'
   | 'Mobile App Development'
-  | 'Cloud Infrastructure';
+  | 'Cloud Infrastructure'
+  | (string & {});
 
 export type MilestoneStatus = 'in_progress' | 'in_review' | 'approved' | 'modification_requested';
 

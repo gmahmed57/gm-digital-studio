@@ -51,7 +51,7 @@ const DETAILED_SERVICES = [
     deliverables: [
       'Custom API Integrations & Webhooks',
       'Automated Data Sync Pipelines',
-      'Transactional Resend Email Triggers',
+      'Transactional Email Pipelines',
       'Third-Party SaaS Orchestration',
     ],
   },

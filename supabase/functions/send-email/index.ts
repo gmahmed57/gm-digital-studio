@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.110.7"
 
 const getCorsHeaders = (req: Request) => {
   const origin = req.headers.get('origin') || ''
@@ -25,21 +26,87 @@ serve(async (req) => {
   }
 
   try {
-    const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    const { to, subject, html, from } = await req.json()
+    const resendApiKey = Deno.env.get('RESEND_API_KEY') || Deno.env.get('VITE_RESEND_API_KEY') || ''
+    const adminEmail = Deno.env.get('ADMIN_EMAIL') || Deno.env.get('VITE_ADMIN_EMAIL') || ''
+    const { to, subject, html, from, mode } = await req.json().catch(() => ({}))
 
-    if (!resendApiKey) {
-      console.log('[Serverless Send-Email] No RESEND_API_KEY set in server environment secrets. Simulating dispatch:', { to, subject })
+    const dispatchMode = mode || 'system_notification'
+    let recipientTo: string[] = []
+
+    // 1. PUBLIC CONTACT FORM MODE
+    // Recipient is STRICTLY FORCED on the server to the configured ADMIN_EMAIL secret.
+    if (dispatchMode === 'contact_form') {
+      const targetAdmin = adminEmail || (Array.isArray(to) ? to[0] : to)
+      if (!targetAdmin) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Server configuration error: ADMIN_EMAIL secret is not configured.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      recipientTo = [targetAdmin]
+    } 
+    // 2. AUTHENTICATED NOTIFICATIONS & CUSTOM COMPOSER MODES
+    else {
+      const authHeader = req.headers.get('Authorization')
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Unauthorized: Missing authorization header.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        { global: { headers: { Authorization: authHeader } } }
+      )
+
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+      if (userError || !user) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Unauthorized: Invalid user session.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // If sending bulk custom compose emails, enforce Admin privilege
+      if (dispatchMode === 'custom_compose') {
+        const userRole = user.app_metadata?.role
+        const superAdminEmail = Deno.env.get('SUPERADMIN_EMAIL') || adminEmail
+        const isAdmin = userRole === 'admin' || userRole === 'superadmin' || (superAdminEmail && user.email === superAdminEmail)
+        if (!isAdmin) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Forbidden: Admin privilege required for custom email dispatch.' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+      }
+
+      recipientTo = Array.isArray(to) ? to : [to]
+    }
+
+    // Clean recipient list
+    recipientTo = recipientTo.filter((email) => email && typeof email === 'string' && email.trim() !== '')
+
+    if (!recipientTo.length) {
       return new Response(
-        JSON.stringify({ success: true, message: 'Email dispatch simulated on serverless backend.' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Invalid request: Valid recipient email address is required.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const senderFrom = from || 'GM Digital Studio <notifications@gmdigitalstudio.app>';
-    const recipientTo = Array.isArray(to) ? to : [to];
+    if (!resendApiKey) {
+      console.warn('[Serverless Send-Email] RESEND_API_KEY secret is missing on server.')
+      return new Response(
+        JSON.stringify({ success: false, error: 'Server secret configuration missing: RESEND_API_KEY is not set.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
-    // Call Resend API server-to-server (No CORS restrictions on Deno backend)
+    // Official production domain sender
+    const senderFrom = from || 'GM Digital Studio <notifications@gmdigitalstudio.app>'
+
+    // Call Resend API server-to-server
     const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -59,8 +126,11 @@ serve(async (req) => {
     if (!resendRes.ok) {
       console.warn('[Serverless Send-Email] Resend API error response:', resendData)
       return new Response(
-        JSON.stringify({ success: false, error: resendData.message || `Resend API returned status ${resendRes.status}` }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: false, 
+          error: resendData.message || `Resend API returned status ${resendRes.status}` 
+        }),
+        { status: resendRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

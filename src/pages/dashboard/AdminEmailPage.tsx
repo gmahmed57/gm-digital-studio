@@ -160,7 +160,7 @@ export function AdminEmailPage() {
               {/* Sent Emails Log Table */}
               {loading ? (
                 <div className="p-12 text-center text-xs text-gray-400 italic">
-                  Loading sent email logs from Supabase database...
+                  Loading dispatched email audit logs...
                 </div>
               ) : filteredEmails.length === 0 ? (
                 <div className="p-12 text-center space-y-3 bg-gray-50 dark:bg-dark-surface rounded-2xl border border-dashed border-gray-200 dark:border-dark-border">

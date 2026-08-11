@@ -61,7 +61,7 @@ export const invoiceService = {
 
   // Save new invoice or update existing invoice
   saveInvoice: async (invoice: Partial<InvoiceItem>): Promise<InvoiceItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const numAmount = parseFloat((invoice.amount || '0').replace(/[^0-9.]/g, '')) || 5000;
     let targetItem: InvoiceItem;
@@ -206,7 +206,7 @@ export const invoiceService = {
     id: string,
     customizedData?: Partial<InvoiceItem>
   ): Promise<InvoiceItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const existingList = await invoiceService.getInvoices();
     const existing = existingList.find((inv) => inv.id === id);
@@ -261,7 +261,7 @@ export const invoiceService = {
 
   // Admin rejects client invoice request with reason
   rejectInvoiceRequest: async (id: string, reason: string): Promise<InvoiceItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const { error } = await supabase.from('invoices').update({
       status: 'Request Rejected',
@@ -300,7 +300,7 @@ export const invoiceService = {
     paymentNotes: string,
     proofUrl?: string
   ): Promise<InvoiceItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     // Find existing invoice by id or invoice_number to get exact DB primary key id & invoice_number
     const existingList = await invoiceService.getInvoices();
@@ -376,7 +376,7 @@ export const invoiceService = {
 
   // Reject submitted payment proof and notify client
   rejectPaymentProof: async (idOrNum: string, reason?: string): Promise<InvoiceItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const existingList = await invoiceService.getInvoices();
     const targetInv = existingList.find(i => i.id === idOrNum || i.invoiceNumber === idOrNum);
@@ -416,7 +416,7 @@ export const invoiceService = {
 
   // Update specific invoice status
   updateInvoiceStatus: async (idOrNum: string, status: InvoiceStatus): Promise<InvoiceItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const existingList = await invoiceService.getInvoices();
     const targetInv = existingList.find(i => i.id === idOrNum || i.invoiceNumber === idOrNum);
@@ -439,7 +439,7 @@ export const invoiceService = {
 
   // Delete invoice
   deleteInvoice: async (idOrNum: string): Promise<InvoiceItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     // Find the invoice to check if we need to clean up a proof image
     const existing = await invoiceService.getInvoices();

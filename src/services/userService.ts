@@ -5,10 +5,9 @@ export const userService = {
   // Upload user avatar image to Supabase Storage with automatic deletion of previous avatar
   uploadUserAvatar: async (
     userId: string,
-    file: File,
-    oldAvatarUrl?: string
+    file: File
   ): Promise<string> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     // Strict MIME-type & File Size Security Check (Prevents malicious uploads via Inspect Element)
     if (!file.type.startsWith('image/')) {
@@ -19,22 +18,18 @@ export const userService = {
       throw new Error('File Size Limit Exceeded: Avatar images must be under 5MB.');
     }
 
-    // 1. Storage Cleanup: Delete old avatar file from 'avatars' bucket if present
-    if (oldAvatarUrl && oldAvatarUrl.includes('/storage/v1/object/public/avatars/')) {
-      try {
-        const oldFileName = oldAvatarUrl.split('/').pop();
-        if (oldFileName) {
-          await supabase.storage.from('avatars').remove([oldFileName]);
-        }
-      } catch (cleanupErr) {
-        console.warn('Failed to delete old avatar image from storage:', cleanupErr);
-      }
-    }
+    // Upload to Supabase Storage 'avatars' bucket using a fixed per-user filename.
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const userPrefix = `avatar-${userId.replace(/[^a-zA-Z0-9]/g, '-')}`;
+    const fileName = `${userPrefix}.${fileExt}`;
 
-    // 2. Upload to Supabase Storage 'avatars' bucket
-    const fileExt = file.name.split('.').pop() || 'jpg';
-    const fileName = `avatar-${userId.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${fileExt}`;
+    // Step 1: Delete all possible extension variants for this user (no list needed).
+    // supabase remove() silently succeeds for files that don't exist.
+    const allExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'];
+    const filesToDelete = allExtensions.map((ext) => `${userPrefix}.${ext}`);
+    await supabase.storage.from('avatars').remove(filesToDelete);
 
+    // Step 2: Fresh INSERT — always works since old file was removed above
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(fileName, file, {
@@ -43,15 +38,15 @@ export const userService = {
       });
 
     if (uploadError) {
-      console.error('Supabase Avatar Upload Error:', uploadError);
       throw uploadError;
     }
 
+    // Cache-busting timestamp so the browser always loads the fresh image
     const { data: publicUrlData } = supabase.storage
       .from('avatars')
       .getPublicUrl(fileName);
 
-    return publicUrlData.publicUrl;
+    return `${publicUrlData.publicUrl}?t=${Date.now()}`;
   },
 
   // Update user profile in Supabase Database
@@ -59,7 +54,7 @@ export const userService = {
     userEmail: string,
     profileData: Partial<UserProfile>
   ): Promise<void> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const emailClean = userEmail.toLowerCase().trim();
 
@@ -80,21 +75,27 @@ export const userService = {
         .from('clients')
         .update(dbPayload)
         .eq('email', emailClean);
-    } catch (clientErr) {
-      console.warn('Supabase clients table update notice:', clientErr);
+    } catch {
+      // Clean catch
     }
 
-    // Sync to public.profiles
+    // Sync to public.profiles — use explicit snake_case columns only
     try {
-      await supabase
-        .from('profiles')
-        .update({
-          ...dbPayload,
-          avatar_url: dbPayload.avatarUrl,
-        })
-        .eq('email', emailClean);
-    } catch (profilesErr) {
-      console.warn('Supabase profiles table update notice:', profilesErr);
+      const profilesPayload: any = {};
+      if (profileData.fullName) profilesPayload.full_name = profileData.fullName;
+      if (profileData.avatarUrl !== undefined) profilesPayload.avatar_url = profileData.avatarUrl;
+      if (profileData.phone !== undefined) profilesPayload.phone = profileData.phone;
+      if (profileData.bio !== undefined) profilesPayload.bio = profileData.bio;
+      if (profileData.jobTitle !== undefined) profilesPayload.role = profileData.jobTitle;
+
+      if (Object.keys(profilesPayload).length > 0) {
+        await supabase
+          .from('profiles')
+          .update(profilesPayload)
+          .eq('email', emailClean);
+      }
+    } catch {
+      // Clean catch
     }
 
     // Sync to public.authors
@@ -116,8 +117,8 @@ export const userService = {
           })
           .eq('email', emailClean);
       }
-    } catch (authorErr) {
-      console.warn('Supabase authors table update notice:', authorErr);
+    } catch {
+      // Clean catch
     }
 
     // Sync to Supabase Auth metadata
@@ -128,14 +129,14 @@ export const userService = {
         if (profileData.fullName) authMetaData.full_name = profileData.fullName;
         await supabase.auth.updateUser({ data: authMetaData });
       }
-    } catch (authErr) {
-      console.warn('Supabase Auth metadata update notice:', authErr);
+    } catch {
+      // Clean catch
     }
   },
 
   // Update password in Supabase Auth with current password re-authentication verification
   updateUserPassword: async (userEmail: string, currentPassword: string, newPassword: string): Promise<void> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     // 1. Strict Security Re-Authentication Check
     if (currentPassword) {
@@ -149,7 +150,7 @@ export const userService = {
       }
     }
 
-    // 2. Update password in Supabase Auth (passing both camelCase and snake_case properties to satisfy Supabase Auth GoTrue API requirements)
+    // 2. Update password in Supabase Auth
     const { error } = await supabase.auth.updateUser(
       {
         password: newPassword,
@@ -161,8 +162,23 @@ export const userService = {
     );
 
     if (error) {
-      console.error('Password update error:', error.message);
       throw error;
+    }
+
+    // 3. Wipe temporary plaintext portal_password in database clients table for security
+    try {
+      if (supabase) {
+        await supabase
+          .from('clients')
+          .update({
+            portalPassword: '',
+            portalpassword: '',
+            portal_password: '',
+          } as any)
+          .eq('email', userEmail);
+      }
+    } catch {
+      // Soft catch if client row update handles via RLS
     }
   },
 };

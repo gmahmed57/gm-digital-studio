@@ -40,6 +40,32 @@ export function ProjectEditPage() {
   const [feedbackComment, setFeedbackComment] = useState<string | undefined>(undefined);
   const [feedbackSubmittedAt, setFeedbackSubmittedAt] = useState<string | undefined>(undefined);
 
+  // Custom Category State
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('custom_project_categories');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isAddingCustomCategory, setIsAddingCustomCategory] = useState(false);
+  const [newCustomCategoryInput, setNewCustomCategoryInput] = useState('');
+
+  const handleAddCustomCategory = () => {
+    const trimmed = newCustomCategoryInput.trim();
+    if (trimmed) {
+      if (!customCategories.includes(trimmed)) {
+        const updated = [...customCategories, trimmed];
+        setCustomCategories(updated);
+        localStorage.setItem('custom_project_categories', JSON.stringify(updated));
+      }
+      setCategory(trimmed);
+      setNewCustomCategoryInput('');
+      setIsAddingCustomCategory(false);
+    }
+  };
+
   // Client Selection
   const [clientsList, setClientsList] = useState<ClientItem[]>([]);
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -50,8 +76,34 @@ export function ProjectEditPage() {
 
   useEffect(() => {
     const initData = async () => {
-      const allClients = await clientService.getClients();
+      const [allClients, allProjects] = await Promise.all([
+        clientService.getClients(),
+        projectService.getProjects(),
+      ]);
       setClientsList(allClients);
+
+      // Extract all unique custom categories stored in Supabase database
+      const presetList = [
+        'Enterprise Web Development',
+        'UI/UX & Product Design',
+        'Digital Marketing',
+        'Social Media Management',
+        'SEO',
+        'Virtual Assistant',
+        'AI Automation Suite',
+        'Brand Identity Strategy',
+        'Mobile App Development',
+        'Cloud Infrastructure',
+      ];
+      const dbCustomCategories = Array.from(
+        new Set(
+          allProjects
+            .map((p) => p.category)
+            .filter((c): c is string => Boolean(c) && !presetList.includes(c))
+        )
+      );
+
+      setCustomCategories((prev) => Array.from(new Set([...prev, ...dbCustomCategories])));
 
       if (isEditing && id) {
         const found = await projectService.getProjectById(id);
@@ -267,28 +319,111 @@ export function ProjectEditPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                      Service Category
-                    </label>
-                    <div className="relative">
-                      <Layers className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
-                      <select
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value as ProjectCategory)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-600 text-sm transition-all appearance-none"
-                      >
-                        <option value="Enterprise Web Development">Enterprise Web Development</option>
-                        <option value="UI/UX & Product Design">UI/UX & Product Design</option>
-                        <option value="Digital Marketing">Digital Marketing</option>
-                        <option value="Social Media Management">Social Media Management</option>
-                        <option value="SEO">SEO</option>
-                        <option value="Virtual Assistant">Virtual Assistant</option>
-                        <option value="AI Automation Suite">AI Automation Suite</option>
-                        <option value="Brand Identity Strategy">Brand Identity Strategy</option>
-                        <option value="Mobile App Development">Mobile App Development</option>
-                        <option value="Cloud Infrastructure">Cloud Infrastructure</option>
-                      </select>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                        Service Category
+                      </label>
+                      {!isAddingCustomCategory && (
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingCustomCategory(true)}
+                          className="text-[11px] font-bold text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" /> Add Custom Category
+                        </button>
+                      )}
                     </div>
+
+                    {isAddingCustomCategory ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={newCustomCategoryInput}
+                          onChange={(e) => setNewCustomCategoryInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddCustomCategory();
+                            }
+                          }}
+                          placeholder="e.g. Blockchain & Web3 Security"
+                          className="flex-1 px-3 py-2 rounded-xl border border-brand-500 bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddCustomCategory}
+                          className="px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-700 transition-colors"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAddingCustomCategory(false);
+                            setNewCustomCategoryInput('');
+                          }}
+                          className="px-3 py-2 rounded-xl bg-gray-200 dark:bg-dark-surface text-gray-700 dark:text-gray-300 text-xs font-bold hover:bg-gray-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <Layers className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                        <select
+                          value={category}
+                          onChange={(e) => {
+                            if (e.target.value === '__add_new__') {
+                              setIsAddingCustomCategory(true);
+                            } else {
+                              setCategory(e.target.value as ProjectCategory);
+                            }
+                          }}
+                          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-600 text-sm transition-all appearance-none"
+                        >
+                          <option value="Enterprise Web Development">Enterprise Web Development</option>
+                          <option value="UI/UX & Product Design">UI/UX & Product Design</option>
+                          <option value="Digital Marketing">Digital Marketing</option>
+                          <option value="Social Media Management">Social Media Management</option>
+                          <option value="SEO">SEO</option>
+                          <option value="Virtual Assistant">Virtual Assistant</option>
+                          <option value="AI Automation Suite">AI Automation Suite</option>
+                          <option value="Brand Identity Strategy">Brand Identity Strategy</option>
+                          <option value="Mobile App Development">Mobile App Development</option>
+                          <option value="Cloud Infrastructure">Cloud Infrastructure</option>
+
+                          {/* Custom Categories */}
+                          {customCategories.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+
+                          {/* Currently Selected Custom Category if not in presets */}
+                          {category &&
+                            ![
+                              'Enterprise Web Development',
+                              'UI/UX & Product Design',
+                              'Digital Marketing',
+                              'Social Media Management',
+                              'SEO',
+                              'Virtual Assistant',
+                              'AI Automation Suite',
+                              'Brand Identity Strategy',
+                              'Mobile App Development',
+                              'Cloud Infrastructure',
+                              ...customCategories,
+                            ].includes(category) && (
+                              <option value={category}>{category}</option>
+                            )}
+
+                          <option value="__add_new__" className="font-bold text-brand-600">
+                            + Add New Custom Category...
+                          </option>
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -23,7 +23,7 @@ export const messageService = {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Supabase fetch failed:', error.message);
+        console.error('[Message Service] Fetch failed:', error.message);
         return [];
       }
 
@@ -38,14 +38,14 @@ export const messageService = {
         }));
       }
     } catch (e) {
-      console.error('Unexpected error fetching messages:', e);
+      console.error('[Message Service] Unexpected error fetching messages:', e);
     }
     return [];
   },
 
   // Send a new message
   sendMessage: async (clientId: string, senderRole: 'admin' | 'client', content: string): Promise<Message> => {
-    if (!supabase) throw new Error('Supabase is not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const payload = {
       client_id: clientId,
@@ -61,7 +61,7 @@ export const messageService = {
       .single();
       
     if (error || !data) {
-      console.error('Supabase insert failed:', error?.message);
+      console.error('[Message Service] Message insert failed:', error?.message);
       throw new Error(error?.message || 'Failed to send message');
     }
 

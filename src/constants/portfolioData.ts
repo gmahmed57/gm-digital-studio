@@ -119,14 +119,14 @@ export const CASE_STUDIES: CaseStudy[] = [
       { label: 'Error Reduction', value: '99.9%' },
     ],
     challenge: 'Manual data synchronization between CRM, payment, and analytics portals resulted in delayed customer onboarding.',
-    solution: 'Built custom Python & Node.js edge functions with Supabase webhooks and Resend email triggers for automated workflows.',
+    solution: 'Built custom Python & Node.js edge functions with cloud webhooks and transactional email triggers for automated workflows.',
     deliverables: [
       'Webhook Orchestration Engine',
-      'Supabase Edge Functions',
-      'Resend Transactional Email Templates',
+      'Serverless Cloud Edge Functions',
+      'Transactional Email Templates',
       'Real-Time Error Handling & Logging',
     ],
-    techStack: ['Python', 'Node.js', 'Supabase Edge Functions', 'Webhooks', 'Resend API'],
+    techStack: ['Python', 'Node.js', 'Serverless Edge Functions', 'Webhooks', 'REST API'],
     results: [
       'Saved 40+ hours of manual administrative labor per week',
       'Achieved instant 200ms automated sync on customer signups',
@@ -590,18 +590,18 @@ When automated with Figma Variables and exported directly to Tailwind CSS config
     tags: ['Figma', 'Design Systems', 'UI/UX', 'Tailwind CSS'],
   },
   {
-    id: 'automating-workflows-supabase-edge-functions',
-    slug: 'automating-workflows-supabase-edge-functions',
-    title: 'Automating Enterprise Workflows with Supabase Edge Functions & Webhooks',
+    id: 'automating-workflows-cloud-edge-functions',
+    slug: 'automating-workflows-cloud-edge-functions',
+    title: 'Automating Enterprise Workflows with Serverless Edge Functions & Webhooks',
     category: 'AI & Automation',
     description: 'How to eliminate manual data entry by connecting CRMs, transactional email, and webhooks with serverless edge functions.',
-    content: `Automated data pipelines reduce administrative overhead while improving customer onboarding speed. By deploying serverless TypeScript edge functions on Supabase, agencies can trigger transactional emails via Resend, process payment webhooks, and sync CRM records instantly.
+    content: `Automated data pipelines reduce administrative overhead while improving customer onboarding speed. By deploying serverless TypeScript edge functions on cloud infrastructure, agencies can trigger transactional emails, process payment webhooks, and sync CRM records instantly.
 
 ### Implementation Checklist
 
-1. Configure Supabase Webhook Database Triggers on \`INSERT\` and \`UPDATE\` events.
+1. Configure Database Webhook Triggers on \`INSERT\` and \`UPDATE\` events.
 2. Deploy low-latency Deno/TypeScript Edge Functions to validate payload signatures.
-3. Dispatch transactional emails using the Resend API SDK within sub-200ms execution windows.
+3. Dispatch transactional emails using background API handlers within sub-200ms execution windows.
 
 This event-driven architecture eliminates operational bottlenecks and guarantees reliable background data delivery.`,
     imageUrl: blogSupabaseImg,
@@ -612,6 +612,6 @@ This event-driven architecture eliminates operational bottlenecks and guarantees
       role: 'Lead Full-Stack Developer',
       avatarUrl: avatar3,
     },
-    tags: ['Supabase', 'Python', 'Webhooks', 'Resend'],
+    tags: ['Serverless', 'Python', 'Webhooks', 'Edge Computing'],
   },
 ];

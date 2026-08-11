@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 
 interface BlogContentRendererProps {
   content: string;
@@ -195,7 +196,7 @@ export const BlogContentRenderer: React.FC<BlogContentRendererProps> = ({
       `}</style>
       <div
         className={`cms-article-body max-w-none text-base leading-relaxed space-y-2 ${className}`}
-        dangerouslySetInnerHTML={{ __html: finalHtml }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(finalHtml, { ADD_ATTR: ['target'] }) }}
       />
     </>
   );

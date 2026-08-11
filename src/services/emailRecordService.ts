@@ -35,7 +35,7 @@ export const emailRecordService = {
         }
       }
     } catch (err) {
-      console.warn('[EmailRecordService] Error reading from Supabase sent_emails:', err);
+      console.warn('[EmailRecordService] Error reading remote sent_emails:', err);
     }
 
     // Fallback to localStorage
@@ -51,7 +51,7 @@ export const emailRecordService = {
   },
 
   /**
-   * Record a newly sent custom email to Supabase and localStorage
+   * Record a newly sent custom email to database and localStorage
    */
   recordSentEmail: async (record: Omit<SentEmailRecord, 'id' | 'sent_at'>): Promise<SentEmailRecord> => {
     const newRecord: SentEmailRecord = {
@@ -65,7 +65,7 @@ export const emailRecordService = {
     const updated = [newRecord, ...existing];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
-    // Upsert to Supabase table
+    // Upsert to database table
     try {
       if (supabase) {
         const { error } = await supabase.from('sent_emails').insert({
@@ -83,11 +83,11 @@ export const emailRecordService = {
         });
 
         if (error) {
-          console.warn('[EmailRecordService] Supabase insert warning:', error.message);
+          console.warn('[EmailRecordService] Table insert notice:', error.message);
         }
       }
     } catch (err) {
-      console.warn('[EmailRecordService] Supabase sync notice:', err);
+      console.warn('[EmailRecordService] Record sync notice:', err);
     }
 
     activityLogService.logActivity({
@@ -104,7 +104,7 @@ export const emailRecordService = {
   },
 
   /**
-   * Delete a sent email record from Supabase and localStorage
+   * Delete a sent email record from database and localStorage
    */
   deleteSentEmailRecord: async (id: string): Promise<boolean> => {
     try {
@@ -112,7 +112,7 @@ export const emailRecordService = {
         await supabase.from('sent_emails').delete().eq('id', id);
       }
     } catch (err) {
-      console.warn('[EmailRecordService] Supabase delete notice:', err);
+      console.warn('[EmailRecordService] Record delete notice:', err);
     }
 
     const cached = await emailRecordService.getSentEmails();

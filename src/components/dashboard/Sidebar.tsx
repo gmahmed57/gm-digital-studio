@@ -21,6 +21,7 @@ import {
   Mail,
   ShieldCheck,
   BarChart3,
+  X,
 } from 'lucide-react';
 import logo from '../../assets/icon-logo.png';
 import { settingsService } from '../../services/settingsService';
@@ -161,6 +162,16 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
               )}
             </Link>
 
+            {/* Mobile Close Button */}
+            <button
+              onClick={onCloseMobile}
+              className="lg:hidden w-7.5 h-7.5 rounded-xl bg-gray-100 dark:bg-dark-surface flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
+              title="Close Navigation Menu"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Desktop Collapse Toggle Button */}
             <button
               onClick={onToggleCollapse}
               className="hidden lg:flex w-7 h-7 rounded-xl bg-gray-100 dark:bg-dark-surface items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"

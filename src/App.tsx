@@ -4,6 +4,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import RootLayout from './layouts/RootLayout';
 import DashboardLayout from './layouts/DashboardLayout';
+import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
 
 // Public Web Pages
 import Home from './pages/Home';
@@ -148,6 +149,7 @@ function App() {
             {/* Fallback 404 Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <PWAInstallPrompt />
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>

@@ -82,7 +82,7 @@ export const projectService = {
 
   // Save or update project
   saveProject: async (project: Partial<ProjectItem>): Promise<ProjectItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     let targetItem: ProjectItem;
 
@@ -169,7 +169,7 @@ export const projectService = {
     rating: number,
     comment: string
   ): Promise<ProjectItem | null> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const submittedAt = new Date().toISOString();
     const existing = await projectService.getProjects();
@@ -220,7 +220,7 @@ export const projectService = {
     newStatus: MilestoneStatus,
     clientComment?: string
   ): Promise<ProjectItem | null> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const existing = await projectService.getProjects();
     const project = existing.find((p) => p.id === projectId);
@@ -275,7 +275,7 @@ export const projectService = {
 
   // Delete project
   deleteProject: async (id: string): Promise<ProjectItem[]> => {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Database service is not initialized.');
 
     const { error } = await supabase.from('projects').delete().eq('id', id);
     if (error) throw error;

@@ -49,9 +49,10 @@ serve(async (req) => {
       })
     }
 
-    // Role MUST come from server-controlled app_metadata to prevent client privilege escalation
+    // Role MUST come from server-controlled app_metadata or server secret to prevent client privilege escalation
     const userRole = user.app_metadata?.role
-    const isSuperAdmin = user.email === ''
+    const superAdminEmail = Deno.env.get('SUPERADMIN_EMAIL') || Deno.env.get('ADMIN_EMAIL') || Deno.env.get('VITE_ADMIN_EMAIL')
+    const isSuperAdmin = (superAdminEmail && user.email === superAdminEmail) || userRole === 'superadmin'
     if (userRole !== 'admin' && !isSuperAdmin) {
       console.warn(`User ${user.email} (role: ${userRole}) attempted admin action but was blocked.`)
       return new Response(JSON.stringify({ error: 'Unauthorized: Admins only' }), {

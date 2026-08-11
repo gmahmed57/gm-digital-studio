@@ -137,7 +137,7 @@ export function AdvancedReportsPage() {
       <div className="p-12 text-center text-gray-500 dark:text-gray-400 font-sans">
         <RefreshCw className="w-8 h-8 animate-spin mx-auto text-brand-500 mb-3" />
         <p className="text-sm font-semibold text-gray-900 dark:text-white">Compiling executive studio reports...</p>
-        <p className="text-xs text-gray-400 mt-1">Fetching live financial telemetry, project status, and client metrics from database.</p>
+        <p className="text-xs text-gray-400 mt-1">Synchronizing live financial telemetry and client performance analytics...</p>
       </div>
     );
   }
@@ -236,7 +236,7 @@ export function AdvancedReportsPage() {
           </div>
           <div className="text-right">
             <span className="inline-block px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-brand-500/10 text-brand-500 border border-brand-500/20">
-              Live Database Report
+              Live Telemetry Report
             </span>
             <p className="text-[11px] text-gray-400 mt-1">Generated: {new Date().toLocaleString()}</p>
           </div>

@@ -23,12 +23,12 @@ export const contactService = {
     try {
       const { error } = await supabase.from('contact_submissions').insert([newSubmission]);
       if (error) {
-        console.error('Supabase contact submission insert failed:', error.message);
+        console.error('[Contact Service] Submission insert failed:', error.message);
         return false;
       }
       return true;
     } catch (e) {
-      console.error('Supabase contact submission network error:', e);
+      console.error('[Contact Service] Submission network error:', e);
       return false;
     }
   },
@@ -41,13 +41,13 @@ export const contactService = {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Supabase fetch failed for contact_submissions:', error.message);
+        console.error('[Contact Service] Fetch failed:', error.message);
         return [];
       }
 
       return (data || []) as ContactSubmission[];
     } catch (e) {
-      console.error('Supabase fetch network error for contact_submissions:', e);
+      console.error('[Contact Service] Fetch network error:', e);
       return [];
     }
   },
@@ -60,12 +60,12 @@ export const contactService = {
         .eq('id', id);
 
       if (error) {
-        console.error('Supabase update contact status failed:', error.message);
+        console.error('[Contact Service] Update status failed:', error.message);
         return false;
       }
       return true;
     } catch (e) {
-      console.error('Supabase update contact status network error:', e);
+      console.error('[Contact Service] Update status network error:', e);
       return false;
     }
   },
@@ -78,12 +78,12 @@ export const contactService = {
         .eq('id', id);
 
       if (error) {
-        console.error('Supabase delete contact submission failed:', error.message);
+        console.error('[Contact Service] Delete submission failed:', error.message);
         return false;
       }
       return true;
     } catch (e) {
-      console.error('Supabase delete contact submission network error:', e);
+      console.error('[Contact Service] Delete submission network error:', e);
       return false;
     }
   },

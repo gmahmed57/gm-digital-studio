@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { messageService, type Message } from '../../services/messageService';
 import { MessageSquare, Send, Building, Download } from 'lucide-react';
 import SEO from '../../components/common/SEO';
+import { RichTextDisplay } from '../../components/common/RichTextDisplay';
 
 export function ClientMessages() {
   const { user } = useAuth();
@@ -87,16 +88,16 @@ export function ClientMessages() {
       <div className="h-[calc(100vh-8rem)] font-sans flex flex-col bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl overflow-hidden shadow-xs">
         
         {/* Chat Header */}
-        <div className="p-5 border-b border-gray-100 dark:border-dark-border flex items-center justify-between gap-4 bg-gray-50/50 dark:bg-dark-surface/50">
-          <div className="flex items-center gap-4 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
-              <Building className="w-6 h-6" />
+        <div className="p-3.5 sm:p-5 border-b border-gray-100 dark:border-dark-border flex items-center justify-between gap-2 sm:gap-4 bg-gray-50/50 dark:bg-dark-surface/50">
+          <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-brand-600 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
+              <Building className="w-4 h-4 sm:w-6 sm:h-6" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl font-heading font-bold text-gray-900 dark:text-white truncate">
+              <h1 className="text-sm sm:text-xl font-heading font-bold text-gray-900 dark:text-white truncate">
                 GM Digital Studio Team
               </h1>
-              <p className="text-sm text-brand-600 dark:text-brand-400 font-medium truncate">
+              <p className="text-[11px] sm:text-sm text-brand-600 dark:text-brand-400 font-medium truncate">
                 We typically reply within a few hours.
               </p>
             </div>
@@ -105,9 +106,11 @@ export function ClientMessages() {
           <button
             onClick={handleExportChat}
             title="Export & Download Chat Transcript"
-            className="px-3.5 py-2 rounded-xl bg-white hover:bg-gray-100 dark:bg-dark-card dark:hover:bg-dark-surface border border-gray-200 dark:border-dark-border text-gray-700 dark:text-gray-200 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs shrink-0"
+            className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-white hover:bg-gray-100 dark:bg-dark-card dark:hover:bg-dark-surface border border-gray-200 dark:border-dark-border text-gray-700 dark:text-gray-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
           >
-            <Download className="w-4 h-4 text-brand-500" /> Export Chat Transcript
+            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-500" />
+            <span className="hidden sm:inline">Export Chat Transcript</span>
+            <span className="sm:hidden">Export</span>
           </button>
         </div>
 
@@ -139,7 +142,7 @@ export function ClientMessages() {
                       ? 'bg-brand-600 text-white rounded-tr-sm shadow-md' 
                       : 'bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border text-gray-900 dark:text-white rounded-tl-sm shadow-xs'
                   }`}>
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                    <RichTextDisplay content={msg.content} className={`text-sm leading-relaxed ${isClient ? 'text-white prose-invert' : ''}`} />
                     <p className={`text-[10px] mt-2 font-medium ${isClient ? 'text-brand-100' : 'text-gray-400'}`}>
                       {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>

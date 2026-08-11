@@ -69,8 +69,8 @@ export const settingsService = {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(mapped));
         return mapped;
       }
-    } catch (e) {
-      console.warn('Supabase fetch failed for website_settings, loading local cache.', e);
+    } catch {
+      // Local cache fallback
     }
 
     // Fallback to local storage or defaults
@@ -78,7 +78,7 @@ export const settingsService = {
     if (cached) {
       try {
         return JSON.parse(cached) as WebsiteSettings;
-      } catch (err) {
+      } catch {
         return DEFAULT_SETTINGS;
       }
     }
@@ -89,11 +89,8 @@ export const settingsService = {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 
     try {
-      // Upsert payload contains both folded lowercase keys and camelCase keys
-      // to ensure compatibility with whichever database schema is currently active.
       const payload = {
         id: 'global',
-        // Lowercase keys
         sitename: settings.siteName,
         contactemail: settings.contactEmail,
         contactphone: settings.contactPhone,
@@ -104,7 +101,6 @@ export const settingsService = {
         socialinstagram: settings.socialInstagram,
         seotitle: settings.seoTitle,
         seodescription: settings.seoDescription,
-        // Case-preserved camelCase keys (must match double-quoted SQL columns)
         logoUrl: settings.logoUrl,
         faviconUrl: settings.faviconUrl,
         logoDisplayMode: settings.logoDisplayMode,
@@ -113,11 +109,9 @@ export const settingsService = {
       };
 
       const { error } = await supabase.from('website_settings').upsert(payload);
-
       if (!error) return true;
-      console.error('Failed to save settings to Supabase:', error.message);
-    } catch (e) {
-      console.error('Failed to save settings to Supabase (network error):', e);
+    } catch {
+      // Silent catch
     }
 
     return true; // Return true as it saved locally
@@ -138,9 +132,8 @@ export const settingsService = {
         }
         return true;
       }
-      console.error('Failed to update logoUrl in Supabase:', error.message);
-    } catch (e) {
-      console.error('Failed to update logoUrl:', e);
+    } catch {
+      // Silent catch
     }
     return false;
   },
@@ -160,9 +153,8 @@ export const settingsService = {
         }
         return true;
       }
-      console.error('Failed to update faviconUrl in Supabase:', error.message);
-    } catch (e) {
-      console.error('Failed to update faviconUrl:', e);
+    } catch {
+      // Silent catch
     }
     return false;
   },
@@ -189,7 +181,7 @@ export const settingsService = {
         return parsedTools;
       }
     } catch (e) {
-      console.warn('Supabase fetch failed for studio_tools, using cache.', e);
+      console.warn('[Settings Service] Remote fetch notice for studio_tools, using local cache.', e);
     }
 
     // Cache fallback
@@ -227,11 +219,11 @@ export const settingsService = {
           }, { onConflict: 'id' });
 
         if (error) {
-          console.error('Supabase update tool status failed:', error.message, error);
+          console.error('[Settings Service] Update tool status failed:', error.message, error);
           throw error;
         }
       } catch (e) {
-        console.error('Supabase upsert tool status exception:', e);
+        console.error('[Settings Service] Upsert tool status exception:', e);
       }
     }
 

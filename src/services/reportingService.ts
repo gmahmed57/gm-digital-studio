@@ -100,8 +100,7 @@ export const reportingService = {
         avgInvoiceValue,
         paymentMethodBreakdown
       };
-    } catch (err) {
-      console.error('Failed to aggregate financial report:', err);
+    } catch {
       return {
         totalInvoices: 0,
         totalBilled: 0,
@@ -143,7 +142,7 @@ export const reportingService = {
 
         if (p.milestones && Array.isArray(p.milestones)) {
           totalMilestones += p.milestones.length;
-          completedMilestones += p.milestones.filter((m: any) => m.completed || m.status === 'approved').length;
+          completedMilestones += p.milestones.filter((m) => m.completed || m.status === 'approved').length;
         }
       });
 
@@ -159,8 +158,7 @@ export const reportingService = {
         totalMilestones,
         completedMilestones
       };
-    } catch (err) {
-      console.error('Failed to aggregate project report:', err);
+    } catch {
       return {
         totalProjects: 0,
         activeProjects: 0,
@@ -205,8 +203,7 @@ export const reportingService = {
         packageBreakdown,
         avgRevenuePerClient
       };
-    } catch (err) {
-      console.error('Failed to aggregate client report:', err);
+    } catch {
       return {
         totalClients: 0,
         activeClients: 0,
@@ -251,8 +248,7 @@ export const reportingService = {
         toolUsageBreakdown,
         clientActivityList
       };
-    } catch (err) {
-      console.error('Failed to aggregate tools usage report:', err);
+    } catch {
       return {
         totalLaunches: 0,
         totalExecutions: 0,
@@ -263,7 +259,7 @@ export const reportingService = {
   },
 
   /**
-   * Export Full Summary Report to CSV File
+   * Export Full Summary & Itemized Systems Report to CSV File
    */
   async exportFullCSVReport(): Promise<void> {
     const fin = await reportingService.getFinancialReport();
@@ -271,51 +267,133 @@ export const reportingService = {
     const client = await reportingService.getClientReport();
     const tools = await reportingService.getToolsUsageReport();
 
-    const lines = [
-      'GM DIGITAL STUDIO — EXECUTIVE SYSTEM SUMMARY REPORT',
-      `Generated At,${new Date().toLocaleString()}`,
-      '',
-      '--- FINANCIAL TELEMETRY ---',
-      `Total Invoices Issued,${fin.totalInvoices}`,
-      `Total Billed Revenue,$${fin.totalBilled.toLocaleString()}`,
-      `Paid Collected Revenue,$${fin.paidAmount.toLocaleString()}`,
-      `Pending Uncollected Revenue,$${fin.pendingAmount.toLocaleString()}`,
-      `Overdue Revenue,$${fin.overdueAmount.toLocaleString()}`,
-      `Tax Collected,$${fin.totalTax.toLocaleString()}`,
-      `Studio Gratuity / Tips,$${fin.totalTips.toLocaleString()}`,
-      `Average Invoice Value,$${fin.avgInvoiceValue.toFixed(2)}`,
-      '',
-      '--- PROJECT OPERATIONS ---',
-      `Total Projects,${proj.totalProjects}`,
-      `Active Projects,${proj.activeProjects}`,
-      `Completed Projects,${proj.completedProjects}`,
-      `On-Hold Projects,${proj.onHoldProjects}`,
-      `Average Project Completion,${proj.avgProgress}%`,
-      `Total Milestones Configured,${proj.totalMilestones}`,
-      `Completed Milestones Approved,${proj.completedMilestones}`,
-      '',
-      '--- CLIENT TELEMETRY ---',
-      `Total Clients,${client.totalClients}`,
-      `Active Clients,${client.activeClients}`,
-      `Inactive Clients,${client.inactiveClients}`,
-      `Average Revenue Per Client,$${client.avgRevenuePerClient.toFixed(2)}`,
-      '',
-      '--- SAAS STUDIO TOOLS TELEMETRY ---',
-      `Total Tool Workspaces Launched,${tools.totalLaunches}`,
-      `Total Tool Executions,${tools.totalExecutions}`,
-    ];
+    const allInvoices = await invoiceService.getInvoices();
+    const allProjects = await projectService.getProjects();
+    const allClients = await clientService.getClients();
+    const allLogs = await activityLogService.getActivityLogs();
 
+    const escape = (val: unknown): string => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const lines: string[] = [];
+
+    // Title & Header
+    lines.push([escape('GM DIGITAL STUDIO — EXECUTIVE FULL SYSTEM AUDIT REPORT')].join(','));
+    lines.push([escape('Generated At'), escape(new Date().toLocaleString())].join(','));
+    lines.push('');
+
+    // 1. FINANCIAL SUMMARY & ITEMIZATION
+    lines.push([escape('=== 1. FINANCIAL TELEMETRY SUMMARY ===')].join(','));
+    lines.push([escape('Total Invoices Issued'), escape(fin.totalInvoices)].join(','));
+    lines.push([escape('Total Billed Revenue ($)'), escape(fin.totalBilled)].join(','));
+    lines.push([escape('Paid Collected Revenue ($)'), escape(fin.paidAmount)].join(','));
+    lines.push([escape('Pending Uncollected Revenue ($)'), escape(fin.pendingAmount)].join(','));
+    lines.push([escape('Overdue Revenue ($)'), escape(fin.overdueAmount)].join(','));
+    lines.push([escape('Total Tax Collected ($)'), escape(fin.totalTax)].join(','));
+    lines.push([escape('Studio Gratuity / Tips ($)'), escape(fin.totalTips)].join(','));
+    lines.push([escape('Average Invoice Value ($)'), escape(fin.avgInvoiceValue.toFixed(2))].join(','));
+    lines.push('');
+
+    lines.push([escape('--- ITEMIZED INVOICES LIST ---')].join(','));
+    lines.push(['Invoice Number', 'Client Name', 'Client Email', 'Amount ($)', 'Status', 'Issue Date', 'Due Date', 'Paid Date', 'Description'].map(escape).join(','));
+    allInvoices.forEach((inv) => {
+      lines.push([
+        inv.invoiceNumber,
+        inv.clientName,
+        inv.clientEmail,
+        inv.amount,
+        inv.status,
+        inv.date,
+        inv.dueDate,
+        inv.paymentSubmittedAt || 'N/A',
+        inv.description
+      ].map(escape).join(','));
+    });
+    lines.push('');
+
+    // 2. PROJECT OPERATIONS & ITEMIZATION
+    lines.push([escape('=== 2. PROJECT OPERATIONS SUMMARY ===')].join(','));
+    lines.push([escape('Total Projects'), escape(proj.totalProjects)].join(','));
+    lines.push([escape('Active Projects'), escape(proj.activeProjects)].join(','));
+    lines.push([escape('Completed Projects'), escape(proj.completedProjects)].join(','));
+    lines.push([escape('On-Hold Projects'), escape(proj.onHoldProjects)].join(','));
+    lines.push([escape('Average Progress (%)'), escape(`${proj.avgProgress}%`)].join(','));
+    lines.push('');
+
+    lines.push([escape('--- ITEMIZED PROJECTS LIST ---')].join(','));
+    lines.push(['Project Name', 'Client Name', 'Category', 'Budget ($)', 'Progress (%)', 'Status', 'Due Date', 'Milestones Count'].map(escape).join(','));
+    allProjects.forEach((p) => {
+      lines.push([
+        p.title,
+        p.clientName,
+        p.category,
+        p.budget || 'N/A',
+        `${p.progress}%`,
+        p.status,
+        p.dueDate || 'N/A',
+        p.milestones ? p.milestones.length : 0
+      ].map(escape).join(','));
+    });
+    lines.push('');
+
+    // 3. CLIENT DIRECTORY & ITEMIZATION
+    lines.push([escape('=== 3. CLIENT DIRECTORY SUMMARY ===')].join(','));
+    lines.push([escape('Total Clients'), escape(client.totalClients)].join(','));
+    lines.push([escape('Active Clients'), escape(client.activeClients)].join(','));
+    lines.push([escape('Inactive Clients'), escape(client.inactiveClients)].join(','));
+    lines.push('');
+
+    lines.push([escape('--- ITEMIZED CLIENTS LIST ---')].join(','));
+    lines.push(['Client Name', 'Company', 'Email', 'Phone', 'Status', 'Joined Date'].map(escape).join(','));
+    allClients.forEach((c) => {
+      lines.push([
+        c.fullName,
+        c.company,
+        c.email,
+        c.phone || 'N/A',
+        c.status,
+        c.joinedDate || 'N/A'
+      ].map(escape).join(','));
+    });
+    lines.push('');
+
+    // 4. STUDIO AUDIT ACTIVITY LOGS
+    lines.push([escape('=== 4. STUDIO AUDIT ACTIVITY LOGS ===')].join(','));
+    lines.push(['Log ID', 'Timestamp', 'User Name', 'User Email', 'Role', 'Action', 'Entity Type', 'Details'].map(escape).join(','));
+    allLogs.forEach((l) => {
+      lines.push([
+        l.id,
+        new Date(l.created_at).toLocaleString(),
+        l.user_name,
+        l.user_email,
+        l.user_role,
+        l.action,
+        l.entity_type,
+        l.details
+      ].map(escape).join(','));
+    });
+    lines.push('');
+
+    // 5. SAAS STUDIO TOOLS TELEMETRY
+    lines.push([escape('=== 5. SAAS STUDIO TOOLS TELEMETRY ===')].join(','));
+    lines.push([escape('Total Tool Workspaces Launched'), escape(tools.totalLaunches)].join(','));
+    lines.push([escape('Total Tool Executions'), escape(tools.totalExecutions)].join(','));
     Object.entries(tools.toolUsageBreakdown).forEach(([tId, count]) => {
-      lines.push(`Tool Usage [${tId}],${count}`);
+      lines.push([escape(`Tool [${tId}]`), escape(count)].join(','));
     });
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + lines.join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvData = '\uFEFF' + lines.join('\r\n');
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `GM_Studio_Executive_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.href = url;
+    link.setAttribute('download', `GM_Studio_Executive_Full_Report_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 };

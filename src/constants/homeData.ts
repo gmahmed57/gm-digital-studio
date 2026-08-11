@@ -74,10 +74,10 @@ export const SERVICES: ServiceItem[] = [
   {
     id: 'cloud-devops',
     title: 'Cloud & Database Architecture',
-    description: 'Resilient backend infrastructure using Supabase, PostgreSQL, and serverless edge deployment.',
+    description: 'Resilient backend infrastructure using high-concurrency cloud databases, microservices, and serverless edge deployment.',
     icon: Database,
     iconName: 'Database',
-    features: ['PostgreSQL & Row-Level Security', 'Supabase Auth Integration', 'Serverless Cloud Hosting'],
+    features: ['PostgreSQL & Granular Security', 'SSO & Identity Authentication', 'Serverless Cloud Hosting'],
   },
 ];
 
