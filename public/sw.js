@@ -3,7 +3,11 @@ const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.ico'
+  '/favicon.ico',
+  '/pwa-192.png',
+  '/pwa-512.png',
+  '/favicon.png',
+  '/apple-touch-icon.png'
 ];
 
 // Install Event - Pre-cache core shell

@@ -5,6 +5,7 @@ import { cmsService, type BlogComment, type AuthorItem, type TestimonialItem } f
 import type { BlogPost, CaseStudy } from '../../types/portfolio';
 import SEO from '../../components/common/SEO';
 import { useAuth } from '../../context/AuthContext';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import {
   FileText,
   Briefcase,
@@ -159,16 +160,6 @@ export function AdminCMS() {
     }
   };
 
-  const handleDeleteTestimonial = async (id: string) => {
-    if (confirm('Are you sure you want to delete this testimonial?')) {
-      const success = await cmsService.deleteTestimonial(id);
-      if (success) {
-        triggerSuccess('Testimonial deleted successfully.');
-        loadAllData();
-      }
-    }
-  };
-
   useEffect(() => {
     loadAllData();
     const handleCmsUpdate = () => loadAllData();
@@ -188,28 +179,6 @@ export function AdminCMS() {
     setTimeout(() => setActionSuccess(null), 3000);
   };
 
-  // Delete Blog
-  const handleDeleteBlog = async (id: string) => {
-    if (confirm('Are you sure you want to delete this blog post? It will be removed immediately.')) {
-      const success = await cmsService.deleteBlog(id);
-      if (success) {
-        triggerSuccess('Blog article removed.');
-        loadAllData();
-      }
-    }
-  };
-
-  // Delete Case Study
-  const handleDeleteCaseStudy = async (id: string) => {
-    if (confirm('Are you sure you want to delete this case study?')) {
-      const success = await cmsService.deleteCaseStudy(id);
-      if (success) {
-        triggerSuccess('Case study deleted.');
-        loadAllData();
-      }
-    }
-  };
-
   // Comment Actions
   const handleApproveComment = async (id: string) => {
     const success = await cmsService.approveComment(id);
@@ -219,14 +188,56 @@ export function AdminCMS() {
     }
   };
 
+  const [pendingDelete, setPendingDelete] = useState<{
+    type: 'testimonial' | 'blog' | 'caseStudy' | 'comment' | 'author';
+    id: string;
+    title: string;
+  } | null>(null);
+
+  const handleDeleteTestimonial = async (id: string) => {
+    setPendingDelete({ type: 'testimonial', id, title: 'Testimonial' });
+  };
+
+  const handleDeleteBlog = async (id: string) => {
+    setPendingDelete({ type: 'blog', id, title: 'Blog Post' });
+  };
+
+  const handleDeleteCaseStudy = async (id: string) => {
+    setPendingDelete({ type: 'caseStudy', id, title: 'Case Study' });
+  };
+
   const handleDeleteComment = async (id: string) => {
-    if (confirm('Delete this comment permanently?')) {
-      const success = await cmsService.deleteComment(id);
-      if (success) {
-        triggerSuccess('Comment deleted.');
-        loadAllData();
-      }
+    setPendingDelete({ type: 'comment', id, title: 'Comment' });
+  };
+
+  const handleDeleteAuthor = async (id: string) => {
+    setPendingDelete({ type: 'author', id, title: 'Author Profile' });
+  };
+
+  const confirmPendingDelete = async () => {
+    if (!pendingDelete) return;
+    const { type, id } = pendingDelete;
+    let success = false;
+
+    if (type === 'testimonial') {
+      success = await cmsService.deleteTestimonial(id);
+      if (success) triggerSuccess('Testimonial deleted successfully.');
+    } else if (type === 'blog') {
+      success = await cmsService.deleteBlog(id);
+      if (success) triggerSuccess('Blog article removed.');
+    } else if (type === 'caseStudy') {
+      success = await cmsService.deleteCaseStudy(id);
+      if (success) triggerSuccess('Case study deleted.');
+    } else if (type === 'comment') {
+      success = await cmsService.deleteComment(id);
+      if (success) triggerSuccess('Comment deleted.');
+    } else if (type === 'author') {
+      success = await cmsService.deleteAuthor(id);
+      if (success) triggerSuccess('Author profile removed.');
     }
+
+    if (success) loadAllData();
+    setPendingDelete(null);
   };
 
   const handleSaveReply = async (commentId: string) => {
@@ -294,16 +305,6 @@ export function AdminCMS() {
       setIsAuthorModalOpen(false);
       triggerSuccess(editingAuthor ? 'Author profile updated!' : 'New author profile added!');
       loadAllData();
-    }
-  };
-
-  const handleDeleteAuthor = async (id: string) => {
-    if (confirm('Are you sure you want to delete this author profile?')) {
-      const success = await cmsService.deleteAuthor(id);
-      if (success) {
-        triggerSuccess('Author profile removed.');
-        loadAllData();
-      }
     }
   };
 
@@ -1226,6 +1227,18 @@ export function AdminCMS() {
         </div>,
         document.body
       )}
+
+      {/* Branded Confirm Modal */}
+      <ConfirmModal
+        isOpen={Boolean(pendingDelete)}
+        title={`Delete ${pendingDelete?.title || 'Item'}`}
+        message={`Are you sure you want to permanently delete this ${pendingDelete?.title.toLowerCase() || 'item'}? This content will be immediately removed from your live platform.`}
+        confirmText="Permanently Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmPendingDelete}
+        onClose={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

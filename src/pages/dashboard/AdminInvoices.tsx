@@ -30,6 +30,7 @@ import {
   Percent,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
+import ConfirmModal from '../../components/common/ConfirmModal';
 
 export function AdminInvoices() {
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
@@ -37,6 +38,7 @@ export function AdminInvoices() {
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
 
   // Modal State for Advanced Multi-Item Invoice Builder
   const [showModal, setShowModal] = useState<boolean>(false);
@@ -301,10 +303,17 @@ export function AdminInvoices() {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this invoice record?')) {
-      const updated = await invoiceService.deleteInvoice(id);
-      setInvoices(updated);
+    setDeletingInvoiceId(id);
+  };
+
+  const confirmDeleteInvoice = async () => {
+    if (!deletingInvoiceId) return;
+    const updated = await invoiceService.deleteInvoice(deletingInvoiceId);
+    setInvoices(updated);
+    if (inspectingInvoice && inspectingInvoice.id === deletingInvoiceId) {
+      setInspectingInvoice(null);
     }
+    setDeletingInvoiceId(null);
   };
 
   const filteredInvoices = invoices.filter((inv) => {
@@ -1407,6 +1416,17 @@ export function AdminInvoices() {
         )}
 
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(deletingInvoiceId)}
+        title="Delete Invoice Record"
+        message="Are you sure you want to delete this invoice record? This invoice will be permanently removed from your accounting ledger."
+        confirmText="Delete Invoice"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteInvoice}
+        onClose={() => setDeletingInvoiceId(null)}
+      />
     </>
   );
 }

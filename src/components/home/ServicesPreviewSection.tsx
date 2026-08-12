@@ -67,6 +67,8 @@ const ServicesPreviewSection: React.FC = () => {
                   <img
                     src={serviceImages[service.id] || serviceImages['web-dev']}
                     alt={service.title}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   {/* Clean Glass Icon Badge */}

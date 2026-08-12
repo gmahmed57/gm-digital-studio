@@ -155,7 +155,7 @@ export function ClientOverview() {
 
           {loading ? (
             <div className="p-8 text-center text-xs font-semibold text-gray-400">
-              Fetching assigned deliverables...
+              Loading assigned deliverables...
             </div>
           ) : projects.length === 0 ? (
             <div className="p-8 rounded-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border text-center space-y-2">
@@ -231,7 +231,7 @@ export function ClientOverview() {
 
           {loading ? (
             <div className="p-6 text-center text-xs font-semibold text-gray-400">
-              Fetching billing statements...
+              Loading billing statements...
             </div>
           ) : invoices.length === 0 ? (
             <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400 space-y-1">

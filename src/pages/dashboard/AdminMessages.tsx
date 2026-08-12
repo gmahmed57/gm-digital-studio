@@ -5,6 +5,7 @@ import type { ClientItem } from '../../types/client';
 import { MessageSquare, Search, Send, User, Trash2, Mail, Download } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import ComposeEmailModal from '../../components/dashboard/ComposeEmailModal';
+import ConfirmModal from '../../components/common/ConfirmModal';
 
 export function AdminMessages() {
   const [clients, setClients] = useState<ClientItem[]>([]);
@@ -16,6 +17,7 @@ export function AdminMessages() {
   const [isSending, setIsSending] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [lastMessageTimes, setLastMessageTimes] = useState<Record<string, number>>({});
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Compose Email Modal state
   const [isComposeOpen, setIsComposeOpen] = useState(false);
@@ -105,15 +107,19 @@ export function AdminMessages() {
 
   const handleClearChat = async () => {
     if (!selectedClientId) return;
-    if (confirm('Are you sure you want to completely clear the chat history for this client? This action cannot be undone.')) {
-      await messageService.clearClientChat(selectedClientId);
-      setMessages([]);
-      setLastMessageTimes(prev => {
-        const newTimes = { ...prev };
-        newTimes[selectedClientId] = 0;
-        return newTimes;
-      });
-    }
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearChat = async () => {
+    if (!selectedClientId) return;
+    await messageService.clearClientChat(selectedClientId);
+    setMessages([]);
+    setLastMessageTimes(prev => {
+      const newTimes = { ...prev };
+      newTimes[selectedClientId] = 0;
+      return newTimes;
+    });
+    setShowClearConfirm(false);
   };
 
   const sortedClients = [...clients].sort((a, b) => {
@@ -322,6 +328,17 @@ export function AdminMessages() {
         onClose={() => setIsComposeOpen(false)}
         initialRecipientEmail={selectedClient?.email}
         initialRecipientName={selectedClient?.fullName}
+      />
+
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        title="Clear Client Chat History"
+        message="Are you sure you want to completely clear the chat history for this client? All message logs for this conversation will be permanently removed."
+        confirmText="Clear Chat History"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmClearChat}
+        onClose={() => setShowClearConfirm(false)}
       />
     </>
   );

@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
+import ConfirmModal from '../../components/common/ConfirmModal';
 
 export function NotificationsPage() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export function NotificationsPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'read'>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [loading, setLoading] = useState<boolean>(true);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -50,10 +52,13 @@ export function NotificationsPage() {
   };
 
   const handleClearAll = async () => {
-    if (window.confirm('Are you sure you want to clear all notifications?')) {
-      const updated = await notificationService.clearNotifications(user?.email, role || undefined);
-      setNotifications(updated);
-    }
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearAll = async () => {
+    const updated = await notificationService.clearNotifications(user?.email, role || undefined);
+    setNotifications(updated);
+    setShowClearConfirm(false);
   };
 
   const handleDeleteSingle = async (e: React.MouseEvent, notifId: string) => {
@@ -267,6 +272,17 @@ export function NotificationsPage() {
         )}
 
       </div>
+
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        title="Clear All Notifications"
+        message="Are you sure you want to clear all notification items from your view? This action will purge your notification list."
+        confirmText="Clear All"
+        cancelText="Cancel"
+        variant="warning"
+        onConfirm={confirmClearAll}
+        onClose={() => setShowClearConfirm(false)}
+      />
     </>
   );
 }

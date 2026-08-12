@@ -78,6 +78,8 @@ const TestimonialsSection: React.FC = () => {
                   <img
                     src={activeTestimonial.avatarUrl}
                     alt={activeTestimonial.name}
+                    loading="lazy"
+                    decoding="async"
                     className="w-12 h-12 rounded-full object-cover border-2 border-brand-600 shadow-md"
                   />
                   <div className="text-left">

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import ComposeEmailModal from '../../components/dashboard/ComposeEmailModal';
+import ConfirmModal from '../../components/common/ConfirmModal';
 
 export function Clients() {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ export function Clients() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
 
   // Compose Email Modal state
   const [isComposeOpen, setIsComposeOpen] = useState(false);
@@ -70,11 +72,15 @@ export function Clients() {
   };
 
   const handleDeleteClient = async (id: string) => {
-    if (confirm('Are you sure you want to permanently delete this client? This will remove all their projects and data.')) {
-      const updated = await clientService.deleteClient(id);
-      setClients(updated);
-      setActiveMenuId(null);
-    }
+    setDeletingClientId(id);
+  };
+
+  const confirmDeleteClient = async () => {
+    if (!deletingClientId) return;
+    const updated = await clientService.deleteClient(deletingClientId);
+    setClients(updated);
+    setActiveMenuId(null);
+    setDeletingClientId(null);
   };
 
   const handleOpenEditPage = (clientId: string) => {
@@ -364,6 +370,17 @@ export function Clients() {
         onClose={() => setIsComposeOpen(false)}
         initialRecipientEmail={composeEmail}
         initialRecipientName={composeName}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(deletingClientId)}
+        title="Delete Client Account"
+        message="Are you sure you want to permanently delete this client account? This will remove all their assigned projects, invoices, and activity history."
+        confirmText="Permanently Delete Client"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteClient}
+        onClose={() => setDeletingClientId(null)}
       />
     </>
   );

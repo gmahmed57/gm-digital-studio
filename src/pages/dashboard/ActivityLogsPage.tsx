@@ -17,12 +17,16 @@ import {
   MessageSquare
 } from 'lucide-react';
 
+import ConfirmModal from '../../components/common/ConfirmModal';
+
 export function ActivityLogsPage() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedEntity, setSelectedEntity] = useState<EntityType | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteSingleId, setPendingDeleteSingleId] = useState<string | null>(null);
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState<boolean>(false);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -56,21 +60,30 @@ export function ActivityLogsPage() {
   };
 
   const handleDeleteSingle = async (logId: string) => {
-    if (!window.confirm('Are you sure you want to delete this activity log record?')) return;
-    setDeletingId(logId);
-    const success = await activityLogService.deleteLog(logId);
+    setPendingDeleteSingleId(logId);
+  };
+
+  const confirmDeleteSingle = async () => {
+    if (!pendingDeleteSingleId) return;
+    setDeletingId(pendingDeleteSingleId);
+    const success = await activityLogService.deleteLog(pendingDeleteSingleId);
     if (success) {
-      setLogs((prev) => prev.filter((l) => l.id !== logId));
+      setLogs((prev) => prev.filter((l) => l.id !== pendingDeleteSingleId));
     }
     setDeletingId(null);
+    setPendingDeleteSingleId(null);
   };
 
   const handleClearAll = async () => {
-    if (!window.confirm('WARNING: Are you sure you want to clear ALL activity logs from the database? This action is permanent.')) return;
+    setShowClearAllConfirm(true);
+  };
+
+  const confirmClearAll = async () => {
     const success = await activityLogService.clearAllLogs();
     if (success) {
       setLogs([]);
     }
+    setShowClearAllConfirm(false);
   };
 
   const handleExportCSV = () => {
@@ -283,7 +296,7 @@ export function ActivityLogsPage() {
         {loading ? (
           <div className="p-12 text-center text-gray-500 dark:text-gray-400 text-sm">
             <RefreshCw className="w-6 h-6 animate-spin mx-auto text-brand-500 mb-2" />
-            Fetching Supabase audit trail records...
+            Loading audit trail records...
           </div>
         ) : logs.length === 0 ? (
           <div className="p-12 text-center text-gray-500 dark:text-gray-400">
@@ -368,6 +381,29 @@ export function ActivityLogsPage() {
         )}
       </div>
 
+      {/* Delete Single Log Modal */}
+      <ConfirmModal
+        isOpen={Boolean(pendingDeleteSingleId)}
+        title="Delete Activity Log Record"
+        message="Are you sure you want to delete this activity log entry? This log record will be removed permanently."
+        confirmText="Delete Record"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteSingle}
+        onClose={() => setPendingDeleteSingleId(null)}
+      />
+
+      {/* Clear All Logs Modal */}
+      <ConfirmModal
+        isOpen={showClearAllConfirm}
+        title="Clear All Database Logs"
+        message="WARNING: Are you sure you want to clear ALL activity logs from the database? This action cannot be undone."
+        confirmText="Clear All Logs"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmClearAll}
+        onClose={() => setShowClearAllConfirm(false)}
+      />
     </div>
   );
 }

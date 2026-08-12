@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { clientService } from '../../services/clientService';
-import { sendCustomComposeEmail, renderEmailShell } from '../../services/resendService';
+import {
+  sendCustomComposeEmail,
+  renderEmailShell,
+  parseFormattedEmailBody,
+  NOTIFICATION_EMAIL,
+  SUPPORT_EMAIL,
+} from '../../services/resendService';
 import { notificationService } from '../../services/notificationService';
 import type { ClientItem } from '../../types/client';
 import {
@@ -16,6 +22,8 @@ import {
   Eye,
   Code,
   Edit3,
+  Bold,
+  MousePointerClick,
 } from 'lucide-react';
 
 export interface ComposeEmailModalProps {
@@ -32,8 +40,11 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
   initialRecipientName,
 }) => {
   const [recipientMode, setRecipientMode] = useState<'single_client' | 'all_clients' | 'custom_email'>('single_client');
+  const [senderAddress, setSenderAddress] = useState<string>(SUPPORT_EMAIL);
   const [composeMode, setComposeMode] = useState<'visual' | 'html_code'>('visual');
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -77,11 +88,7 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
       return rawHtmlCode;
     }
     const formattedParagraphs = bodyMessage
-      ? bodyMessage
-          .split('\n')
-          .filter((p) => p.trim())
-          .map((p) => `<p style="margin-bottom: 12px; color: #334155; line-height: 1.6;">${p}</p>`)
-          .join('')
+      ? parseFormattedEmailBody(bodyMessage)
       : '<p style="color: #94a3b8; font-style: italic;">[Your email body message will appear here in real-time...]</p>';
 
     let recipientDisplayName = initialRecipientName;
@@ -101,6 +108,108 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
       includeCta && ctaText ? ctaText : undefined,
       includeCta && ctaUrl ? ctaUrl : undefined
     );
+  };
+
+  const [insertModal, setInsertModal] = useState<{
+    isOpen: boolean;
+    type: 'button' | 'link';
+    label: string;
+    url: string;
+    start: number;
+    end: number;
+  } | null>(null);
+
+  const handleInsertBold = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setBodyMessage((prev) => prev + ' **bold text** ');
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    if (start !== undefined && end !== undefined && start !== end) {
+      const selectedText = bodyMessage.substring(start, end);
+      const updated = bodyMessage.substring(0, start) + `**${selectedText}**` + bodyMessage.substring(end);
+      setBodyMessage(updated);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + 2, end + 2);
+      }, 0);
+    } else {
+      const updated = bodyMessage.substring(0, start) + '**bold text**' + bodyMessage.substring(end);
+      setBodyMessage(updated);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + 2, start + 11);
+      }, 0);
+    }
+  };
+
+  const handleOpenInlineButtonModal = () => {
+    const textarea = textareaRef.current;
+    let selectedText = '';
+    let start = 0;
+    let end = 0;
+    if (textarea) {
+      start = textarea.selectionStart;
+      end = textarea.selectionEnd;
+      if (start !== undefined && end !== undefined && start !== end) {
+        selectedText = bodyMessage.substring(start, end);
+      }
+    }
+    setInsertModal({
+      isOpen: true,
+      type: 'button',
+      label: selectedText || 'Access Portal',
+      url: 'https://gmdigitalstudio.app/login',
+      start,
+      end,
+    });
+  };
+
+  const handleOpenLinkModal = () => {
+    const textarea = textareaRef.current;
+    let selectedText = '';
+    let start = 0;
+    let end = 0;
+    if (textarea) {
+      start = textarea.selectionStart;
+      end = textarea.selectionEnd;
+      if (start !== undefined && end !== undefined && start !== end) {
+        selectedText = bodyMessage.substring(start, end);
+      }
+    }
+    setInsertModal({
+      isOpen: true,
+      type: 'link',
+      label: selectedText || 'Click Here',
+      url: 'https://gmdigitalstudio.app',
+      start,
+      end,
+    });
+  };
+
+  const handleConfirmInsert = () => {
+    if (!insertModal) return;
+    const { type, label, url, start, end } = insertModal;
+
+    let insertion = '';
+    if (type === 'button') {
+      insertion = `\n[button text="${label || 'Access Portal'}" url="${url || 'https://gmdigitalstudio.app/login'}"]\n`;
+    } else {
+      insertion = ` [${label || 'Click Here'}](${url || 'https://gmdigitalstudio.app'}) `;
+    }
+
+    if (start !== undefined && end !== undefined && start !== end) {
+      const updated = bodyMessage.substring(0, start) + insertion + bodyMessage.substring(end);
+      setBodyMessage(updated);
+    } else {
+      setBodyMessage((prev) => prev + insertion);
+    }
+
+    setInsertModal(null);
   };
 
   const handleSend = async (e: React.FormEvent) => {
@@ -159,12 +268,13 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
         ctaText: includeCta && ctaText.trim() ? ctaText.trim() : undefined,
         ctaUrl: includeCta && ctaUrl.trim() ? ctaUrl.trim() : undefined,
         recipientName,
+        senderAddress,
       });
 
       if (res.success) {
         setFeedback({
           type: 'success',
-          message: `Email dispatched & logged in Supabase for ${recipients.length} recipient(s) from support@gmdigitalstudio.app!`,
+          message: `Email dispatched & logged in Supabase for ${recipients.length} recipient(s) from ${senderAddress}!`,
         });
 
         // Record system notification log
@@ -269,6 +379,50 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
 
           {activeTab === 'editor' ? (
             <div className="space-y-6">
+              {/* Sender Address Selection */}
+              <div className="space-y-2">
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                  Dispatched Sender Address *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setSenderAddress(SUPPORT_EMAIL)}
+                    className={`p-2.5 rounded-2xl border text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                      senderAddress === SUPPORT_EMAIL
+                        ? 'bg-brand-500/10 border-brand-500 text-brand-600 dark:text-brand-400 shadow-xs'
+                        : 'bg-gray-50 dark:bg-dark-surface border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400'
+                    }`}
+                  >
+                    <div className="w-7 h-7 rounded-xl bg-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="text-left min-w-0">
+                      <div className="text-[11px] font-bold">Support Address</div>
+                      <div className="text-[10px] font-mono opacity-80 truncate">{SUPPORT_EMAIL}</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSenderAddress(NOTIFICATION_EMAIL)}
+                    className={`p-2.5 rounded-2xl border text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                      senderAddress === NOTIFICATION_EMAIL
+                        ? 'bg-brand-500/10 border-brand-500 text-brand-600 dark:text-brand-400 shadow-xs'
+                        : 'bg-gray-50 dark:bg-dark-surface border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400'
+                    }`}
+                  >
+                    <div className="w-7 h-7 rounded-xl bg-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="text-left min-w-0">
+                      <div className="text-[11px] font-bold">Notifications Address</div>
+                      <div className="text-[10px] font-mono opacity-80 truncate">{NOTIFICATION_EMAIL}</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               {/* Recipient Selection & Composer Mode Switcher */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Target Recipient Selection Mode */}
@@ -406,16 +560,46 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
               {/* Body Message (Visual Mode) or HTML Code (Code Mode) */}
               {composeMode === 'visual' ? (
                 <>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
-                      Email Message Body *
-                    </label>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                        Email Message Body *
+                      </label>
+                      {/* Rich Formatting Tools */}
+                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-dark-surface p-1 rounded-xl border border-gray-200 dark:border-dark-border">
+                        <button
+                          type="button"
+                          onClick={handleInsertBold}
+                          title="Insert Bold Text (**word**)"
+                          className="px-2 py-1 rounded-lg text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-dark-card transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Bold className="w-3.5 h-3.5 text-brand-600" /> Bold
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleOpenInlineButtonModal}
+                          title="Insert Button with URL anywhere in text"
+                          className="px-2 py-1 rounded-lg text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-dark-card transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <MousePointerClick className="w-3.5 h-3.5 text-brand-600" /> + Add Button
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleOpenLinkModal}
+                          title="Insert Hyperlink"
+                          className="px-2 py-1 rounded-lg text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-dark-card transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <LinkIcon className="w-3.5 h-3.5 text-brand-600" /> + Link
+                        </button>
+                      </div>
+                    </div>
                     <textarea
+                      ref={textareaRef}
                       required
                       rows={5}
                       value={bodyMessage}
                       onChange={(e) => setBodyMessage(e.target.value)}
-                      placeholder="Type your message, announcement, support resolution, or project updates here..."
+                      placeholder="Type your message here..."
                       className="w-full px-4 py-3 rounded-2xl bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-xs text-gray-900 dark:text-white leading-relaxed focus:ring-2 focus:ring-brand-500 outline-none"
                     />
                   </div>
@@ -484,7 +668,7 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between bg-gray-100 dark:bg-dark-surface p-3 rounded-2xl text-xs font-bold text-gray-700 dark:text-gray-300">
                 <span>Live Rendered Email Template Preview</span>
-                <span className="text-[10px] text-gray-400 font-mono">support@gmdigitalstudio.app</span>
+                <span className="text-[10px] text-gray-400 font-mono">{senderAddress}</span>
               </div>
               <div className="w-full h-[380px] rounded-2xl border border-gray-200 dark:border-dark-border bg-gray-100 dark:bg-gray-950 p-2 overflow-hidden shadow-inner">
                 <iframe
@@ -524,13 +708,86 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
                   'Dispatching Email...'
                 ) : (
                   <>
-                    <Send className="w-4 h-4" /> Send Email via support@gmdigitalstudio.app
+                    <Send className="w-4 h-4" /> Send Email
                   </>
                 )}
               </button>
             </div>
           </div>
         </form>
+
+        {/* Custom Branded Formatting Insert Modal */}
+        {insertModal?.isOpen && (
+          <div className="fixed inset-0 z-[9999999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in font-sans">
+            <div className="w-full max-w-md bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl shadow-2xl p-6 space-y-5">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border pb-4">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  {insertModal.type === 'button' ? (
+                    <>
+                      <MousePointerClick className="w-4 h-4 text-brand-600" /> Insert Custom Action Button
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="w-4 h-4 text-brand-600" /> Insert Hyperlink
+                    </>
+                  )}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setInsertModal(null)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded-lg cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                    {insertModal.type === 'button' ? 'Button Label Text' : 'Link Display Text'}
+                  </label>
+                  <input
+                    type="text"
+                    value={insertModal.label}
+                    onChange={(e) => setInsertModal({ ...insertModal, label: e.target.value })}
+                    placeholder={insertModal.type === 'button' ? 'e.g. Access Portal' : 'e.g. Click Here'}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-xs text-gray-900 dark:text-white font-bold focus:ring-2 focus:ring-brand-500 outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                    Target URL Link
+                  </label>
+                  <input
+                    type="url"
+                    value={insertModal.url}
+                    onChange={(e) => setInsertModal({ ...insertModal, url: e.target.value })}
+                    placeholder="e.g. https://gmdigitalstudio.app"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-xs text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-brand-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-dark-border">
+                <button
+                  type="button"
+                  onClick={() => setInsertModal(null)}
+                  className="px-4 py-2 rounded-xl border border-gray-200 dark:border-dark-border text-xs font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-surface cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmInsert}
+                  className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-md"
+                >
+                  {insertModal.type === 'button' ? 'Insert Button' : 'Insert Link'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>,
     document.body

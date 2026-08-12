@@ -8,7 +8,7 @@ import { sendContactEmail } from '../services/resendService';
 import { contactService } from '../services/contactService';
 import { notificationService } from '../services/notificationService';
 import { settingsService, type WebsiteSettings } from '../services/settingsService';
-import contactBgVideo from '../assets/videos/contact-bg.mp4';
+import heroBgVideo from '../assets/videos/hero-bg.mp4';
 import contactGif from '../assets/animation/contact us.gif';
 import TrustedLogosBar from '../components/home/TrustedLogosBar';
 import SEO from '../components/common/SEO';
@@ -127,7 +127,7 @@ const Contact: React.FC = () => {
             playsInline
             className="w-full h-full object-cover opacity-45 scale-105"
           >
-            <source src={contactBgVideo} type="video/mp4" />
+            <source src={heroBgVideo} type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-gradient-to-b from-gray-950/75 via-gray-950/65 to-gray-950 z-10" />
         </div>

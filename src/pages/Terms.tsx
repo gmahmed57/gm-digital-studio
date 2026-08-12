@@ -2,13 +2,13 @@ import React from 'react';
 import { FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-import termsBgVideo from '../assets/videos/terms-bg.mp4';
+import heroBgVideo from '../assets/videos/hero-bg.mp4';
 
 const Terms: React.FC = () => {
   return (
     <div className="w-full bg-white dark:bg-dark-bg text-gray-900 dark:text-white">
       
-      {/* Hero Header with Relevant Ambient Video Loop */}
+      {/* Hero Header with Shared Ambient Video Loop */}
       <section className="py-20 bg-gray-950 text-white relative overflow-hidden">
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <video
@@ -18,7 +18,7 @@ const Terms: React.FC = () => {
             playsInline
             className="w-full h-full object-cover opacity-50 scale-105"
           >
-            <source src={termsBgVideo} type="video/mp4" />
+            <source src={heroBgVideo} type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-gradient-to-b from-gray-950/75 via-gray-950/65 to-gray-950 z-10" />
         </div>

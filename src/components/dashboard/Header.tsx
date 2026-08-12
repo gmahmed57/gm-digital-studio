@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { APP_VERSION } from '../../constants/version';
 import { useTheme } from '../../context/ThemeContext';
 import { notificationService, formatNotificationTime } from '../../services/notificationService';
 import { searchService, type SearchResultItem } from '../../services/searchService';
@@ -454,6 +455,10 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
                 >
                   <LogOut className="w-4 h-4" /> Sign Out
                 </button>
+
+                <div className="mt-2 pt-2 border-t border-gray-100 dark:border-dark-border text-center text-[10px] text-gray-400 dark:text-gray-500 font-mono font-bold">
+                  {APP_VERSION}
+                </div>
               </div>
             </div>
           )}

@@ -26,7 +26,7 @@ const SEO: React.FC<SEOProps> = ({ title, description }) => {
 
         const isStaleStorageFavicon = settings?.faviconUrl?.includes('favicon_favicon-32x32.png');
         const favUrl = (settings?.faviconUrl && !isStaleStorageFavicon) ? settings.faviconUrl : '/pwa-192.png';
-        const cacheBustUrl = favUrl.includes('?') ? favUrl : `${favUrl}?t=${Date.now()}`;
+        const cacheBustUrl = favUrl.startsWith('http') ? (favUrl.includes('?') ? favUrl : `${favUrl}?t=${Date.now()}`) : favUrl;
         
         let favLink = document.getElementById('app-favicon') as HTMLLinkElement | null;
         if (!favLink) {

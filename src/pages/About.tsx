@@ -4,7 +4,7 @@ import { Target, ShieldCheck, Zap, Users, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import TrustedLogosBar from '../components/home/TrustedLogosBar';
 
-import aboutBgVideo from '../assets/videos/about-bg.mp4';
+import heroBgVideo from '../assets/videos/hero-bg.mp4';
 import aboutTeamImg from '../assets/images/about-team.jpg';
 import avatar1 from '../assets/avatars/avatar-1.jpg';
 import avatar2 from '../assets/avatars/avatar-2.jpg';
@@ -75,7 +75,7 @@ const About: React.FC = () => {
             playsInline
             className="w-full h-full object-cover opacity-45 scale-105"
           >
-            <source src={aboutBgVideo} type="video/mp4" />
+            <source src={heroBgVideo} type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-gradient-to-b from-gray-950/75 via-gray-950/65 to-gray-950 z-10" />
         </div>
@@ -151,6 +151,8 @@ const About: React.FC = () => {
               <img
                 src={aboutTeamImg}
                 alt="Engineering Team Collaboration"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover object-center"
               />
             </motion.div>
@@ -228,6 +230,8 @@ const About: React.FC = () => {
                   <img
                     src={member.avatar}
                     alt={member.name}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>

@@ -529,7 +529,7 @@ export function ProjectEditPage() {
                   type="text"
                   value={newMilestoneTitle}
                   onChange={(e) => setNewMilestoneTitle(e.target.value)}
-                  placeholder="e.g. Supabase Database Migration"
+                  placeholder="e.g. Database Architecture Migration"
                   className="flex-1 px-3.5 py-2 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600"
                 />
                 <button

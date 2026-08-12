@@ -21,16 +21,18 @@ import {
   Trash2,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
+import ConfirmModal from '../../components/common/ConfirmModal';
 
 export function Projects() {
   const navigate = useNavigate();
-  const { role, user } = useAuth();
+  const { user, role } = useAuth();
   const isAdmin = role === 'admin';
 
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [deletingProject, setDeletingProject] = useState<{ id: string; title: string } | null>(null);
 
   const loadProjects = async () => {
     setLoading(true);
@@ -54,14 +56,18 @@ export function Projects() {
   }, [isAdmin, user]);
 
   const handleDelete = async (id: string, title: string) => {
-    if (window.confirm(`Are you sure you want to delete "${title}"?`)) {
-      const updated = await projectService.deleteProject(id);
-      if (isAdmin) {
-        setProjects(updated);
-      } else {
-        setProjects(updated.filter((p) => p.clientEmail.toLowerCase() === user?.email?.toLowerCase()));
-      }
+    setDeletingProject({ id, title });
+  };
+
+  const confirmDeleteProject = async () => {
+    if (!deletingProject) return;
+    const updated = await projectService.deleteProject(deletingProject.id);
+    if (isAdmin) {
+      setProjects(updated);
+    } else {
+      setProjects(updated.filter((p) => p.clientEmail.toLowerCase() === user?.email?.toLowerCase()));
     }
+    setDeletingProject(null);
   };
 
   const getEffectiveStatus = (proj: ProjectItem): ProjectStatus => {
@@ -396,6 +402,17 @@ export function Projects() {
         )}
 
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(deletingProject)}
+        title="Delete Client Project"
+        message={deletingProject ? `Are you sure you want to permanently delete project "${deletingProject.title}"? This action cannot be undone.` : ''}
+        confirmText="Permanently Delete Project"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteProject}
+        onClose={() => setDeletingProject(null)}
+      />
     </>
   );
 }

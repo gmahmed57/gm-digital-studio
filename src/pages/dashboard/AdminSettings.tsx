@@ -7,6 +7,7 @@ import { notificationService } from '../../services/notificationService';
 import { sendToolRequestAlertEmail } from '../../services/resendService';
 import type { ClientItem, StudioTool } from '../../types/client';
 import SEO from '../../components/common/SEO';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import { supabase } from '../../services/supabase';
 import {
   Settings,
@@ -224,34 +225,55 @@ export function AdminSettings() {
     }
   };
 
-  const handleDeleteLogo = async () => {
-    if (!window.confirm('Are you sure you want to delete and reset the brand logo?')) return;
-    setIsUploading(true);
-    try {
-      await settingsService.updateLogoUrl('');
-      setGeneralSettings((prev) => ({ ...prev, logoUrl: '' }));
-      alert('Brand logo deleted and reset successfully!');
-      fetchData();
-    } catch (err: any) {
-      console.error('Logo delete error:', err);
-    } finally {
-      setIsUploading(false);
-    }
+  const [pendingSettingsDelete, setPendingSettingsDelete] = useState<{
+    type: 'logo' | 'favicon' | 'inquiry';
+    id?: string;
+    title: string;
+  } | null>(null);
+
+  const handleDeleteLogo = () => {
+    setPendingSettingsDelete({ type: 'logo', title: 'Brand Logo' });
   };
 
-  const handleDeleteFavicon = async () => {
-    if (!window.confirm('Are you sure you want to delete and reset the custom favicons?')) return;
+  const handleDeleteFavicon = () => {
+    setPendingSettingsDelete({ type: 'favicon', title: 'Custom Favicons' });
+  };
+
+  const confirmSettingsDelete = async () => {
+    if (!pendingSettingsDelete) return;
+    const { type, id } = pendingSettingsDelete;
     setIsUploading(true);
+
     try {
-      await settingsService.updateFaviconUrl('');
-      setGeneralSettings((prev) => ({ ...prev, faviconUrl: '' }));
-      setUploadedFavicons([]);
-      alert('Custom favicons deleted and reset successfully!');
-      fetchData();
+      if (type === 'logo') {
+        await settingsService.updateLogoUrl('');
+        setGeneralSettings((prev) => ({ ...prev, logoUrl: '' }));
+        setFeedbackMsg('Brand logo reset successfully.');
+        setSaveSuccess(true);
+        fetchData();
+      } else if (type === 'favicon') {
+        await settingsService.updateFaviconUrl('');
+        setGeneralSettings((prev) => ({ ...prev, faviconUrl: '' }));
+        setUploadedFavicons([]);
+        setFeedbackMsg('Custom favicons reset successfully.');
+        setSaveSuccess(true);
+        fetchData();
+      } else if (type === 'inquiry' && id) {
+        setIsLoading(true);
+        const success = await contactService.deleteContactSubmission(id);
+        setIsLoading(false);
+        if (success) {
+          setFeedbackMsg('Contact submission deleted successfully.');
+          setSaveSuccess(true);
+          fetchData();
+        }
+      }
     } catch (err: any) {
-      console.error('Favicon delete error:', err);
+      console.error('Delete error:', err);
     } finally {
       setIsUploading(false);
+      setPendingSettingsDelete(null);
+      setTimeout(() => setSaveSuccess(false), 3000);
     }
   };
 
@@ -336,21 +358,8 @@ export function AdminSettings() {
     await contactService.updateContactStatus(inquiryId, nextStatus);
   };
 
-  const handleInquiryDelete = async (inquiryId: string) => {
-    if (!window.confirm('Are you sure you want to delete this contact submission? This action is permanent.')) {
-      return;
-    }
-    setIsLoading(true);
-    const success = await contactService.deleteContactSubmission(inquiryId);
-    setIsLoading(false);
-    if (success) {
-      setFeedbackMsg('Contact submission deleted successfully.');
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-      fetchData();
-    } else {
-      alert('Failed to delete submission.');
-    }
+  const handleInquiryDelete = (inquiryId: string) => {
+    setPendingSettingsDelete({ type: 'inquiry', id: inquiryId, title: 'Contact Submission' });
   };
 
   // Filtered inquiries
@@ -981,6 +990,17 @@ export function AdminSettings() {
           </div>
         </div>
       )}
+      {/* Branded Confirm Modal */}
+      <ConfirmModal
+        isOpen={Boolean(pendingSettingsDelete)}
+        title={`Delete ${pendingSettingsDelete?.title || 'Asset'}`}
+        message={`Are you sure you want to delete and reset this ${pendingSettingsDelete?.title.toLowerCase() || 'asset'}? This action is permanent.`}
+        confirmText="Confirm Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmSettingsDelete}
+        onClose={() => setPendingSettingsDelete(null)}
+      />
     </div>
   );
 }

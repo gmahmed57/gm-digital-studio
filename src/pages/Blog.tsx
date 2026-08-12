@@ -132,6 +132,8 @@ const Blog: React.FC = () => {
                   <img
                     src={featuredPost.imageUrl}
                     alt={featuredPost.title}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 </Link>
@@ -206,6 +208,8 @@ const Blog: React.FC = () => {
                         <img
                           src={post.imageUrl}
                           alt={post.title}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                         <div className="absolute top-3 left-3 px-3 py-1 rounded-xl bg-gray-950/80 text-white text-[10px] font-bold backdrop-blur-md border border-white/10 flex items-center gap-1">

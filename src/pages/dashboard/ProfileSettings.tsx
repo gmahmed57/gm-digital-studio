@@ -835,7 +835,7 @@ export function ProfileSettings() {
 
             {isLoadingClients ? (
               <div className="p-8 text-center text-xs font-semibold text-gray-400 animate-pulse">
-                Fetching client profile records...
+                Loading client profile records...
               </div>
             ) : filteredClients.length === 0 ? (
               <div className="p-8 text-center text-xs text-gray-500 dark:text-gray-400 space-y-2">

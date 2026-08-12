@@ -75,6 +75,7 @@ export interface CustomComposeEmailData {
   ctaText?: string;
   ctaUrl?: string;
   recipientName?: string;
+  senderAddress?: string;
 }
 
 export interface SendEmailResponse {
@@ -95,9 +96,12 @@ export const escapeHtml = (str: string | undefined | null): string => {
     .replace(/'/g, '&#039;');
 };
 
-// Default verified sender addresses using custom domain gmdigitalstudio.app
-const SENDER = 'GM Digital Studio <notifications@gmdigitalstudio.app>';
-const SUPPORT_SENDER = 'GM Digital Studio Support <support@gmdigitalstudio.app>';
+// Environment configured verified sender addresses
+export const NOTIFICATION_EMAIL = import.meta.env.VITE_SENDER_NOTIFICATION_EMAIL || 'notifications@gmdigitalstudio.app';
+export const SUPPORT_EMAIL = import.meta.env.VITE_SENDER_SUPPORT_EMAIL || 'support@gmdigitalstudio.app';
+
+const SENDER = `GM Digital Studio <${NOTIFICATION_EMAIL}>`;
+const SUPPORT_SENDER = `GM Digital Studio Support <${SUPPORT_EMAIL}>`;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || '';
 
 // Generic HTML Email Shell with Clean Corporate Light Branding
@@ -484,21 +488,48 @@ export const sendProjectFeedbackAlertEmail = async (data: {
 };
 
 /**
- * 7. Send Custom Composed Email / Announcement from support@gmdigitalstudio.app
+ * Helper parser to handle bold formatting, inline CTA buttons, and links inside email body
+ */
+export const parseFormattedEmailBody = (text: string): string => {
+  if (!text) return '';
+
+  // 1. Process custom CTA button shortcode: [button text="Label" url="https://link.com"]
+  let parsed = text.replace(/\[button\s+text="([^"]+)"\s+url="([^"]+)"\]/gi, (_match, btnText, btnUrl) => {
+    return `<div style="margin: 20px 0; text-align: left;"><a href="${btnUrl}" style="display: inline-block; background-color: #ea580c; color: #ffffff !important; text-decoration: none; padding: 12px 26px; border-radius: 10px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25);">${btnText}</a></div>`;
+  });
+
+  // 2. Process inline markdown links: [link text](url)
+  parsed = parsed.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/gi, (_match, linkText, linkUrl) => {
+    return `<a href="${linkUrl}" style="color: #ea580c; text-decoration: underline; font-weight: 600;">${linkText}</a>`;
+  });
+
+  // 3. Process markdown bold: **text** -> <strong>text</strong>
+  parsed = parsed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+  // 4. Wrap non-empty lines in paragraph tags
+  return parsed
+    .split('\n')
+    .map((p) => p.trim() ? `<p style="margin-bottom: 12px; color: #334155; line-height: 1.6;">${p}</p>` : '')
+    .filter(Boolean)
+    .join('');
+};
+
+/**
+ * 7. Send Custom Composed Email / Announcement from admin chosen sender (notifications or support)
  */
 export const sendCustomComposeEmail = async (data: CustomComposeEmailData): Promise<SendEmailResponse> => {
   const safeSubject = escapeHtml(data.subject);
   const safeRecipientName = data.recipientName ? escapeHtml(data.recipientName) : '';
 
+  const isNotification = data.senderAddress === NOTIFICATION_EMAIL || data.senderAddress?.includes('notifications');
+  const activeSender = isNotification ? SENDER : SUPPORT_SENDER;
+  const senderEmailOnly = isNotification ? NOTIFICATION_EMAIL : SUPPORT_EMAIL;
+
   let html = '';
   if (data.rawHtml && data.rawHtml.trim()) {
     html = data.rawHtml.trim();
   } else {
-    const formattedParagraphs = data.bodyMessage
-      .split('\n')
-      .filter((p) => p.trim())
-      .map((p) => `<p style="margin-bottom: 12px; color: #334155; line-height: 1.6;">${escapeHtml(p)}</p>`)
-      .join('');
+    const formattedParagraphs = parseFormattedEmailBody(data.bodyMessage);
 
     const bodyContent = `
       ${safeRecipientName ? `<p style="margin-bottom: 16px; font-size: 15px;">Dear <strong>${safeRecipientName}</strong>,</p>` : ''}
@@ -508,13 +539,13 @@ export const sendCustomComposeEmail = async (data: CustomComposeEmailData): Prom
     html = renderEmailShell(safeSubject, bodyContent, data.ctaText, data.ctaUrl);
   }
 
-  const res = await sendViaResend(data.to, safeSubject, html, SUPPORT_SENDER, 'custom_compose');
+  const res = await sendViaResend(data.to, safeSubject, html, activeSender, 'custom_compose');
 
   // Automatically record each dispatched recipient in Supabase database
   if (res.success) {
     for (const recipient of data.to) {
       await emailRecordService.recordSentEmail({
-        sender: 'support@gmdigitalstudio.app',
+        sender: senderEmailOnly,
         recipient_email: recipient,
         recipient_name: data.recipientName,
         subject: data.subject,
@@ -529,6 +560,6 @@ export const sendCustomComposeEmail = async (data: CustomComposeEmailData): Prom
 
   return {
     success: res.success,
-    message: `Custom email sent successfully to ${data.to.join(', ')} from support@gmdigitalstudio.app.`,
+    message: `Custom email sent successfully to ${data.to.join(', ')} from ${senderEmailOnly}.`,
   };
 };

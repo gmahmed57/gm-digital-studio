@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { APP_VERSION } from '../../constants/version';
 import { messageService } from '../../services/messageService';
 import { 
   LayoutDashboard, 
@@ -258,6 +259,10 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
             <LogOut className="w-4 h-4 flex-shrink-0" />
             {!isCollapsed && <span>Sign Out</span>}
           </button>
+
+          <div className="pt-1.5 text-center text-[10px] font-mono text-gray-400 dark:text-gray-500 font-bold tracking-wider">
+            {APP_VERSION}
+          </div>
         </div>
       </aside>
     </>

@@ -39,8 +39,8 @@ export function AdminPortfolioEditor() {
     challenge: '',
     solution: '',
     metricsString: 'Page Load Speed: 0.4s, Conversion Increase: +185%',
-    deliverablesString: 'React Setup, Supabase Integration, Vercel Edge Hosting',
-    techStackString: 'React, Next.js, TypeScript, Tailwind CSS, Supabase',
+    deliverablesString: 'React Setup, Database Integration, Vercel Edge Hosting',
+    techStackString: 'React, Next.js, TypeScript, Tailwind CSS, PostgreSQL',
     resultsString: 'Reduced latency by 85%, Scaled concurrency to 500k users',
     quote: '',
     quoteAuthor: '',
@@ -469,7 +469,7 @@ export function AdminPortfolioEditor() {
               <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Technology Stack (One per line)</label>
               <textarea
                 rows={4}
-                placeholder="React&#10;Node.js&#10;Supabase&#10;Tailwind CSS"
+                placeholder="React&#10;Node.js&#10;PostgreSQL&#10;Tailwind CSS"
                 value={formData.techStackString}
                 onChange={(e) => setFormData({ ...formData, techStackString: e.target.value })}
                 className="w-full p-3 text-sm bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl outline-none focus:border-brand-500"

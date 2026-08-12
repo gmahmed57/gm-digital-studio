@@ -17,12 +17,15 @@ import {
   ListFilter,
 } from 'lucide-react';
 
+import ConfirmModal from '../../components/common/ConfirmModal';
+
 export function AdminEmailPage() {
   const [viewMode, setViewMode] = useState<'logs' | 'composer'>('logs');
   const [sentEmails, setSentEmails] = useState<SentEmailRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [previewRecord, setPreviewRecord] = useState<SentEmailRecord | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadSentEmails = async () => {
     setLoading(true);
@@ -36,13 +39,17 @@ export function AdminEmailPage() {
   }, []);
 
   const handleDeleteRecord = async (id: string) => {
-    if (confirm('Are you sure you want to delete this sent email record?')) {
-      await emailRecordService.deleteSentEmailRecord(id);
-      setSentEmails((prev) => prev.filter((item) => item.id !== id));
-      if (previewRecord?.id === id) {
-        setPreviewRecord(null);
-      }
+    setDeletingId(id);
+  };
+
+  const confirmDeleteRecord = async () => {
+    if (!deletingId) return;
+    await emailRecordService.deleteSentEmailRecord(deletingId);
+    setSentEmails((prev) => prev.filter((item) => item.id !== deletingId));
+    if (previewRecord?.id === deletingId) {
+      setPreviewRecord(null);
     }
+    setDeletingId(null);
   };
 
   const filteredEmails = sentEmails.filter(
@@ -229,7 +236,7 @@ export function AdminEmailPage() {
                               <button
                                 onClick={() => handleDeleteRecord(item.id)}
                                 className="p-1.5 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer flex-shrink-0"
-                                title="Delete Record from Supabase"
+                                title="Delete Email Record"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -303,6 +310,18 @@ export function AdminEmailPage() {
         </div>,
         document.body
       )}
+
+      {/* Branded Confirm Modal */}
+      <ConfirmModal
+        isOpen={Boolean(deletingId)}
+        title="Delete Email Record"
+        message="Are you sure you want to delete this dispatched email log? This record will be permanently removed from your dashboard database."
+        confirmText="Yes, Delete Record"
+        cancelText="Keep Record"
+        variant="danger"
+        onConfirm={confirmDeleteRecord}
+        onClose={() => setDeletingId(null)}
+      />
     </>
   );
 }

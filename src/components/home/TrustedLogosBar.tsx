@@ -28,6 +28,8 @@ const TrustedLogosBar: React.FC = () => {
               <img
                 src={company.logoUrl}
                 alt={`${company.name} Logo`}
+                loading="lazy"
+                decoding="async"
                 className="h-5 w-5 object-contain"
               />
               <span className="font-heading font-bold text-base tracking-tight text-gray-900 dark:text-white">

@@ -5,6 +5,7 @@ import { notificationService } from '../../services/notificationService';
 import { sendWelcomeClientEmail, sendToolRequestAlertEmail } from '../../services/resendService';
 import type { ClientItem } from '../../types/client';
 import { folderService, type SharedFolder } from '../../services/folderService';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import { MASTER_STUDIO_TOOLS, normalizeToolId } from '../../constants/toolsData';
 import {
   ArrowLeft,
@@ -187,10 +188,17 @@ export function ClientEditPage() {
     _setIsAddingFolder(false);
   };
 
-  const handleRemoveFolder = async (folderId: string) => {
-    if (!confirm('Are you sure you want to remove this folder link?')) return;
-    await folderService.removeFolder(folderId);
-    setFolders(folders.filter(f => f.id !== folderId));
+  const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
+
+  const handleRemoveFolder = (folderId: string) => {
+    setDeletingFolderId(folderId);
+  };
+
+  const confirmRemoveFolder = async () => {
+    if (!deletingFolderId) return;
+    await folderService.removeFolder(deletingFolderId);
+    setFolders(folders.filter(f => f.id !== deletingFolderId));
+    setDeletingFolderId(null);
   };
 
   const handleToggleActiveStatus = async () => {
@@ -630,6 +638,17 @@ export function ClientEditPage() {
         </form>
 
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(deletingFolderId)}
+        title="Remove Shared Folder"
+        message="Are you sure you want to remove this shared folder link? The folder itself will not be deleted, only the link reference."
+        confirmText="Remove Folder Link"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmRemoveFolder}
+        onClose={() => setDeletingFolderId(null)}
+      />
     </>
   );
 }

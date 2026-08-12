@@ -4,7 +4,7 @@ import { Code2, Layout, Cpu, Sparkles, Smartphone, Database, Check, ArrowRight }
 import { Link } from 'react-router-dom';
 import SEO from '../components/common/SEO';
 
-import servicesBgVideo from '../assets/videos/services-bg.mp4';
+import heroBgVideo from '../assets/videos/hero-bg.mp4';
 import webDevImg from '../assets/images/web-dev.jpg';
 import uiUxImg from '../assets/images/ui-ux.jpg';
 import aiAutomationImg from '../assets/images/ai-automation.jpg';
@@ -117,7 +117,7 @@ const Services: React.FC = () => {
             playsInline
             className="w-full h-full object-cover opacity-45 scale-105"
           >
-            <source src={servicesBgVideo} type="video/mp4" />
+            <source src={heroBgVideo} type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-gradient-to-b from-gray-950/75 via-gray-950/65 to-gray-950 z-10" />
         </div>
@@ -175,6 +175,8 @@ const Services: React.FC = () => {
                     <img
                       src={service.image}
                       alt={service.title}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-4 left-4 p-3 rounded-2xl bg-white/90 dark:bg-dark-bg/90 border border-gray-200/50 dark:border-dark-border backdrop-blur-md shadow-md text-brand-600 dark:text-brand-400">
