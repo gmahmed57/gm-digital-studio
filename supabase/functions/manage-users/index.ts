@@ -9,9 +9,13 @@ const getCorsHeaders = (req: Request) => {
     'http://localhost:3000',
     'http://localhost:4173',
   ]
-  const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.gmdigitalstudio.app')
+  const isAllowed =
+    allowedOrigins.includes(origin) ||
+    origin.endsWith('.gmdigitalstudio.app') ||
+    origin.endsWith('.vercel.app')
+
   return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://gmdigitalstudio.app',
+    'Access-Control-Allow-Origin': isAllowed ? origin : (origin || '*'),
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   }

@@ -28,6 +28,7 @@ import {
   ExternalLink,
   ShieldCheck,
   Percent,
+  Loader2,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import ConfirmModal from '../../components/common/ConfirmModal';
@@ -39,6 +40,19 @@ export function AdminInvoices() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
+  const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+
+  const handleDownloadPDF = async (inv: InvoiceItem) => {
+    setDownloadingPdfId(inv.id);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      downloadInvoicePDF(inv);
+    } catch (err) {
+      console.error('Failed to download invoice PDF:', err);
+    } finally {
+      setDownloadingPdfId(null);
+    }
+  };
 
   // Modal State for Advanced Multi-Item Invoice Builder
   const [showModal, setShowModal] = useState<boolean>(false);
@@ -654,11 +668,20 @@ export function AdminInvoices() {
 
                         <button
                           type="button"
-                          onClick={() => downloadInvoicePDF(inv)}
-                          className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1 cursor-pointer"
+                          disabled={downloadingPdfId === inv.id}
+                          onClick={() => handleDownloadPDF(inv)}
+                          className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
                           title="Download lightweight PDF invoice"
                         >
-                          <Download className="w-3.5 h-3.5" /> PDF
+                          {downloadingPdfId === inv.id ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" /> PDF...
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-3.5 h-3.5" /> PDF
+                            </>
+                          )}
                         </button>
 
 

@@ -21,6 +21,7 @@ import {
   CreditCard,
   ShieldAlert,
   Upload,
+  Loader2,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import { supabase } from '../../services/supabase';
@@ -31,6 +32,19 @@ export function ClientInvoices() {
   const [clientProjects, setClientProjects] = useState<ProjectItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+
+  const handleDownloadPDF = async (inv: InvoiceItem) => {
+    setDownloadingPdfId(inv.id);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      downloadInvoicePDF(inv);
+    } catch (err) {
+      console.error('Failed to download invoice PDF:', err);
+    } finally {
+      setDownloadingPdfId(null);
+    }
+  };
 
   // Request Invoice Modal State
   const [showRequestModal, setShowRequestModal] = useState<boolean>(false);
@@ -566,10 +580,19 @@ export function ClientInvoices() {
 
                     <button
                       type="button"
-                      onClick={() => downloadInvoicePDF(inv)}
-                      className="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-gray-50 dark:bg-dark-surface hover:bg-gray-100 text-gray-700 dark:text-gray-300 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                      disabled={downloadingPdfId === inv.id}
+                      onClick={() => handleDownloadPDF(inv)}
+                      className="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-gray-50 dark:bg-dark-surface hover:bg-gray-100 text-gray-700 dark:text-gray-300 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
-                      <Download className="w-3.5 h-3.5" /> Download PDF
+                      {downloadingPdfId === inv.id ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-500" /> Downloading...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-3.5 h-3.5" /> Download PDF
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

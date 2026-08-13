@@ -44,6 +44,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip video streaming requests (.mp4) and range requests so native browser video streaming handles it cleanly
+  if (url.pathname.endsWith('.mp4') || event.request.headers.get('range')) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {

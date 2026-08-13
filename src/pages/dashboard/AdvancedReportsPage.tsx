@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { downloadExecutiveReportPDF } from '../../utils/pdfGenerator';
 import { 
   reportingService, 
   type FinancialReportData, 
@@ -39,6 +40,8 @@ import {
 export function AdvancedReportsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [exportingPDF, setExportingPDF] = useState<boolean>(false);
+  const [exportingCSV, setExportingCSV] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [financialData, setFinancialData] = useState<FinancialReportData | null>(null);
   const [projectData, setProjectData] = useState<ProjectReportData | null>(null);
   const [clientData, setClientData] = useState<ClientReportData | null>(null);
@@ -67,35 +70,50 @@ export function AdvancedReportsPage() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchReports();
+    setRefreshing(false);
+  };
+
   useEffect(() => {
     fetchReports();
   }, [timeframe]);
 
   const handleExportCSV = async () => {
-    await reportingService.exportFullCSVReport();
+    setExportingCSV(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      await reportingService.exportFullCSVReport();
+    } catch (err) {
+      console.error('Export CSV failed:', err);
+    } finally {
+      setExportingCSV(false);
+    }
   };
 
   /**
-   * Capture report area with full Recharts graphics into high-res PDF download
+   * Capture Dashboard Report UI with Recharts graphics & clean 190mm A4 page width fit
    */
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
     setExportingPDF(true);
 
     try {
-      // Small pause to let DOM & charts settle if needed
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Pause slightly so DOM layout expands scroll containers for capture
+      await new Promise((resolve) => setTimeout(resolve, 400));
 
       const element = reportRef.current;
+
       const canvas = await html2canvas(element, {
-        scale: 2, // High DPI resolution rendering
+        scale: 2, // 300 DPI high resolution
         useCORS: true,
         allowTaint: false,
         backgroundColor: document.documentElement.classList.contains('dark') ? '#090d16' : '#ffffff',
         logging: false,
+        windowWidth: 1280,
       });
 
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -103,30 +121,63 @@ export function AdvancedReportsPage() {
         compress: true,
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+      const marginX = 10;
+      const marginY = 10;
+      const printWidth = pdfWidth - marginX * 2; // 190mm printable width
 
-      let heightLeft = imgHeight;
-      let position = 0;
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
 
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
+      // Single page content height in canvas pixels based on printable area
+      const pageCanvasHeight = Math.floor((canvasWidth * (pdfHeight - marginY * 2)) / printWidth);
 
-      // Handle multi-page documents seamlessly
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
+      let renderedHeight = 0;
+      let pageIndex = 0;
+
+      while (renderedHeight < canvasHeight) {
+        const sliceHeight = Math.min(pageCanvasHeight, canvasHeight - renderedHeight);
+
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvasWidth;
+        pageCanvas.height = sliceHeight;
+
+        const ctx = pageCanvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = document.documentElement.classList.contains('dark') ? '#090d16' : '#ffffff';
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0,
+            renderedHeight,
+            canvasWidth,
+            sliceHeight,
+            0,
+            0,
+            canvasWidth,
+            sliceHeight
+          );
+        }
+
+        const pageImgData = pageCanvas.toDataURL('image/png');
+        const printHeight = (sliceHeight * printWidth) / canvasWidth;
+
+        if (pageIndex > 0) {
+          pdf.addPage();
+        }
+
+        pdf.addImage(pageImgData, 'PNG', marginX, marginY, printWidth, printHeight);
+
+        renderedHeight += sliceHeight;
+        pageIndex++;
       }
 
       pdf.save(`GM_Studio_Executive_Report_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (err) {
       console.error('Failed to generate PDF report:', err);
+      // Fallback vector export
+      downloadExecutiveReportPDF(financialData, projectData, clientData, toolsData, timeframe);
     } finally {
       setExportingPDF(false);
     }
@@ -189,20 +240,31 @@ export function AdvancedReportsPage() {
           </select>
 
           <button
-            onClick={fetchReports}
-            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-surface transition-colors flex items-center gap-1.5 cursor-pointer"
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-surface transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             title="Refresh Report Data"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Refresh
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-brand-500' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
 
           <button
             onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-950 text-xs font-bold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center gap-1.5 cursor-pointer"
+            disabled={exportingCSV}
+            className="px-3.5 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-950 text-xs font-bold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            <Download className="w-3.5 h-3.5" />
-            Export CSV
+            {exportingCSV ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download className="w-3.5 h-3.5" />
+                Export CSV
+              </>
+            )}
           </button>
 
           <button
@@ -488,10 +550,12 @@ export function AdvancedReportsPage() {
                   </div>
                 </div>
 
-                {toolsData?.clientActivityList && toolsData.clientActivityList.length > 0 && (
+                {toolsData?.clientActivityList && toolsData.clientActivityList.length > 0 && !exportingPDF && (
                   <div className="pt-2">
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Recent Client Tool Activity Log</p>
-                    <div className="bg-white dark:bg-dark-surface rounded-xl border border-gray-200 dark:border-dark-border divide-y divide-gray-100 dark:divide-dark-border max-h-56 overflow-y-auto">
+                    <div className={`bg-white dark:bg-dark-surface rounded-xl border border-gray-200 dark:border-dark-border divide-y divide-gray-100 dark:divide-dark-border ${
+                      exportingPDF ? 'max-h-none overflow-visible' : 'max-h-64 overflow-y-auto'
+                    }`}>
                       {toolsData.clientActivityList.slice(0, 10).map((act, idx) => (
                         <div key={`tool-act-${idx}`} className="p-3 text-xs flex items-center justify-between gap-4">
                           <div className="min-w-0">
