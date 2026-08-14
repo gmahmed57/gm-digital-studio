@@ -21,6 +21,7 @@ const contactSchema = z.object({
   service: z.string().min(1, 'Please select a service.'),
   budget: z.string().optional(),
   message: z.string().min(10, 'Message must be at least 10 characters.'),
+  website_url: z.string().optional(), // Honeypot field (hidden from real users)
 });
 
 type ContactFormInputs = z.infer<typeof contactSchema>;
@@ -67,6 +68,13 @@ const Contact: React.FC = () => {
   });
 
   const onSubmit = async (data: ContactFormInputs) => {
+    // Honeypot check: If bot filled out the hidden field, silently reject
+    if (data.website_url && data.website_url.trim() !== '') {
+      console.warn('[Anti-Spam] Bot submission blocked by honeypot.');
+      setFeedback({ type: 'success', message: 'Thank you! Your message has been received.' });
+      return;
+    }
+
     setIsSubmitting(true);
     setFeedback(null);
 
@@ -247,6 +255,14 @@ const Contact: React.FC = () => {
                 )}
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+                  {/* Invisible Honeypot Anti-Spam Field */}
+                  <input
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    style={{ display: 'none', opacity: 0, position: 'absolute', left: '-9999px' }}
+                    {...register('website_url')}
+                  />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {/* Name */}
                     <div>

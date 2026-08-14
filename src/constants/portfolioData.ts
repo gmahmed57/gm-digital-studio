@@ -1,12 +1,5 @@
 import type { CaseStudy, PricingPlan, FAQItem, BlogPost } from '../types';
 
-// Distinct Portfolio Local Image Assets
-import nexusAnalyticsImg from '../assets/images/portfolio/nexus-analytics.jpg';
-import aetheriaDesignImg from '../assets/images/portfolio/aetheria-design.jpg';
-import omniflowAutomationImg from '../assets/images/portfolio/omniflow-automation.jpg';
-import pulseMobileImg from '../assets/images/portfolio/pulse-mobile.jpg';
-import luminaBrandImg from '../assets/images/portfolio/lumina-brand.jpg';
-import cloudScaleImg from '../assets/images/portfolio/cloud-scale.jpg';
 
 // Distinct Blog Local Image Assets
 import blogReactImg from '../assets/images/blog/blog-react.jpg';
@@ -32,8 +25,8 @@ export const CASE_STUDIES: CaseStudy[] = [
     timeline: '12 Weeks',
     description: 'High-performance React & Next.js dashboard processing real-time telemetry streams for 500,000+ active enterprise users.',
     summary: 'Nexus needed an enterprise-grade analytics dashboard capable of rendering live charts without UI lag.',
-    thumbnailUrl: nexusAnalyticsImg,
-    heroImageUrl: nexusAnalyticsImg,
+    thumbnailUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
+    heroImageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
     metrics: [
       { label: 'Page Load Speed', value: '0.4s' },
       { label: 'Conversion Increase', value: '+185%' },
@@ -72,8 +65,8 @@ export const CASE_STUDIES: CaseStudy[] = [
     timeline: '8 Weeks',
     description: 'Comprehensive tokenized Figma design system and component library built for rapid cross-platform engineering.',
     summary: 'Aetheria required a unified multi-brand design system to standardize UI components across 4 web and mobile products.',
-    thumbnailUrl: aetheriaDesignImg,
-    heroImageUrl: aetheriaDesignImg,
+    thumbnailUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=800&auto=format&fit=crop&q=80',
+    heroImageUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=800&auto=format&fit=crop&q=80',
     metrics: [
       { label: 'Design Velocity', value: '3x Faster' },
       { label: 'UI Components', value: '140+' },
@@ -111,8 +104,8 @@ export const CASE_STUDIES: CaseStudy[] = [
     timeline: '6 Weeks',
     description: 'Automated data integration pipeline connecting CRM platforms, transactional email engines, and webhooks.',
     summary: 'OmniFlow wanted to automate customer onboarding and eliminate manual data entry across marketing tools.',
-    thumbnailUrl: omniflowAutomationImg,
-    heroImageUrl: omniflowAutomationImg,
+    thumbnailUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80',
+    heroImageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80',
     metrics: [
       { label: 'Manual Hours Saved', value: '40hrs/wk' },
       { label: 'Data Sync Speed', value: '< 200ms' },
@@ -149,8 +142,8 @@ export const CASE_STUDIES: CaseStudy[] = [
     timeline: '10 Weeks',
     description: 'Cross-platform iOS and Android mobile app built with React Native for real-time biometric tracking and offline sync.',
     summary: 'Pulse Labs required a high-performance cross-platform mobile app with offline synchronization.',
-    thumbnailUrl: pulseMobileImg,
-    heroImageUrl: pulseMobileImg,
+    thumbnailUrl: 'https://images.unsplash.com/photo-1526498460520-4c246339dccb?w=800&auto=format&fit=crop&q=80',
+    heroImageUrl: 'https://images.unsplash.com/photo-1526498460520-4c246339dccb?w=800&auto=format&fit=crop&q=80',
     metrics: [
       { label: 'App Store Rating', value: '4.9 ★' },
       { label: 'Downloads', value: '250K+' },
@@ -187,8 +180,8 @@ export const CASE_STUDIES: CaseStudy[] = [
     timeline: '5 Weeks',
     description: 'Complete brand positioning, visual token guidelines, custom vector assets, and digital marketing system.',
     summary: 'Lumina needed a modern brand strategy to transition from a regional agency to a global tech player.',
-    thumbnailUrl: luminaBrandImg,
-    heroImageUrl: luminaBrandImg,
+    thumbnailUrl: 'https://images.unsplash.com/photo-1522542550221-31fd19575a2d?w=800&auto=format&fit=crop&q=80',
+    heroImageUrl: 'https://images.unsplash.com/photo-1522542550221-31fd19575a2d?w=800&auto=format&fit=crop&q=80',
     metrics: [
       { label: 'Brand Value', value: '2.5x' },
       { label: 'Social Engagement', value: '+210%' },
@@ -225,8 +218,8 @@ export const CASE_STUDIES: CaseStudy[] = [
     timeline: '7 Weeks',
     description: 'High-availability Supabase PostgreSQL database architecture with automated row-level security and serverless edge functions.',
     summary: 'CloudScale required a resilient cloud backend database capable of processing millions of encrypted transactions.',
-    thumbnailUrl: cloudScaleImg,
-    heroImageUrl: cloudScaleImg,
+    thumbnailUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80',
+    heroImageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80',
     metrics: [
       { label: 'Uptime SLA', value: '99.99%' },
       { label: 'Query Latency', value: '< 15ms' },

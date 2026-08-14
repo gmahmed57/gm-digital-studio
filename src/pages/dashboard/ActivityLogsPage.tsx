@@ -306,7 +306,7 @@ export function ActivityLogsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/50 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   <th className="py-3.5 px-4">Timestamp</th>

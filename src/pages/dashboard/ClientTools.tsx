@@ -8,7 +8,7 @@ import type { ClientItem, StudioTool } from '../../types/client';
 import { normalizeToolId } from '../../constants/toolsData';
 import { 
   Wrench, Sparkles, Search, RefreshCw, LayoutGrid, FileSpreadsheet, Lock, ArrowRight, CheckCircle2,
-  Palette, ShieldCheck, ArrowLeft, Copy, Upload, AlertTriangle,
+  Palette, ShieldCheck, ArrowLeft, Copy, Upload, AlertTriangle, Loader2,
 } from 'lucide-react';
 import { CarouselMakerWorkspace } from '../../features/studio-tools/CarouselMaker/CarouselMakerWorkspace';
 import SEO from '../../components/common/SEO';
@@ -26,6 +26,7 @@ export function ClientTools() {
   const [clientData, setClientData] = useState<ClientItem | null>(null);
   const [catalogTools, setCatalogTools] = useState<StudioTool[]>([]);
   const [requestSentMap, setRequestSentMap] = useState<Record<string, boolean>>({});
+  const [requestingToolIdMap, setRequestingToolIdMap] = useState<Record<string, boolean>>({});
   
   // Interactive tools states
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
@@ -66,8 +67,8 @@ export function ClientTools() {
     const matched = clients.find((c) => c.email.toLowerCase() === user?.email?.toLowerCase());
     if (matched) {
       setClientData(matched);
-    } else if (clients.length > 0) {
-      setClientData(clients[0]);
+    } else {
+      setClientData(null);
     }
 
     // Load Tools Catalog
@@ -88,20 +89,25 @@ export function ClientTools() {
   }, [user]);
 
   const handleRequestAccess = async (toolId: string, toolName: string) => {
-    if (!clientData?.id) return;
+    if (!clientData?.id || requestingToolIdMap[toolId]) return;
 
-    await clientService.requestToolAccess(clientData.id, toolId);
-    setRequestSentMap((prev) => ({ ...prev, [toolId]: true }));
+    setRequestingToolIdMap((prev) => ({ ...prev, [toolId]: true }));
+    try {
+      await clientService.requestToolAccess(clientData.id, toolId);
+      setRequestSentMap((prev) => ({ ...prev, [toolId]: true }));
 
-    await notificationService.addNotification({
-      title: 'Studio Tool Access Requested',
-      message: `${clientData?.company || clientData?.fullName || user?.email || 'A client'} requested access to "${toolName}" tool.`,
-      type: 'client',
-      targetRole: 'admin',
-      link: clientData?.id ? `/admin/clients/edit/${clientData.id}` : '/admin/clients',
-    });
+      await notificationService.addNotification({
+        title: 'Studio Tool Access Requested',
+        message: `${clientData?.company || clientData?.fullName || user?.email || 'A client'} requested access to "${toolName}" tool.`,
+        type: 'client',
+        targetRole: 'admin',
+        link: clientData?.id ? `/admin/clients/edit/${clientData.id}` : '/admin/clients',
+      });
 
-    await fetchClientAndCatalog();
+      await fetchClientAndCatalog();
+    } finally {
+      setRequestingToolIdMap((prev) => ({ ...prev, [toolId]: false }));
+    }
   };
 
   const handleCopy = (text: string, id: string) => {
@@ -394,10 +400,19 @@ export function ClientTools() {
                         </div>
                       ) : (
                         <button
+                          disabled={requestingToolIdMap[tool.id]}
                           onClick={() => handleRequestAccess(tool.id, tool.name)}
-                          className="w-full py-2.5 px-4 rounded-xl bg-gray-950 hover:bg-gray-800 dark:bg-white dark:text-gray-950 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                          className="w-full py-2.5 px-4 rounded-xl bg-gray-950 hover:bg-gray-800 dark:bg-white dark:text-gray-950 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                          Request Tool Access <ArrowRight className="w-3.5 h-3.5" />
+                          {requestingToolIdMap[tool.id] ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Requesting...
+                            </>
+                          ) : (
+                            <>
+                              Request Tool Access <ArrowRight className="w-3.5 h-3.5" />
+                            </>
+                          )}
                         </button>
                       )}
                     </div>

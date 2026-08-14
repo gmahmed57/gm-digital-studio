@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import {
   AreaChart,
   Area,
@@ -19,8 +21,9 @@ import {
   DollarSign,
   Users,
   CheckCircle2,
-  Calendar,
   Layers,
+  Download,
+  Loader2,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import { invoiceService } from '../../services/invoiceService';
@@ -40,6 +43,88 @@ export function AdminAnalytics() {
   });
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const analyticsRef = useRef<HTMLDivElement>(null);
+
+  const handleExportPDF = async () => {
+    if (!analyticsRef.current) return;
+    setIsExportingPDF(true);
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const element = analyticsRef.current;
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: document.documentElement.classList.contains('dark') ? '#090d16' : '#ffffff',
+        logging: false,
+        windowWidth: 1200,
+      });
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+      const marginX = 10;
+      const marginY = 10;
+      const printWidth = pdfWidth - marginX * 2; // 190mm
+
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const pageCanvasHeight = Math.floor((canvasWidth * (pdfHeight - marginY * 2)) / printWidth);
+
+      let renderedHeight = 0;
+      let pageIndex = 0;
+
+      while (renderedHeight < canvasHeight) {
+        const sliceHeight = Math.min(pageCanvasHeight, canvasHeight - renderedHeight);
+
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvasWidth;
+        pageCanvas.height = sliceHeight;
+
+        const ctx = pageCanvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = document.documentElement.classList.contains('dark') ? '#090d16' : '#ffffff';
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0,
+            renderedHeight,
+            canvasWidth,
+            sliceHeight,
+            0,
+            0,
+            canvasWidth,
+            sliceHeight
+          );
+
+          const imgData = pageCanvas.toDataURL('image/png');
+          const printHeight = (sliceHeight * printWidth) / canvasWidth;
+
+          if (pageIndex > 0) pdf.addPage();
+          pdf.addImage(imgData, 'PNG', marginX, marginY, printWidth, printHeight);
+
+          pageIndex++;
+        }
+
+        renderedHeight += sliceHeight;
+      }
+
+      pdf.save(`GM_Studio_Analytics_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (err) {
+      console.error('Failed to export Analytics PDF:', err);
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -147,7 +232,7 @@ export function AdminAnalytics() {
         description="Track agency financial performance, monthly revenue trends, project category breakdown, and client growth graphs."
       />
 
-      <div className="space-y-6 font-sans">
+      <div ref={analyticsRef} className="space-y-6 font-sans p-1">
         
         {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -160,9 +245,37 @@ export function AdminAnalytics() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-white dark:bg-dark-card p-1.5 rounded-2xl border border-gray-200 dark:border-dark-border text-xs font-bold text-gray-700 dark:text-gray-300 shadow-xs">
-            <Calendar className="w-4 h-4 text-brand-600" />
-            <span>2026 Year-To-Date Report</span>
+          <div className="flex items-center gap-3">
+            {isExportingPDF && (
+              <div className="text-right shrink-0 whitespace-nowrap">
+                <span className="inline-block px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20 whitespace-nowrap">
+                  Live Telemetry Report
+                </span>
+                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-1 whitespace-nowrap">
+                  Generated: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={isExportingPDF}
+              data-html2canvas-ignore="true"
+              className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 shadow-xs cursor-pointer disabled:opacity-50"
+            >
+              {isExportingPDF ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  <span className="whitespace-nowrap">Exporting PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 shrink-0" />
+                  <span className="whitespace-nowrap">Export Analytics PDF</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -276,13 +389,13 @@ export function AdminAnalytics() {
                 <p className="text-xs text-gray-500 mt-1">Number of projects per core offering.</p>
               </div>
             </div>
-            <div className="h-72 w-full">
+            <div className="h-80 w-full">
               {categoryData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={categoryData} layout="vertical" margin={{ top: 10, right: 30, left: 40, bottom: 0 }}>
+                  <BarChart data={categoryData} layout="vertical" margin={{ top: 10, right: 20, left: 95, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-800" />
-                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                    <YAxis dataKey="category" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 'bold' }} dx={-10} />
+                    <XAxis type="number" allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                    <YAxis dataKey="category" type="category" width={90} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 'bold' }} dx={-5} />
                     <Tooltip 
                       cursor={{fill: 'transparent'}}
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -307,18 +420,18 @@ export function AdminAnalytics() {
                 <p className="text-xs text-gray-500 mt-1">Real-time status of all issued billing statements.</p>
               </div>
             </div>
-            <div className="h-72 w-full flex items-center">
+            <div className="min-h-[280px] w-full flex flex-col sm:flex-row items-center justify-between gap-6">
               {statusPieData.length > 0 ? (
                 <>
-                  <div className="flex-1 h-full">
+                  <div className="w-full sm:flex-1 h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={statusPieData}
                           cx="50%"
                           cy="50%"
-                          innerRadius={80}
-                          outerRadius={110}
+                          innerRadius={65}
+                          outerRadius={90}
                           paddingAngle={4}
                           dataKey="value"
                           stroke="none"
@@ -334,12 +447,12 @@ export function AdminAnalytics() {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="flex-1 flex flex-col justify-center gap-4">
+                  <div className="w-full sm:w-auto flex flex-row sm:flex-col justify-center flex-wrap gap-4 sm:gap-5 pb-2 sm:pb-0">
                     {statusPieData.map((entry, index) => (
                       <div key={index} className="flex items-center gap-3">
-                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                        <div className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
                         <div>
-                          <p className="text-sm font-bold text-gray-900 dark:text-white">{entry.name}</p>
+                          <p className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{entry.name}</p>
                           <p className="text-xs text-gray-500">${entry.value.toLocaleString()}</p>
                         </div>
                       </div>

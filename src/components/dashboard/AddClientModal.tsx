@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { ClientItem } from '../../types/client';
 import { MASTER_STUDIO_TOOLS } from '../../constants/toolsData';
-import { X, ShieldCheck, User, Building, Mail, Phone, Package, Wrench, CheckCircle2 } from 'lucide-react';
+import { X, ShieldCheck, User, Building, Mail, Phone, Package, Wrench, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface AddClientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (clientData: Partial<ClientItem>) => void;
+  onSave: (clientData: Partial<ClientItem>) => void | Promise<void>;
   editingClient?: ClientItem | null;
 }
 
@@ -19,6 +19,7 @@ export function AddClientModal({ isOpen, onClose, onSave, editingClient }: AddCl
   const [assignedPackage, setAssignedPackage] = useState('Enterprise Web Development');
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
   const [allowedToolIds, setAllowedToolIds] = useState<string[]>(['file-converter', 'brand-kit']);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (editingClient) {
@@ -50,19 +51,26 @@ export function AddClientModal({ isOpen, onClose, onSave, editingClient }: AddCl
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      id: editingClient?.id,
-      fullName,
-      company,
-      email,
-      phone,
-      assignedPackage,
-      status,
-      allowedToolIds,
-    });
-    onClose();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await onSave({
+        id: editingClient?.id,
+        fullName,
+        company,
+        email,
+        phone,
+        assignedPackage,
+        status,
+        allowedToolIds,
+      });
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return createPortal(
@@ -287,10 +295,19 @@ export function AddClientModal({ isOpen, onClose, onSave, editingClient }: AddCl
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              <ShieldCheck className="w-4 h-4" />
-              {editingClient ? 'Save Client Profile' : 'Provision Client Account'}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Saving Account...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4" />
+                  {editingClient ? 'Save Client Profile' : 'Provision Client Account'}
+                </>
+              )}
             </button>
           </div>
         </form>

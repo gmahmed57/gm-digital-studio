@@ -31,7 +31,6 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer, 
   Cell, 
   PieChart, 
   Pie 
@@ -226,12 +225,12 @@ export function AdvancedReportsPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           
           <select
             value={timeframe}
             onChange={(e) => setTimeframe(e.target.value as any)}
-            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card text-xs font-semibold text-gray-700 dark:text-gray-200 focus:outline-none cursor-pointer"
+            className="flex-1 sm:flex-none px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card text-xs font-semibold text-gray-700 dark:text-gray-200 focus:outline-none cursor-pointer whitespace-nowrap"
           >
             <option value="all">All Time History</option>
             <option value="year">This Fiscal Year</option>
@@ -242,27 +241,27 @@ export function AdvancedReportsPage() {
           <button
             onClick={handleRefresh}
             disabled={refreshing || loading}
-            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-surface transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="flex-1 sm:flex-none px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-surface transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap"
             title="Refresh Report Data"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-brand-500' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
+            <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${refreshing ? 'animate-spin text-brand-500' : ''}`} />
+            <span className="whitespace-nowrap">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
           </button>
 
           <button
             onClick={handleExportCSV}
             disabled={exportingCSV}
-            className="px-3.5 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-950 text-xs font-bold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="flex-1 sm:flex-none px-3.5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-950 text-xs font-bold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap"
           >
             {exportingCSV ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Exporting...
+                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                <span className="whitespace-nowrap">Exporting...</span>
               </>
             ) : (
               <>
-                <Download className="w-3.5 h-3.5" />
-                Export CSV
+                <Download className="w-3.5 h-3.5 shrink-0" />
+                <span className="whitespace-nowrap">Export CSV</span>
               </>
             )}
           </button>
@@ -270,17 +269,17 @@ export function AdvancedReportsPage() {
           <button
             onClick={handleDownloadPDF}
             disabled={exportingPDF}
-            className="px-3.5 py-2 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-700 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-xs"
           >
             {exportingPDF ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Generating PDF...
+                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                <span className="whitespace-nowrap">Generating PDF...</span>
               </>
             ) : (
               <>
-                <FileText className="w-3.5 h-3.5" />
-                Download PDF Report
+                <FileText className="w-3.5 h-3.5 shrink-0" />
+                <span className="whitespace-nowrap">Download PDF Report</span>
               </>
             )}
           </button>
@@ -380,30 +379,28 @@ export function AdvancedReportsPage() {
               <PieIcon className="w-4 h-4 text-gray-400" />
             </div>
 
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={revenueDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={65}
-                    outerRadius={85}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {revenueDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(val: any) => [`$${Number(val).toLocaleString()}`, 'Amount']}
-                    contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #334155', color: '#ffffff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.4)' }}
-                    itemStyle={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '12px' }}
-                    labelStyle={{ color: '#ffffff', fontWeight: 'bold', fontSize: '13px' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="h-64 w-full flex items-center justify-center overflow-hidden">
+              <PieChart width={320} height={220}>
+                <Pie
+                  data={revenueDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={75}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {revenueDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(val: any) => [`$${Number(val).toLocaleString()}`, 'Amount']}
+                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #334155', color: '#ffffff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.4)' }}
+                  itemStyle={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '12px' }}
+                  labelStyle={{ color: '#ffffff', fontWeight: 'bold', fontSize: '13px' }}
+                />
+              </PieChart>
             </div>
 
             <div className="flex items-center justify-center gap-6 text-xs mt-2">
@@ -426,24 +423,22 @@ export function AdvancedReportsPage() {
               <Layers className="w-4 h-4 text-gray-400" />
             </div>
 
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={projectStatusDistribution}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                  <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
-                  <YAxis stroke="#9ca3af" fontSize={12} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #334155', color: '#ffffff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.4)' }}
-                    itemStyle={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '12px' }}
-                    labelStyle={{ color: '#ffffff', fontWeight: 'bold', fontSize: '13px' }}
-                  />
-                  <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                    {projectStatusDistribution.map((entry, index) => (
-                      <Cell key={`cell-bar-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="h-64 w-full flex items-center justify-center overflow-hidden">
+              <BarChart width={320} height={220} data={projectStatusDistribution} margin={{ top: 10, right: 20, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                <XAxis dataKey="name" stroke="#9ca3af" fontSize={11} />
+                <YAxis stroke="#9ca3af" fontSize={11} allowDecimals={false} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #334155', color: '#ffffff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.4)' }}
+                  itemStyle={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '12px' }}
+                  labelStyle={{ color: '#ffffff', fontWeight: 'bold', fontSize: '13px' }}
+                />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={40}>
+                  {projectStatusDistribution.map((entry, index) => (
+                    <Cell key={`cell-bar-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
             </div>
 
             <div className="flex items-center justify-center gap-6 text-xs mt-2">
@@ -553,32 +548,34 @@ export function AdvancedReportsPage() {
                 {toolsData?.clientActivityList && toolsData.clientActivityList.length > 0 && !exportingPDF && (
                   <div className="pt-2">
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Recent Client Tool Activity Log</p>
-                    <div className={`bg-white dark:bg-dark-surface rounded-xl border border-gray-200 dark:border-dark-border divide-y divide-gray-100 dark:divide-dark-border ${
-                      exportingPDF ? 'max-h-none overflow-visible' : 'max-h-64 overflow-y-auto'
-                    }`}>
-                      {toolsData.clientActivityList.slice(0, 10).map((act, idx) => (
-                        <div key={`tool-act-${idx}`} className="p-3 text-xs flex items-center justify-between gap-4">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-gray-900 dark:text-white truncate">{act.user_name}</span>
-                              <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate">({act.user_email})</span>
+                    <div className="overflow-x-auto pb-1">
+                      <div className={`bg-white dark:bg-dark-surface rounded-xl border border-gray-200 dark:border-dark-border divide-y divide-gray-100 dark:divide-dark-border min-w-[520px] ${
+                        exportingPDF ? 'max-h-none overflow-visible' : 'max-h-64 overflow-y-auto'
+                      }`}>
+                        {toolsData.clientActivityList.slice(0, 10).map((act, idx) => (
+                          <div key={`tool-act-${idx}`} className="p-3 text-xs flex items-center justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-gray-900 dark:text-white">{act.user_name}</span>
+                                <span className="text-[11px] text-gray-500 dark:text-gray-400">({act.user_email})</span>
+                              </div>
+                              <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">{act.details}</p>
                             </div>
-                            <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 truncate">{act.details}</p>
+                            <div className="shrink-0 text-right">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase whitespace-nowrap ${
+                                act.action === 'TOOL_EXECUTED'
+                                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
+                                  : 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400'
+                              }`}>
+                                {act.action === 'TOOL_EXECUTED' ? 'Main Execution' : 'Workspace Launch'}
+                              </span>
+                              <span className="block text-[10px] text-gray-400 mt-1 font-mono">
+                                {new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
                           </div>
-                          <div className="shrink-0 text-right">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                              act.action === 'TOOL_EXECUTED'
-                                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
-                                : 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400'
-                            }`}>
-                              {act.action === 'TOOL_EXECUTED' ? 'Main Execution' : 'Workspace Launch'}
-                            </span>
-                            <span className="block text-[10px] text-gray-400 mt-1">
-                              {new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}

@@ -68,7 +68,7 @@ export const PWAInstallPrompt: React.FC = () => {
   if (!showPrompt || isInstalled) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-[9999] max-w-sm w-full p-4 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-300">
+    <div className="fixed bottom-4 inset-x-4 sm:inset-auto sm:bottom-5 sm:right-5 z-[9999] sm:max-w-sm w-auto p-4 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-300">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold flex-shrink-0">

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { clientService } from '../../services/clientService';
 import { messageService, type Message } from '../../services/messageService';
 import type { ClientItem } from '../../types/client';
-import { MessageSquare, Search, Send, User, Trash2, Mail, Download } from 'lucide-react';
+import { MessageSquare, Search, Send, User, Trash2, Mail, Download, ArrowLeft } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import ComposeEmailModal from '../../components/dashboard/ComposeEmailModal';
 import ConfirmModal from '../../components/common/ConfirmModal';
@@ -97,7 +97,7 @@ export function AdminMessages() {
     if (!newMessage.trim() || !selectedClientId || isSending) return;
     
     setIsSending(true);
-    const sentMsg = await messageService.sendMessage(selectedClientId, 'admin', newMessage.trim());
+    const sentMsg = await messageService.sendMessage(selectedClientId, 'admin', newMessage.trim(), 'admin');
     setMessages(prev => [...prev, sentMsg]);
     setLastMessageTimes(prev => ({ ...prev, [selectedClientId!]: Date.now() }));
     setNewMessage('');
@@ -122,18 +122,15 @@ export function AdminMessages() {
     setShowClearConfirm(false);
   };
 
-  const sortedClients = [...clients].sort((a, b) => {
-    const timeA = lastMessageTimes[a.id] || 0;
-    const timeB = lastMessageTimes[b.id] || 0;
-    return timeB - timeA;
-  });
-
-  const filteredClients = sortedClients.filter(c => 
-    c.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.company.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   const selectedClient = clients.find(c => c.id === selectedClientId);
+
+  const filteredClients = clients
+    .filter(c => 
+      c.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.email.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => (lastMessageTimes[b.id] || 0) - (lastMessageTimes[a.id] || 0));
 
   return (
     <>
@@ -145,10 +142,10 @@ export function AdminMessages() {
       <div className="h-[calc(100vh-8rem)] font-sans flex flex-col md:flex-row gap-6">
         
         {/* Left Sidebar: Contact List */}
-        <div className="w-full md:w-80 flex-shrink-0 flex flex-col bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl overflow-hidden shadow-xs">
-          <div className="p-5 border-b border-gray-100 dark:border-dark-border space-y-3">
+        <div className={`w-full md:w-80 flex-shrink-0 flex flex-col bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl overflow-hidden shadow-xs ${selectedClientId ? 'hidden md:flex' : 'flex'}`}>
+          <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-dark-border space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-white">
+              <h2 className="text-base sm:text-lg font-heading font-bold text-gray-900 dark:text-white">
                 Client Inbox
               </h2>
               <button
@@ -166,7 +163,7 @@ export function AdminMessages() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search clients..."
-                className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none"
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-xs sm:text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none"
               />
             </div>
           </div>
@@ -179,18 +176,21 @@ export function AdminMessages() {
                 <button
                   key={client.id}
                   onClick={() => setSelectedClientId(client.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${
+                  className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all cursor-pointer ${
                     isSelected 
                       ? 'bg-brand-50 dark:bg-brand-500/10 border border-brand-200 dark:border-brand-500/20' 
                       : 'hover:bg-gray-50 dark:hover:bg-dark-surface border border-transparent'
                   }`}
                 >
-                  <div className="relative">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
-                      isSelected ? 'bg-brand-600 text-white' : 'bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300'
-                    }`}>
-                      {client.fullName.charAt(0).toUpperCase()}
-                    </div>
+                  <div className="relative shrink-0">
+                    <img
+                      src={client.avatarUrl && client.avatarUrl.trim() !== '' ? client.avatarUrl : `https://ui-avatars.com/api/?name=${encodeURIComponent(client.fullName)}&background=f14902&color=fff&bold=true`}
+                      alt={client.fullName}
+                      className="w-10 h-10 rounded-full object-cover object-center border border-gray-200 dark:border-dark-border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(client.fullName)}&background=f14902&color=fff&bold=true`;
+                      }}
+                    />
                     {unread > 0 && (
                       <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 border-2 border-white dark:border-dark-card rounded-full text-[10px] font-bold text-white flex items-center justify-center">
                         {unread}
@@ -212,19 +212,35 @@ export function AdminMessages() {
         </div>
 
         {/* Right Panel: Chat Thread */}
-        <div className="flex-1 flex flex-col bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl overflow-hidden shadow-xs">
+        <div className={`flex-1 flex flex-col bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl overflow-hidden shadow-xs ${selectedClientId ? 'flex' : 'hidden md:flex'}`}>
           {selectedClientId ? (
             <>
               {/* Chat Header */}
-              <div className="p-5 border-b border-gray-100 dark:border-dark-border flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 flex items-center justify-center font-bold">
-                  {selectedClient?.fullName.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-dark-border flex items-center gap-2 sm:gap-3">
+                <button
+                  onClick={() => setSelectedClientId(null)}
+                  className="md:hidden p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface transition-colors cursor-pointer shrink-0"
+                  title="Back to Client Inbox"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+
+                {selectedClient?.avatarUrl ? (
+                  <img
+                    src={selectedClient.avatarUrl}
+                    alt={selectedClient.fullName}
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover object-center border border-gray-200 dark:border-dark-border shrink-0"
+                  />
+                ) : (
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 flex items-center justify-center font-bold shrink-0">
+                    {selectedClient?.fullName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">
                     {selectedClient?.fullName}
                   </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">
                     {selectedClient?.company}
                   </p>
                 </div>
@@ -242,9 +258,9 @@ export function AdminMessages() {
                       }
                     }}
                     title="Export & Download Chat Transcript"
-                    className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-dark-surface dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    className="px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-dark-surface dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
                   >
-                    <Download className="w-4 h-4 text-brand-500" /> Export Chat
+                    <Download className="w-4 h-4 text-brand-500" /> <span className="hidden sm:inline">Export Chat</span>
                   </button>
 
                   <button

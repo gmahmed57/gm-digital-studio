@@ -1,4 +1,5 @@
 import type { InvoiceItem, InvoiceStatus } from '../types/invoice';
+import type { UserProfile } from '../types/auth';
 import { supabase } from './supabase';
 import { notificationService } from './notificationService';
 import { activityLogService } from './activityLogService';
@@ -12,14 +13,32 @@ const isLegacyDummy = (inv: InvoiceItem | any): boolean => {
 };
 
 export const invoiceService = {
-  // Get all invoices (or filter server-side by client email for defense-in-depth)
-  getInvoices: async (): Promise<InvoiceItem[]> => {
+  // Get invoices with server-side query isolation for non-admin client users
+  getInvoices: async (user?: UserProfile | null): Promise<InvoiceItem[]> => {
     if (!supabase) throw new Error('Database service is not initialized');
 
-    const { data, error } = await supabase.from('invoices').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('invoices').select('*').order('created_at', { ascending: false });
+
+    // Enforce server-side query isolation for client role users
+    if (user && user.role !== 'admin') {
+      const email = user.email ? user.email.toLowerCase().trim() : '';
+      const userId = user.id || '';
+
+      const filterConditions: string[] = [];
+      if (email) filterConditions.push(`client_email.ilike.%${email}%`, `client_email.eq.${email}`);
+      if (userId) filterConditions.push(`client_id.eq.${userId}`);
+
+      if (filterConditions.length > 0) {
+        query = query.or(filterConditions.join(','));
+      } else {
+        return [];
+      }
+    }
+
+    const { data, error } = await query;
     if (error) {
-      console.error('Database query error:', error.message);
-      throw error;
+      console.error('[Invoice Service] Database query error:', error.message);
+      return [];
     }
 
     if (data) {

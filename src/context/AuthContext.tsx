@@ -1,16 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { UserProfile, UserRole, AuthContextType } from '../types/auth';
 import { authService } from '../services/authService';
+import { supabase } from '../services/supabase';
 
-const STORAGE_KEY = 'studio_auth_user';
-
-// Supabase client for live author sync
-const supabaseClient = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+const STORAGE_KEY = 'stu_user';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -49,8 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let freshRole: string | undefined = undefined;
         let freshBio: string | undefined = undefined;
 
+        if (!supabase) return;
+
         // 1. Check public.authors
-        const { data: authorData } = await supabaseClient
+        const { data: authorData } = await supabase
           .from('authors')
           .select('name, role, bio, avatar_url')
           .eq('email', cleanEmail)
@@ -64,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // 2. Check public.profiles
-        const { data: profileData } = await supabaseClient
+        const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
           .eq('email', cleanEmail)
@@ -78,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // 3. Check public.clients
-        const { data: clientData } = await supabaseClient
+        const { data: clientData } = await supabase
           .from('clients')
           .select('fullName, job_title, bio, avatarUrl')
           .eq('email', cleanEmail)

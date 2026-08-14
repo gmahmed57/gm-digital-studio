@@ -23,6 +23,7 @@ import {
 import SEO from '../../components/common/SEO';
 import ComposeEmailModal from '../../components/dashboard/ComposeEmailModal';
 import ConfirmModal from '../../components/common/ConfirmModal';
+import { resolveAssetUrl, handleImageError } from '../../utils/imageUtils';
 
 export function Clients() {
   const navigate = useNavigate();
@@ -251,8 +252,9 @@ export function Clients() {
                         <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleOpenEditPage(client.id)}>
                           {client.avatarUrl && typeof client.avatarUrl === 'string' && client.avatarUrl.trim() !== '' ? (
                             <img
-                              src={client.avatarUrl}
+                              src={resolveAssetUrl(client.avatarUrl, 'avatar')}
                               alt={client.fullName}
+                              onError={(e) => handleImageError(e, 'avatar')}
                               className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-dark-border flex-shrink-0"
                             />
                           ) : (

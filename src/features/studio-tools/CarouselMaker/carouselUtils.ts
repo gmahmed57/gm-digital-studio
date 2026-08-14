@@ -1,3 +1,5 @@
+import { supabase } from '../../../services/supabase';
+
 export const GRADIENTS = [
   { name:'Ember',    from:'#ff6b4a', to:'#2b0a1f', angle:145 },
   { name:'Deep Sea',  from:'#12b5b0', to:'#041c2c', angle:145 },
@@ -24,56 +26,103 @@ export interface SlideData {
   index?: number;
   layout: 'text' | 'image' | 'cta' | 'fullimage';
   headline: string;
-  bodyLines: string[];
+  subtext?: string;
+  bodyLines?: string[];
   imgKeyword: string;
   seed: number;
-  showPhoto: boolean;
-  customImage?: string | null;
+  customImage?: string;
+  showPhoto?: boolean;
+  avatar?: string;
   handle?: string;
-  subtext?: string;
-  avatar?: string | null;
 }
 
-export function parseSlides(raw: string): SlideData[] {
-  raw = raw.trim();
-  if(!raw) return [];
-  let blocks;
-  if(/\n\s*---\s*\n|^---\s*\n/.test(raw)){
-    blocks = raw.split(/\n\s*---\s*\n/);
-  } else {
-    blocks = raw.split(/\n\s*\n/);
-  }
-  blocks = blocks.map(b=>b.trim()).filter(Boolean);
+export function parseSlides(rawText: string): SlideData[] {
+  if (!rawText) return [];
+  const blocks = rawText.split('---').map(b => b.trim()).filter(Boolean);
+  return blocks.map((block, index) => {
+    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+    const headline = lines[0] || '';
+    let imgKeyword = 'design';
+    const bodyLines: string[] = [];
+    let subtext = '';
 
-  return blocks.map((block, i) => {
-    const lines = block.split('\n').map(l=>l.trim()).filter(Boolean);
-    let imgKeyword = null;
-    let headline = null;
-    let layout: 'text'|'image' = 'text';
-    const bodyLines = [];
-    for(const line of lines){
-      const imgMatch = line.match(/^img:\s*(.+)$/i);
-      if(imgMatch){ imgKeyword = imgMatch[1].trim().split(/\s+/).slice(0,3).join(','); continue; }
-      const typeMatch = line.match(/^type:\s*(.+)$/i);
-      if(typeMatch){ if(/image|photo/i.test(typeMatch[1])) layout = 'image'; continue; }
-      if(!headline){ headline = line; continue; }
-      bodyLines.push(line);
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.toLowerCase().startsWith('img:')) {
+        imgKeyword = line.replace(/img:/i, '').trim();
+      } else if (line.startsWith('-')) {
+        bodyLines.push(line.replace(/^-/, '').trim());
+      } else {
+        if (!subtext) subtext = line;
+        else bodyLines.push(line);
+      }
     }
-    if(!imgKeyword){
-      const words = (headline||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/)
-        .filter(w=>w && !STOPWORDS.has(w));
-      imgKeyword = words.slice(0,2).join(',') || 'abstract,texture';
-    }
+
     return {
-      index: i,
-      layout,
-      headline: headline || `Slide ${i+1}`,
+      index,
+      layout: index === 0 ? 'text' : (bodyLines.length > 0 ? 'text' : 'image'),
+      headline,
+      subtext,
       bodyLines,
       imgKeyword,
-      seed: Math.floor(Math.random()*10000),
+      seed: 100 + index,
       showPhoto: true,
     };
   });
+}
+
+export function generateSlides(topic: string, goal: string, count: number): SlideData[] {
+  const words = topic.split(' ').filter(w => !STOPWORDS.has(w.toLowerCase()));
+  const keyword = words[0] || 'design';
+  const keyword2 = words[1] || words[0] || 'creative';
+
+  const slides: SlideData[] = [];
+
+  // Cover
+  slides.push({
+    index: 0,
+    layout: 'text',
+    headline: topic,
+    subtext: `Swipe to learn ${goal.toLowerCase() || 'more'} →`,
+    imgKeyword: keyword,
+    seed: 101,
+  });
+
+  // Middle slides
+  const middleCount = count - 2;
+  const templates = [
+    { headline: `01. Clarify Your Objective`, subtext: `Focus on one core outcome for maximum impact and retention.` },
+    { headline: `02. Keep It Visual`, subtext: `High contrast elements and clear hierarchy grab attention instantly.` },
+    { headline: `03. Use High-Impact Typography`, subtext: `Pair expressive display headers with highly legible body copy.` },
+    { headline: `04. Deliver Actionable Value`, subtext: `Every slide must solve a real problem or teach a concrete skill.` },
+    { headline: `05. Maintain Visual Consistency`, subtext: `Stick to 2 complementary colors and a single font family throughout.` },
+    { headline: `06. Structure for Skimmability`, subtext: `Use bold keywords and short sentences so readers grasp value instantly.` },
+  ];
+
+  for (let i = 0; i < middleCount; i++) {
+    const t = templates[i % templates.length];
+    const isImageSlide = i % 2 === 1;
+    slides.push({
+      index: i + 1,
+      layout: isImageSlide ? 'image' : 'text',
+      headline: t.headline,
+      subtext: t.subtext,
+      imgKeyword: i % 2 === 0 ? keyword : keyword2,
+      seed: 201 + i,
+    });
+  }
+
+  // CTA
+  slides.push({
+    index: count - 1,
+    layout: 'cta',
+    headline: `Save & Share This Post`,
+    subtext: `Found this helpful? Tap save so you can refer back to it anytime.`,
+    imgKeyword: keyword,
+    seed: 301,
+  });
+
+  return slides;
 }
 
 export function hexToRgba(hex: string, alpha: number) {
@@ -90,55 +139,31 @@ export function getGradientForSlide(i: number, customColor: { from: string, to: 
 }
 
 export async function fetchPhotoForSlide(slide: SlideData, w: number, h: number): Promise<{url: string, credit: any}> {
-  const pexelsKey = import.meta.env.VITE_PEXELS_API_KEY;
-  const unsplashKey = import.meta.env.VITE_UNSPLASH_API_KEY;
   const page = (slide.seed % 12) + 1;
   
-  if (pexelsKey) {
+  if (supabase) {
     try {
-      const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(slide.imgKeyword)}&per_page=1&page=${page}&orientation=portrait`, {
-        headers: { Authorization: pexelsKey }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.photos && data.photos.length > 0) {
-          const p = data.photos[0];
-          return {
-            url: p.src.large2x || p.src.large,
-            credit: {
-              name: p.photographer,
-              link: p.photographer_url,
-              provider: 'Pexels'
-            }
-          };
+      const { data, error } = await supabase.functions.invoke('pexels-proxy', {
+        body: {
+          query: slide.imgKeyword,
+          page: page,
+          per_page: 1,
+          orientation: 'portrait'
         }
+      });
+      if (!error && data && data.photos && data.photos.length > 0) {
+        const p = data.photos[0];
+        return {
+          url: p.src.large2x || p.src.large,
+          credit: {
+            name: p.photographer,
+            link: p.photographer_url,
+            provider: 'Pexels'
+          }
+        };
       }
     } catch(e) {
-      console.warn('Pexels fetch failed', e);
-    }
-  }
-
-  if (unsplashKey) {
-    try {
-      const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(slide.imgKeyword)}&per_page=1&page=${page}&orientation=portrait`, {
-        headers: { Authorization: `Client-ID ${unsplashKey}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.results && data.results.length > 0) {
-          const p = data.results[0];
-          return {
-            url: p.urls.regular,
-            credit: {
-              name: p.user.name,
-              link: p.user.links.html,
-              provider: 'Unsplash'
-            }
-          };
-        }
-      }
-    } catch(e) {
-      console.warn('Unsplash fetch failed', e);
+      console.warn('Pexels proxy fetch failed', e);
     }
   }
 

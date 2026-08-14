@@ -12,10 +12,10 @@ const getCorsHeaders = (req: Request) => {
   const isAllowed =
     allowedOrigins.includes(origin) ||
     origin.endsWith('.gmdigitalstudio.app') ||
-    origin.endsWith('.vercel.app')
+    (origin.startsWith('https://') && origin.includes('gm-digital-studio') && origin.endsWith('.vercel.app'))
 
   return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : (origin || '*'),
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://gmdigitalstudio.app',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   }

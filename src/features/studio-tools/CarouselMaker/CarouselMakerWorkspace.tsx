@@ -45,7 +45,7 @@ export const CarouselMakerWorkspace: React.FC = () => {
   const [colorTo, setColorTo] = useState('#2b0a1f');
   
   const [heroImageDataURL, setHeroImageDataURL] = useState<string | null>(null);
-  const [heroFullSlide, setHeroFullSlide] = useState(true);
+  const [heroFullSlide, setHeroFullSlide] = useState(false);
   const [logoDataURL, setLogoDataURL] = useState<string | null>(null);
 
   const [ctaEnabled, setCtaEnabled] = useState(false);
@@ -66,7 +66,7 @@ export const CarouselMakerWorkspace: React.FC = () => {
   const parsedTextSlides = useMemo(() => parseSlides(sourceText), [sourceText]);
 
   const slidesData = useMemo(() => {
-    let arr = parsedTextSlides.map(slide => ({ ...slide, seed: (slide.index !== undefined && seedOverrides[slide.index] !== undefined) ? seedOverrides[slide.index] : slide.seed }));
+    let arr = parsedTextSlides.map((slide: any) => ({ ...slide, seed: (slide.index !== undefined && seedOverrides[slide.index] !== undefined) ? seedOverrides[slide.index] : slide.seed }));
     if (heroFullSlide && heroImageDataURL) {
       arr = [{ layout: 'fullimage', customImage: heroImageDataURL, headline: '', bodyLines: [], imgKeyword: '', seed: 0, showPhoto: true } as any, ...arr];
     }
@@ -161,8 +161,8 @@ export const CarouselMakerWorkspace: React.FC = () => {
               isOffscreenExport={true}
             />
           );
-          // Wait for render to commit
-          setTimeout(resolve, 500);
+          // Wait for render to commit and images to load
+          setTimeout(resolve, 800);
         });
 
         if (nodeRef) {
@@ -228,28 +228,56 @@ export const CarouselMakerWorkspace: React.FC = () => {
             </div>
 
             <div id="heroImageWrap">
-              <label className="field-label">Cover image (slide 1)</label>
-              <input type="file" id="heroImageInput" accept="image/*" className="hidden" onChange={e => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () => setHeroImageDataURL(reader.result as string);
-                reader.readAsDataURL(file);
-              }} />
-              <div className="flex gap-2">
-                <button onClick={() => document.getElementById('heroImageInput')?.click()} className="flex-1 py-2 text-xs font-semibold rounded border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-surface hover:bg-gray-50 dark:hover:bg-dark-border transition-colors">
-                  Upload cover image
-                </button>
-                {heroImageDataURL && (
-                  <button onClick={() => { setHeroImageDataURL(null); (document.getElementById('heroImageInput') as HTMLInputElement).value = ''; }} className="py-2 px-3 text-xs font-semibold rounded border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
-                    Remove
-                  </button>
-                )}
-              </div>
-              <label className="flex items-center gap-2 mt-2 text-[11px] text-gray-500 cursor-pointer">
-                <input type="checkbox" checked={heroFullSlide} onChange={e => setHeroFullSlide(e.target.checked)} className="accent-brand-500 w-3 h-3 rounded" />
-                Use as a full slide, inserted as slide 1 (no text on it)
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-200 mb-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={heroFullSlide} 
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    setHeroFullSlide(checked);
+                    if (!checked) {
+                      setHeroImageDataURL(null);
+                    }
+                  }} 
+                  className="accent-brand-500 w-4 h-4 rounded cursor-pointer" 
+                />
+                <span>Add custom full cover image (Slide 1)</span>
               </label>
+
+              {heroFullSlide && (
+                <div className="flex flex-col gap-2 mt-2">
+                  <input type="file" id="heroImageInput" accept="image/*" className="hidden" onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      setHeroImageDataURL(reader.result as string);
+                    };
+                    reader.readAsDataURL(file);
+                  }} />
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => document.getElementById('heroImageInput')?.click()} 
+                      className="flex-1 py-2 text-xs font-semibold rounded border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-surface hover:bg-gray-50 dark:hover:bg-dark-border transition-colors cursor-pointer"
+                    >
+                      {heroImageDataURL ? 'Change cover image' : 'Upload cover image'}
+                    </button>
+                    {heroImageDataURL && (
+                      <button 
+                        onClick={() => { setHeroImageDataURL(null); (document.getElementById('heroImageInput') as HTMLInputElement).value = ''; }} 
+                        className="py-2 px-3 text-xs font-semibold rounded border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {!heroImageDataURL && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                      Upload an image to insert as full Cover Slide 1.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>

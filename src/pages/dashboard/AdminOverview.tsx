@@ -33,6 +33,23 @@ export function AdminOverview() {
     { label: 'Delayed', percent: 0, color: 'bg-gray-400 dark:bg-gray-600' },
   ]);
 
+  const getCutoffDate = (filter: string): Date => {
+    const now = new Date();
+    if (filter === 'Last 7 days') {
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+    if (filter === 'Last 30 days') {
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+    if (filter === 'This Quarter') {
+      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    }
+    if (filter === 'This Year') {
+      return new Date(now.getFullYear(), 0, 1);
+    }
+    return new Date(0); // Lifetime
+  };
+
   const loadData = async () => {
     try {
       const [invoices, projects, clients] = await Promise.all([
@@ -41,52 +58,87 @@ export function AdminOverview() {
         clientService.getClients(),
       ]);
 
-      // Calculate Total Revenue (paid invoices only)
-      const paidInvoices = invoices.filter(inv => inv.status === 'Paid');
+      const cutoffDate = getCutoffDate(timeFilter);
+
+      // Filter invoices by timeFilter cutoff
+      const filteredInvoices = invoices.filter((inv) => {
+        if (!inv.date) return true;
+        const invDate = new Date(inv.date);
+        return invDate >= cutoffDate;
+      });
+
+      // Calculate Total Revenue (paid invoices in selected timeframe)
+      const paidInvoices = filteredInvoices.filter((inv) => inv.status === 'Paid');
       const totalRevenue = paidInvoices.reduce((sum, inv) => {
         const amt = parseFloat((inv.amount || '0').replace(/[^0-9.]/g, ''));
         return sum + (amt || 0);
       }, 0);
 
-      // Active Projects
-      const activeProjects = projects.filter(p => p.status === 'active' || p.status === 'in_review').length;
-      const totalProjects = projects.length;
-      
-      // Client count
-      const totalClients = clients.length;
+      // Filter projects by timeFilter cutoff
+      const filteredProjects = projects.filter((p) => {
+        if (p.status === 'active' || p.status === 'in_review') return true;
+        if (!p.dueDate) return true;
+        const pDate = new Date(p.dueDate);
+        return pDate >= cutoffDate;
+      });
+
+      const activeProjects = filteredProjects.filter((p) => p.status === 'active' || p.status === 'in_review').length;
+      const totalProjects = filteredProjects.length;
+
+      // Filter clients
+      const filteredClients = clients.filter((c) => {
+        if (c.status === 'active') return true;
+        if (!c.joinedDate) return true;
+        const cDate = new Date(c.joinedDate);
+        return cDate >= cutoffDate;
+      });
+      const totalClients = filteredClients.length;
 
       setMetricsData({
         totalRevenue,
         activeProjects,
         totalProjects,
-        totalClients
+        totalClients,
       });
 
-      // Project Summary Table
-      const sortedProjects = [...projects].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).slice(0, 5);
-      
+      // Project Summary Table: Show the 5 latest projects from Supabase (newest first)
+      const sortedProjects = [...projects]
+        .sort((a, b) => {
+          const timeA = new Date(a.createdAt || a.startDate || a.dueDate).getTime();
+          const timeB = new Date(b.createdAt || b.startDate || b.dueDate).getTime();
+          return timeB - timeA;
+        })
+        .slice(0, 5);
+
       const formatStatusBadge = (status: ProjectStatus) => {
-        switch(status) {
-          case 'completed': return { text: 'Completed', class: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' };
-          case 'on_hold': return { text: 'On Hold', class: 'bg-gray-100 text-gray-700 dark:bg-dark-surface dark:text-gray-400' };
-          case 'in_review': return { text: 'In Review', class: 'bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-400' };
-          case 'active': return { text: 'On going', class: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400' };
-          default: return { text: 'Pending', class: 'bg-gray-100 text-gray-700' };
+        switch (status) {
+          case 'completed':
+            return { text: 'Completed', class: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' };
+          case 'on_hold':
+            return { text: 'On Hold', class: 'bg-gray-100 text-gray-700 dark:bg-dark-surface dark:text-gray-400' };
+          case 'in_review':
+            return { text: 'In Review', class: 'bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-400' };
+          case 'active':
+            return { text: 'On going', class: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400' };
+          default:
+            return { text: 'Pending', class: 'bg-gray-100 text-gray-700' };
         }
       };
 
-      setProjectSummary(sortedProjects.map(p => ({
-        name: p.title,
-        dueDate: p.dueDate,
-        ...formatStatusBadge(p.status)
-      })));
+      setProjectSummary(
+        sortedProjects.map((p) => ({
+          name: p.title,
+          dueDate: p.dueDate,
+          ...formatStatusBadge(p.status),
+        }))
+      );
 
       // Progress Stats
       if (totalProjects > 0) {
-        const completedCount = projects.filter(p => p.status === 'completed').length;
-        const ongoingCount = projects.filter(p => p.status === 'active').length;
-        const inReviewCount = projects.filter(p => p.status === 'in_review').length;
-        const onHoldCount = projects.filter(p => p.status === 'on_hold').length;
+        const completedCount = filteredProjects.filter((p) => p.status === 'completed').length;
+        const ongoingCount = filteredProjects.filter((p) => p.status === 'active').length;
+        const inReviewCount = filteredProjects.filter((p) => p.status === 'in_review').length;
+        const onHoldCount = filteredProjects.filter((p) => p.status === 'on_hold').length;
 
         setProgressStats([
           { label: 'Completed', percent: Math.round((completedCount / totalProjects) * 100), color: 'bg-emerald-500' },
@@ -95,9 +147,8 @@ export function AdminOverview() {
           { label: 'On Hold', percent: Math.round((onHoldCount / totalProjects) * 100), color: 'bg-gray-400 dark:bg-gray-600' },
         ]);
       }
-
-    } catch(err) {
-      console.warn("Failed to load admin stats:", err);
+    } catch (err) {
+      console.warn('Failed to load admin stats:', err);
     }
   };
 
@@ -114,7 +165,7 @@ export function AdminOverview() {
       window.removeEventListener('studio_project_updated', handleUpdate);
       window.removeEventListener('studio_client_updated', handleUpdate);
     };
-  }, []);
+  }, [timeFilter]);
 
   const metrics = [
     {

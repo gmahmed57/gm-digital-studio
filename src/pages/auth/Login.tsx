@@ -110,44 +110,11 @@ export function Login() {
         {/* Outer Container Card Matching Reference Layout */}
         <div className="w-full max-w-5xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-3 md:p-4 shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[580px]">
           
-          {/* Left Panel: Visual Panel with Brand Gradient & Centered Text Content */}
-          <div className="lg:col-span-6 rounded-2xl bg-[#0a0a0b] text-white p-6 md:p-10 flex flex-col justify-between relative overflow-hidden border border-gray-800/80 min-h-[420px] lg:min-h-[540px]">
+          {/* Left Panel: Visual Panel with Brand Dark Orange Gradient & Fixed-Height Content */}
+          <div className="lg:col-span-6 rounded-2xl bg-gradient-to-b from-[#220e06] via-[#140804] to-[#0a0402] text-white p-6 md:p-10 flex flex-col justify-between relative overflow-hidden border border-amber-900/30 min-h-[420px] lg:min-h-[540px]">
             
-            {/* Ambient Brand Orange Gradient Movement Orbs */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              <motion.div
-                animate={{
-                  scale: [1, 1.2, 1],
-                  rotate: [0, 180, 360],
-                  x: [-30, 30, -30],
-                  y: [-30, 20, -30],
-                }}
-                transition={{
-                  duration: 20,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
-                className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-brand-500/20 blur-3xl"
-              />
-
-              <motion.div
-                animate={{
-                  scale: [1.2, 1, 1.2],
-                  rotate: [360, 180, 0],
-                  x: [30, -20, 30],
-                  y: [20, -30, 20],
-                }}
-                transition={{
-                  duration: 24,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
-                className="absolute -bottom-28 -right-28 w-96 h-96 rounded-full bg-brand-700/20 blur-3xl"
-              />
-
-              {/* Grid pattern overlay */}
-              <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:2rem_2rem]" />
-            </div>
+            {/* Grid pattern overlay */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:2rem_2rem] pointer-events-none" />
 
             {/* Top Bar: Official Logo Image & Studio Name */}
             <div className="relative z-10 flex items-center justify-between">
@@ -159,28 +126,30 @@ export function Login() {
               </Link>
             </div>
 
-            {/* Vertically Centered Text Content & Slideshow */}
-            <div className="relative z-10 my-auto py-8 space-y-6">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentSlide.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.4 }}
-                  className="space-y-3"
-                >
-                  <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-white leading-tight">
-                    {currentSlide.heading}
-                  </h2>
-                  <p className="text-gray-300 text-xs sm:text-sm leading-relaxed max-w-md">
-                    {currentSlide.subtext}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
+            {/* Vertically Centered Text Content & Slideshow with Fixed Height Container */}
+            <div className="relative z-10 my-auto py-6 flex flex-col justify-between">
+              <div className="min-h-[160px] flex flex-col justify-center">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentSlide.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-3"
+                  >
+                    <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-white leading-tight">
+                      {currentSlide.heading}
+                    </h2>
+                    <p className="text-gray-300 text-xs sm:text-sm leading-relaxed max-w-md">
+                      {currentSlide.subtext}
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
 
-              {/* Horizontal Progress Bar Indicators strictly styled in Signature Brand Orange */}
-              <div className="flex items-center gap-2 pt-2">
+              {/* Fixed Position Horizontal Indicators */}
+              <div className="flex items-center gap-2 pt-6">
                 {SLIDES.map((slide, idx) => (
                   <button
                     key={slide.id}

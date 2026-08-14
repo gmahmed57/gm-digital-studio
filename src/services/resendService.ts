@@ -30,6 +30,8 @@ export interface InvoiceAlertData {
   status: string;
   rejectionReason?: string;
   paymentProofUrl?: string;
+  projectName?: string;
+  clientMessage?: string;
 }
 
 export interface PaymentProofAlertData {
@@ -345,6 +347,22 @@ export const sendInvoiceAlertEmail = async (invoiceData: InvoiceAlertData): Prom
           </blockquote>
         ` : ''}
         <p>Please update your invoice details or re-submit valid payment proof in your portal workspace.</p>
+      `;
+      break;
+
+    case 'Invoice Requested':
+      title = `New Invoice Requested: ${escapeHtml(invoiceData.projectName || 'Custom Project')}`;
+      recipient = ADMIN_EMAIL;
+      bodyContent = `
+        <p>Client <strong>${safeClientName}</strong> (${safeClientEmail}) has requested a new custom invoice statement.</p>
+        <table class="info-table">
+          <tr><td class="label">Client Name</td><td class="value">${safeClientName}</td></tr>
+          <tr><td class="label">Client Email</td><td class="value">${safeClientEmail}</td></tr>
+          <tr><td class="label">Project Scope</td><td class="value"><strong>${escapeHtml(invoiceData.projectName || 'Custom Scope')}</strong></td></tr>
+          ${invoiceData.clientMessage ? `<tr><td class="label">Client Message</td><td class="value">${escapeHtml(invoiceData.clientMessage)}</td></tr>` : ''}
+          <tr><td class="label">Status</td><td class="value"><span class="badge" style="background: #ea580c; color: #fff;">Invoice Request Received</span></td></tr>
+        </table>
+        <p>Please log into the Admin Invoices dashboard to generate and issue the requested invoice.</p>
       `;
       break;
 

@@ -6,6 +6,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { notificationService, formatNotificationTime } from '../../services/notificationService';
 import { searchService, type SearchResultItem } from '../../services/searchService';
 import type { NotificationItem } from '../../types/notification';
+import { resolveAssetUrl, handleImageError } from '../../utils/imageUtils';
 import {
   Search, Bell, Sun, Moon, Menu, LogOut, User, CheckCheck, Trash2, ArrowRight, X, Command,
   Layers, Users, CreditCard, FileText, Wrench, Loader2
@@ -187,7 +188,7 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border-b border-gray-200 dark:border-dark-border px-2 sm:px-4 md:px-6 flex items-center justify-between gap-1.5 sm:gap-3 font-sans shadow-xs transition-colors">
+    <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md border-b border-gray-200 dark:border-dark-border px-3 sm:px-4 md:px-6 flex items-center justify-between gap-2 sm:gap-4 font-sans shadow-xs transition-colors">
 
       {/* Left: Mobile Sidebar Trigger & Executive Workspace Header */}
       <div className="flex items-center gap-2 shrink-0">
@@ -209,12 +210,11 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
         </div>
       </div>
 
-      {/* Right: Search, Notifications, Theme Toggle & User Avatar */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-
-        {/* Real Interactive Inline Header Search Bar */}
-        <div ref={searchContainerRef} className="relative">
-          <div className="relative flex items-center">
+      {/* Right Cluster: Compact Desktop Search Bar & Action Controls */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-end min-w-0">
+        {/* Real Interactive Search Bar */}
+        <div ref={searchContainerRef} className="w-full sm:w-64 md:w-72 relative">
+          <div className="relative flex items-center w-full">
             <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute left-2.5 sm:left-3 pointer-events-none" />
             <input
               ref={searchInputRef}
@@ -225,8 +225,8 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
                 setSearchQuery(e.target.value);
                 setIsSearchFocused(true);
               }}
-              placeholder="Search..."
-              className="w-32 xs:w-44 sm:w-64 md:w-80 pl-7 sm:pl-9 pr-7 sm:pr-10 py-1.5 rounded-xl border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-surface text-xs font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all shadow-xs"
+              placeholder="Search projects, clients, invoices..."
+              className="w-full pl-7 sm:pl-9 pr-7 sm:pr-10 py-1.5 rounded-xl border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-surface text-xs font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all shadow-xs"
             />
             {isSearchLoading ? (
               <Loader2 className="w-3.5 h-3.5 text-brand-500 animate-spin absolute right-3" />
@@ -249,7 +249,7 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
 
           {/* Floating Inline Dropdown Menu */}
           {isSearchFocused && searchQuery.trim() !== '' && (
-            <div className="absolute top-full left-0 right-0 md:w-96 mt-2 z-50 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl p-2 max-h-80 overflow-y-auto space-y-1 font-sans">
+            <div className="absolute top-full right-0 w-80 sm:w-96 mt-2 z-50 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl p-2 max-h-80 overflow-y-auto space-y-1 font-sans">
               {isSearchLoading && searchResults.length === 0 ? (
                 <div className="p-4 text-center text-xs text-gray-400">
                   Searching database...
@@ -261,13 +261,13 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
               ) : (
                 searchResults.map((item) => (
                   <div
-                    key={item.id}
+                    key={`${item.category}-${item.id}`}
                     onClick={() => {
                       setIsSearchFocused(false);
                       setSearchQuery('');
                       navigate(item.link);
                     }}
-                    className="p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-dark-surface/80 flex items-center justify-between cursor-pointer transition-colors group"
+                    className="p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-dark-surface cursor-pointer transition-colors flex items-center justify-between group"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-dark-surface flex items-center justify-center shrink-0">
@@ -295,14 +295,17 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
           )}
         </div>
 
-        {/* Working Theme Switcher Button */}
-        <button
-          onClick={handleToggleTheme}
-          className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-dark-surface flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-brand-500 dark:hover:text-brand-400 transition-colors cursor-pointer"
-          title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-        >
-          {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-gray-700" />}
-        </button>
+        {/* Action Controls */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+
+          {/* Working Theme Switcher Button */}
+          <button
+            onClick={handleToggleTheme}
+            className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-dark-surface flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-brand-500 dark:hover:text-brand-400 transition-colors cursor-pointer"
+            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-gray-700" />}
+          </button>
 
         {/* Live Notifications Dropdown Trigger */}
         {role !== 'author' && (
@@ -411,8 +414,9 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
           >
             {user?.avatarUrl ? (
               <img
-                src={user.avatarUrl}
+                src={resolveAssetUrl(user.avatarUrl, 'avatar')}
                 alt={user.fullName || 'User Profile'}
+                onError={(e) => handleImageError(e, 'avatar')}
                 className="w-8 h-8 rounded-lg object-cover border border-gray-200 dark:border-dark-border"
               />
             ) : (
@@ -463,9 +467,9 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
             </div>
           )}
         </div>
-
       </div>
-    </header>
+    </div>
+  </header>
   );
 }
 

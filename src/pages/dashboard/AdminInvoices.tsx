@@ -56,6 +56,7 @@ export function AdminInvoices() {
 
   // Modal State for Advanced Multi-Item Invoice Builder
   const [showModal, setShowModal] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [taxRate, setTaxRate] = useState<number>(0);
@@ -244,55 +245,62 @@ export function AdminInvoices() {
 
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
-    const matchedClient = clients.find((c) => c.id === selectedClientId);
-    const formattedAmountStr = `$${calculatedTotal.toLocaleString()}`;
+    if (isSubmitting) return;
 
-    const mainTitle = description.trim() || lineItems[0]?.description || 'Studio Professional Services';
+    setIsSubmitting(true);
+    try {
+      const matchedClient = clients.find((c) => c.id === selectedClientId);
+      const formattedAmountStr = `$${calculatedTotal.toLocaleString()}`;
 
-    const created = await invoiceService.saveInvoice({
-      clientId: matchedClient?.id || 'client-1',
-      clientName: matchedClient?.fullName || matchedClient?.company || 'Client User',
-      clientCompany: matchedClient?.company || 'Client Company',
-      clientEmail: matchedClient?.email || 'client@company.com',
-      description: mainTitle,
-      amount: formattedAmountStr,
-      subtotal: calculatedSubtotal,
-      taxRate: taxRate,
-      tax: calculatedTaxAmount,
-      total: calculatedTotal,
-      dueDate,
-      status,
-      notes,
-      items: lineItems,
-    });
+      const mainTitle = description.trim() || lineItems[0]?.description || 'Studio Professional Services';
 
-    setInvoices(created);
-    setShowModal(false);
-
-    setDescription('');
-    setTaxRate(0);
-    setLineItems([
-      { id: 'item-1', description: '', quantity: 1, rate: 0, amount: 0 },
-    ]);
-
-    if (matchedClient?.email) {
-      await notificationService.addNotification({
-        title: 'New Invoice Issued',
-        message: `Admin issued invoice for "${mainTitle}" (${formattedAmountStr}).`,
-        type: 'project',
-        targetRole: 'client',
-        targetEmail: matchedClient.email,
-        link: '/client/invoices',
+      const created = await invoiceService.saveInvoice({
+        clientId: matchedClient?.id || 'client-1',
+        clientName: matchedClient?.fullName || matchedClient?.company || 'Client User',
+        clientCompany: matchedClient?.company || 'Client Company',
+        clientEmail: matchedClient?.email || 'client@company.com',
+        description: mainTitle,
+        amount: formattedAmountStr,
+        subtotal: calculatedSubtotal,
+        taxRate: taxRate,
+        tax: calculatedTaxAmount,
+        total: calculatedTotal,
+        dueDate,
+        status,
+        notes,
+        items: lineItems,
       });
 
-      sendInvoiceAlertEmail({
-        invoiceNumber: created[0]?.invoiceNumber || 'INV-NEW',
-        clientName: matchedClient.fullName || matchedClient.company || 'Client User',
-        clientEmail: matchedClient.email,
-        amount: formattedAmountStr,
-        dueDate,
-        status: 'Pending',
-      }).catch((err) => console.warn('Invoice issued email notice:', err));
+      setInvoices(created);
+      setShowModal(false);
+
+      setDescription('');
+      setTaxRate(0);
+      setLineItems([
+        { id: 'item-1', description: '', quantity: 1, rate: 0, amount: 0 },
+      ]);
+
+      if (matchedClient?.email) {
+        await notificationService.addNotification({
+          title: 'New Invoice Issued',
+          message: `Admin issued invoice for "${mainTitle}" (${formattedAmountStr}).`,
+          type: 'project',
+          targetRole: 'client',
+          targetEmail: matchedClient.email,
+          link: '/client/invoices',
+        });
+
+        sendInvoiceAlertEmail({
+          invoiceNumber: created[0]?.invoiceNumber || 'INV-NEW',
+          clientName: matchedClient.fullName || matchedClient.company || 'Client User',
+          clientEmail: matchedClient.email,
+          amount: formattedAmountStr,
+          dueDate,
+          status: 'Pending',
+        }).catch((err) => console.warn('Invoice issued email notice:', err));
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

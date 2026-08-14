@@ -54,6 +54,7 @@ export function ClientInvoices() {
   const [clientMessageInput, setClientMessageInput] = useState<string>('');
   const [tipAmountInput, setTipAmountInput] = useState<string>('');
   const [requestSent, setRequestSent] = useState<boolean>(false);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState<boolean>(false);
 
   // Itemized line items for Client Invoice Request
   const [requestLineItems, setRequestLineItems] = useState<InvoiceLineItem[]>([
@@ -107,8 +108,8 @@ export function ClientInvoices() {
     setLoading(true);
 
     const [invList, projList] = await Promise.all([
-      invoiceService.getInvoices(),
-      projectService.getProjects(),
+      invoiceService.getInvoices(user),
+      projectService.getProjects(user),
     ]);
 
     const userEmailClean = (user?.email || '').toLowerCase().trim();
@@ -198,38 +199,48 @@ export function ClientInvoices() {
 
   const handleRequestInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRequest) return;
 
-    const tipVal = parseFloat(tipAmountInput.replace(/[^0-9.]/g, '')) || 0;
+    setIsSubmittingRequest(true);
+    try {
+      const tipVal = parseFloat(tipAmountInput.replace(/[^0-9.]/g, '')) || 0;
 
-    await invoiceService.requestInvoiceFromAdmin({
-      clientEmail: user?.email || 'client@company.com',
-      clientCompany: user?.company || user?.fullName || 'Valued Client',
-      clientName: user?.fullName || 'Valued Client',
-      projectName: useCustomProject ? undefined : selectedProjectTitle,
-      customProjectName: useCustomProject ? customProjectName : undefined,
-      clientMessage: clientMessageInput,
-      items: requestLineItems,
-      tipAmount: tipVal,
-    });
+      await invoiceService.requestInvoiceFromAdmin({
+        clientEmail: user?.email || 'client@company.com',
+        clientCompany: user?.company || user?.fullName || 'Valued Client',
+        clientName: user?.fullName || 'Valued Client',
+        projectName: useCustomProject ? undefined : selectedProjectTitle,
+        customProjectName: useCustomProject ? customProjectName : undefined,
+        clientMessage: clientMessageInput,
+        items: requestLineItems,
+        tipAmount: tipVal,
+      });
 
-    sendInvoiceAlertEmail({
-      invoiceNumber: 'REQ-NEW',
-      clientName: user?.fullName || user?.company || 'Valued Client',
-      clientEmail: user?.email || 'client@company.com',
-      amount: '$0 (Custom Request)',
-      status: 'Under Approval',
-    }).catch(() => {});
+      sendInvoiceAlertEmail({
+        invoiceNumber: 'REQ-NEW',
+        clientName: user?.fullName || user?.company || 'Valued Client',
+        clientEmail: user?.email || 'client@company.com',
+        projectName: useCustomProject ? customProjectName : selectedProjectTitle,
+        clientMessage: clientMessageInput,
+        amount: '$0 (Custom Request)',
+        status: 'Invoice Requested',
+      }).catch(() => {});
 
-    setRequestSent(true);
-    setTimeout(() => {
-      setShowRequestModal(false);
-      setRequestSent(false);
-      setClientMessageInput('');
-      setCustomProjectName('');
-      setTipAmountInput('');
-      setRequestLineItems([{ id: 'item-1', description: '', quantity: 1, rate: 0, amount: 0 }]);
-      loadData();
-    }, 1500);
+      setRequestSent(true);
+      setTimeout(() => {
+        setShowRequestModal(false);
+        setRequestSent(false);
+        setIsSubmittingRequest(false);
+        setClientMessageInput('');
+        setCustomProjectName('');
+        setTipAmountInput('');
+        setRequestLineItems([{ id: 'item-1', description: '', quantity: 1, rate: 0, amount: 0 }]);
+        loadData();
+      }, 1500);
+    } catch (err) {
+      console.error('Failed to submit invoice request:', err);
+      setIsSubmittingRequest(false);
+    }
   };
 
   const handleSubmitPaymentProof = async (e: React.FormEvent) => {
@@ -821,9 +832,18 @@ export function ClientInvoices() {
 
                     <button
                       type="submit"
-                      className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                      disabled={isSubmittingRequest || requestSent}
+                      className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                      <Send className="w-4 h-4" /> Submit Request for Approval
+                      {isSubmittingRequest ? (
+                        <>
+                          <Loader2 className="w-4 h-4 text-white animate-spin" /> Submitting Request...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" /> Submit Request for Approval
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>

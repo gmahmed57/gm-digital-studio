@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import SEO from '../components/common/SEO';
 import { cmsService } from '../services/cmsService';
 import type { BlogPost } from '../types/portfolio';
+import { resolveAssetUrl, handleImageError } from '../utils/imageUtils';
 
 // Author avatar — shows image if available, else initials derived purely from DB name
 const AuthorAvatar: React.FC<{ src?: string; name?: string; className?: string }> = ({ src, name, className = 'w-10 h-10' }) => {
@@ -12,6 +13,8 @@ const AuthorAvatar: React.FC<{ src?: string; name?: string; className?: string }
   const initials = name
     ? name.trim().split(/\s+/).map((n) => n[0]).slice(0, 2).join('').toUpperCase()
     : '';
+
+  const resolvedSrc = resolveAssetUrl(src, 'avatar');
 
   if (!src || imgError) {
     return (
@@ -23,9 +26,12 @@ const AuthorAvatar: React.FC<{ src?: string; name?: string; className?: string }
 
   return (
     <img
-      src={src}
+      src={resolvedSrc}
       alt={name || ''}
-      onError={() => setImgError(true)}
+      onError={(e) => {
+        setImgError(true);
+        handleImageError(e, 'avatar');
+      }}
       className={`${className} rounded-full object-cover object-center flex-shrink-0`}
     />
   );
@@ -130,10 +136,11 @@ const Blog: React.FC = () => {
               <div className="relative aspect-[16/10] lg:aspect-auto h-full overflow-hidden bg-gray-900">
                 <Link to={`/blog/${featuredPost.slug}`}>
                   <img
-                    src={featuredPost.imageUrl}
+                    src={resolveAssetUrl(featuredPost.imageUrl, 'blog', featuredPost.title || featuredPost.slug)}
                     alt={featuredPost.title}
                     loading="lazy"
                     decoding="async"
+                    onError={(e) => handleImageError(e, 'blog', featuredPost.title || featuredPost.slug)}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 </Link>
@@ -206,10 +213,11 @@ const Blog: React.FC = () => {
                     <div>
                       <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-gray-900 mb-6">
                         <img
-                          src={post.imageUrl}
+                          src={resolveAssetUrl(post.imageUrl, 'blog', post.title || post.slug)}
                           alt={post.title}
                           loading="lazy"
                           decoding="async"
+                          onError={(e) => handleImageError(e, 'blog', post.title || post.slug)}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                         <div className="absolute top-3 left-3 px-3 py-1 rounded-xl bg-gray-950/80 text-white text-[10px] font-bold backdrop-blur-md border border-white/10 flex items-center gap-1">

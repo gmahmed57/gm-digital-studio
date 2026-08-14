@@ -210,7 +210,9 @@
     font-family:var(--font-headline, 'Fraunces', serif); font-weight:700; font-size:66px; line-height:1.06;
     margin:0 0 26px; letter-spacing:-.01em;
   }
-  .slide.is-cover h2{ font-size:82px; }
+  .slide.is-cover { justify-content: flex-end; }
+  .slide.is-cover .content { padding: 70px 68px 230px; }
+  .slide.is-cover h2{ font-size:78px; margin-bottom:0; }
   .slide .body p{ font-size:30px; line-height:1.5; color:rgba(243,239,230,.94); margin:0 0 14px; }
   .slide .body ul{ margin:0; padding:0; list-style:none; }
   .slide .body li{

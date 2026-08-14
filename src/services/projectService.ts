@@ -1,50 +1,68 @@
 import type { ProjectItem, ProjectStatus, MilestoneItem, MilestoneStatus } from '../types/project';
+import type { UserProfile } from '../types/auth';
 import { supabase } from './supabase';
 import { activityLogService } from './activityLogService';
 
-export const projectService = {
-  // Helper to normalize milestones and compute progress based on approved milestones
-  computeProjectMetrics: (milestones: MilestoneItem[], currentStatus: ProjectStatus) => {
-    const normalizedMs = milestones.map((m) => {
-      let status: MilestoneStatus = m.status;
-      if (!status) {
-        status = m.completed ? 'approved' : 'in_progress';
-      }
-      return {
-        ...m,
-        status,
-        completed: status === 'approved',
-      };
-    });
-
-    const approvedCount = normalizedMs.filter((m) => m.status === 'approved').length;
-    const computedProgress = normalizedMs.length > 0
-      ? Math.round((approvedCount / normalizedMs.length) * 100)
-      : 0;
-
-    const rawStatus = (currentStatus || 'active').toString().toLowerCase().trim() as ProjectStatus;
-
+// Helper to normalize milestones and compute progress based on approved milestones
+const computeProjectMetrics = (milestones: MilestoneItem[], currentStatus: ProjectStatus) => {
+  const normalizedMs = (milestones || []).map((m) => {
+    let status: MilestoneStatus = m.status;
+    if (!status) {
+      status = m.completed ? 'approved' : 'in_progress';
+    }
     return {
-      milestones: normalizedMs,
-      progress: computedProgress,
-      status: rawStatus,
+      ...m,
+      status,
+      completed: status === 'approved',
     };
-  },
+  });
 
-  // Get all projects (or filter server-side by client email for defense-in-depth)
-  getProjects: async (): Promise<ProjectItem[]> => {
+  const totalMs = normalizedMs.length;
+  const completedMs = normalizedMs.filter((m) => m.status === 'approved').length;
+  const computedProgress = totalMs > 0 ? Math.round((completedMs / totalMs) * 100) : 0;
+
+  return {
+    progress: computedProgress,
+    milestones: normalizedMs,
+    status: currentStatus,
+  };
+};
+
+export const projectService = {
+  computeProjectMetrics,
+
+  // Get projects with server-side query isolation for client users
+  getProjects: async (user?: UserProfile | null): Promise<ProjectItem[]> => {
     if (!supabase) throw new Error('Database service is not initialized');
 
-    const { data, error } = await supabase.from('projects').select('*');
+    let query = supabase.from('projects').select('*');
+
+    // Enforce server-side query isolation for non-admin client users
+    if (user && user.role !== 'admin') {
+      const email = user.email ? user.email.toLowerCase().trim() : '';
+      const userId = user.id || '';
+
+      const filterConditions: string[] = [];
+      if (email) filterConditions.push(`client_email.ilike.%${email}%`, `client_email.eq.${email}`);
+      if (userId) filterConditions.push(`client_id.eq.${userId}`);
+
+      if (filterConditions.length > 0) {
+        query = query.or(filterConditions.join(','));
+      } else {
+        return [];
+      }
+    }
+
+    const { data, error } = await query;
     if (error) {
-      console.error('Database query error:', error.message);
-      throw error;
+      console.error('[Project Service] Database query error:', error.message);
+      return [];
     }
 
     if (data) {
       return data.map((row: any) => {
         const rawMilestones: MilestoneItem[] = row.milestones || [];
-        const metrics = projectService.computeProjectMetrics(rawMilestones, row.status as ProjectStatus);
+        const metrics = computeProjectMetrics(rawMilestones, row.status as ProjectStatus);
 
         return {
           id: row.id,
@@ -67,6 +85,7 @@ export const projectService = {
           feedbackRating: row.feedbackRating || row.feedback_rating || undefined,
           feedbackComment: row.feedbackComment || row.feedback_comment || undefined,
           feedbackSubmittedAt: row.feedbackSubmittedAt || row.feedback_submitted_at || undefined,
+          createdAt: row.created_at || row.createdAt || row.startDate || row.start_date || '',
         };
       });
     }
@@ -90,7 +109,7 @@ export const projectService = {
       const existing = await projectService.getProjects();
       const current = existing.find((p) => p.id === project.id);
       const rawMilestones = project.milestones || current?.milestones || [];
-      const metrics = projectService.computeProjectMetrics(rawMilestones, project.status || current?.status || 'active');
+      const metrics = computeProjectMetrics(rawMilestones, project.status || current?.status || 'active');
 
       targetItem = {
         ...current,
@@ -101,7 +120,7 @@ export const projectService = {
       } as ProjectItem;
     } else {
       const rawMilestones = project.milestones || [];
-      const metrics = projectService.computeProjectMetrics(rawMilestones, project.status || 'active');
+      const metrics = computeProjectMetrics(rawMilestones, project.status || 'active');
 
       targetItem = {
         id: `proj-${Date.now()}`,
@@ -184,31 +203,18 @@ export const projectService = {
       feedbackSubmittedAt: submittedAt,
     };
 
-    const dbPayload = {
-      id: updatedProject.id,
-      title: updatedProject.title,
-      description: updatedProject.description,
-      category: updatedProject.category,
-      client_id: updatedProject.clientId,
-      client_name: updatedProject.clientName,
-      client_company: updatedProject.clientCompany,
-      client_email: updatedProject.clientEmail,
-      status: updatedProject.status,
-      progress: updatedProject.progress,
-      budget: updatedProject.budget,
-      spent: updatedProject.spent,
-      start_date: updatedProject.startDate,
-      due_date: updatedProject.dueDate,
-      milestones: updatedProject.milestones,
-      deliverables: updatedProject.deliverables,
-      tech_stack: updatedProject.techStack,
-      feedback_rating: rating,
-      feedback_comment: comment,
-      feedback_submitted_at: submittedAt,
-    };
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        feedback_rating: rating,
+        feedback_comment: comment,
+        feedback_submitted_at: submittedAt,
+      })
+      .eq('id', projectId);
 
-    const { error } = await supabase.from('projects').upsert(dbPayload);
-    if (error) throw error;
+    if (error) {
+      console.warn('[Project Service] Milestone feedback notice:', error.message);
+    }
 
     return updatedProject;
   },
@@ -238,7 +244,7 @@ export const projectService = {
         : m
     );
 
-    const metrics = projectService.computeProjectMetrics(updatedMilestones, project.status);
+    const metrics = computeProjectMetrics(updatedMilestones, project.status);
 
     const updatedProject = {
       ...project,
@@ -247,28 +253,18 @@ export const projectService = {
       status: metrics.status,
     };
 
-    const dbPayload = {
-      id: updatedProject.id,
-      title: updatedProject.title,
-      description: updatedProject.description,
-      category: updatedProject.category,
-      client_id: updatedProject.clientId,
-      client_name: updatedProject.clientName,
-      client_company: updatedProject.clientCompany,
-      client_email: updatedProject.clientEmail,
-      status: updatedProject.status,
-      progress: updatedProject.progress,
-      budget: updatedProject.budget,
-      spent: updatedProject.spent,
-      start_date: updatedProject.startDate,
-      due_date: updatedProject.dueDate,
-      milestones: updatedProject.milestones,
-      deliverables: updatedProject.deliverables,
-      tech_stack: updatedProject.techStack,
-    };
-    
-    const { error } = await supabase.from('projects').upsert(dbPayload);
-    if (error) throw error;
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        milestones: updatedProject.milestones,
+        progress: updatedProject.progress,
+        status: updatedProject.status,
+      })
+      .eq('id', projectId);
+
+    if (error) {
+      console.warn('[Project Service] Milestone update notice:', error.message);
+    }
 
     return updatedProject;
   },

@@ -10,29 +10,24 @@ export function waitForImages(node: HTMLElement, timeout: number): Promise<void>
     if(img.complete && img.naturalWidth > 0){ res(); return; }
     const t = setTimeout(()=> res(), timeout);
     img.addEventListener('load', ()=>{ clearTimeout(t); res(); }, { once:true });
-    img.addEventListener('error', ()=>{ clearTimeout(t); img.remove(); res(); }, { once:true });
+    img.addEventListener('error', ()=>{ clearTimeout(t); res(); }, { once:true });
   }))).then(() => {});
 }
 
-// NOTE: renderSlideToCanvas expects `buildSlideNode` to have been called to produce the DOM node.
-// To use React components for export, we must either render them offscreen using React (e.g. createRoot)
-// or just export the currently rendered DOM nodes from the preview track!
-// However, the preview track is scaled. We need a 1080x1350 unscaled node.
-// The easiest React way is to have an offscreen div that renders the exact slide unscaled, 
-// wait for it, and then capture it.
-
 export async function captureNodeToCanvas(node: HTMLElement): Promise<HTMLCanvasElement> {
-  await waitForImages(node, 6000);
+  await waitForImages(node, 8000);
   try {
     const canvas = await html2canvas(node, {
       width: 1080, height: 1350, scale: 1,
-      useCORS: true, allowTaint: false, backgroundColor: null, logging: false
+      useCORS: true, allowTaint: true, backgroundColor: null, logging: false
     });
-    // Guard against silently-tainted canvas
-    canvas.getContext('2d')?.getImageData(0, 0, 1, 1);
     return canvas;
   } catch(err) {
-    throw new Error('Canvas tainted or failed to render: ' + err);
+    console.warn('Canvas capture fallback:', err);
+    return await html2canvas(node, {
+      width: 1080, height: 1350, scale: 1,
+      useCORS: false, allowTaint: true, backgroundColor: '#111111', logging: false
+    });
   }
 }
 
@@ -53,9 +48,9 @@ export async function exportPDF(canvases: HTMLCanvasElement[], onProgress: (msg:
   for(let i=0; i<canvases.length; i++){
     onProgress(`Rendering slide ${i+1} of ${canvases.length}…`);
     const canvas = canvases[i];
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const imgData = canvas.toDataURL('image/png');
     if(i>0) pdf.addPage([1080,1350], 'portrait');
-    pdf.addImage(imgData, 'JPEG', 0, 0, 1080, 1350);
+    pdf.addImage(imgData, 'PNG', 0, 0, 1080, 1350, undefined, 'FAST');
   }
 
   onProgress('Done — downloading…');

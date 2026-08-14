@@ -6,6 +6,7 @@ import type { BlogPost, CaseStudy } from '../../types/portfolio';
 import SEO from '../../components/common/SEO';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmModal from '../../components/common/ConfirmModal';
+import { resolveAssetUrl, handleImageError } from '../../utils/imageUtils';
 import {
   FileText,
   Briefcase,
@@ -518,9 +519,12 @@ export function AdminCMS() {
                       <tr key={post.id} className="hover:bg-gray-50/50 dark:hover:bg-dark-bg/30 transition-colors">
                         <td className="p-4">
                           <div className="flex items-center gap-3">
-                            {post.imageUrl ? (
-                              <img src={post.imageUrl} alt={post.title} className="w-12 h-10 object-cover rounded-lg flex-shrink-0" />
-                            ) : null}
+                            <img
+                              src={resolveAssetUrl(post.imageUrl, 'blog', post.title || post.slug)}
+                              alt={post.title}
+                              onError={(e) => handleImageError(e, 'blog', post.title || post.slug)}
+                              className="w-12 h-10 object-cover rounded-lg flex-shrink-0 border border-gray-200 dark:border-dark-border"
+                            />
                             <div>
                               <div className="font-semibold text-gray-900 dark:text-white line-clamp-1">{post.title}</div>
                               <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">/blog/{post.slug}</div>

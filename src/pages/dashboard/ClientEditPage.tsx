@@ -532,22 +532,22 @@ export function ClientEditPage() {
           {/* Right Column: Granted Studio Tools Access Matrix */}
           <div className="lg:col-span-6 space-y-6">
             <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-dark-border">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-dark-border">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold shrink-0">
                     <Wrench className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-white">
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-white truncate">
                       Granted Studio Tools Access
                     </h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                       Respond to client access requests (Grant or Decline).
                     </p>
                   </div>
                 </div>
 
-                <span className="text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-3 py-1.5 rounded-xl border border-brand-500/20">
+                <span className="text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-3 py-1.5 rounded-xl border border-brand-500/20 self-start sm:self-auto shrink-0">
                   {allowedToolIds.map(normalizeToolId).filter(id => MASTER_STUDIO_TOOLS.some(t => normalizeToolId(t.id) === id)).length} of {MASTER_STUDIO_TOOLS.length} Active
                 </span>
               </div>
@@ -563,7 +563,7 @@ export function ClientEditPage() {
                   return (
                     <div
                       key={tool.id}
-                      className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${
+                      className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                         isEnabled
                           ? 'border-brand-500/50 bg-brand-500/5 dark:bg-brand-500/10'
                           : isRequested
@@ -571,8 +571,8 @@ export function ClientEditPage() {
                           : 'border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/50 opacity-70 hover:opacity-100'
                       }`}
                     >
-                      <div className="pr-3">
-                        <div className="flex items-center gap-2 mb-1">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="text-sm font-bold text-gray-900 dark:text-white">
                             {tool.name}
                           </span>
@@ -592,7 +592,7 @@ export function ClientEditPage() {
                         </p>
                       </div>
 
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0 self-start sm:self-auto">
                         {isEnabled ? (
                           <button
                             type="button"

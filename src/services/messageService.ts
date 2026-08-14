@@ -43,13 +43,19 @@ export const messageService = {
     return [];
   },
 
-  // Send a new message
-  sendMessage: async (clientId: string, senderRole: 'admin' | 'client', content: string): Promise<Message> => {
+  // Send a new message with enforced role verification
+  sendMessage: async (clientId: string, senderRole: 'admin' | 'client', content: string, currentUserRole?: string): Promise<Message> => {
     if (!supabase) throw new Error('Database service is not initialized.');
+
+    // Validate role: Keep senderRole unless non-admin user attempts admin spoofing
+    let validatedRole: 'admin' | 'client' = senderRole;
+    if (currentUserRole && currentUserRole !== 'admin' && senderRole === 'admin') {
+      validatedRole = 'client';
+    }
 
     const payload = {
       client_id: clientId,
-      sender_role: senderRole,
+      sender_role: validatedRole,
       content,
       is_read: false,
     };

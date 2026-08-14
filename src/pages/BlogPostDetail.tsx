@@ -10,11 +10,14 @@ import {
   List,
   Send,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import SEO from '../components/common/SEO';
 import { cmsService, type BlogComment } from '../services/cmsService';
 import type { BlogPost } from '../types/portfolio';
 import { BlogContentRenderer } from '../components/common/BlogContentRenderer';
+import { resolveAssetUrl, handleImageError } from '../utils/imageUtils';
 
 // Author avatar — initials derived purely from DB name, no hardcoded strings
 const AuthorAvatar: React.FC<{ src?: string; name?: string; className?: string }> = ({ src, name, className = 'w-12 h-12' }) => {
@@ -22,6 +25,9 @@ const AuthorAvatar: React.FC<{ src?: string; name?: string; className?: string }
   const initials = name
     ? name.trim().split(/\s+/).map((n) => n[0]).slice(0, 2).join('').toUpperCase()
     : '';
+
+  const resolvedSrc = resolveAssetUrl(src, 'avatar');
+
   if (!src || imgError) {
     return (
       <div className={`${className} rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-lg border border-brand-500/50 flex-shrink-0`}>
@@ -29,7 +35,17 @@ const AuthorAvatar: React.FC<{ src?: string; name?: string; className?: string }
       </div>
     );
   }
-  return <img src={src} alt={name || ''} onError={() => setImgError(true)} className={`${className} rounded-full object-cover border border-brand-500/50 flex-shrink-0`} />;
+  return (
+    <img
+      src={resolvedSrc}
+      alt={name || ''}
+      onError={(e) => {
+        setImgError(true);
+        handleImageError(e, 'avatar');
+      }}
+      className={`${className} rounded-full object-cover border border-brand-500/50 flex-shrink-0`}
+    />
+  );
 };
 
 // TOC Heading item with id & display text from the live DOM
@@ -53,6 +69,7 @@ const BlogPostDetail: React.FC = () => {
   // DOM-based TOC state — populated after article renders into the DOM
   const [tocItems, setTocItems] = useState<TocHeading[]>([]);
   const [activeHeadingId, setActiveHeadingId] = useState<string>('');
+  const [isMobileTocOpen, setIsMobileTocOpen] = useState(false);
   const articleRef = useRef<HTMLDivElement>(null);
 
 
@@ -230,7 +247,12 @@ const BlogPostDetail: React.FC = () => {
         <section className="py-12 bg-white dark:bg-dark-bg">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="relative aspect-[16/9] rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-800 bg-gray-900">
-              <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+              <img
+                src={resolveAssetUrl(post.imageUrl, 'blog')}
+                alt={post.title}
+                onError={(e) => handleImageError(e, 'blog')}
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
         </section>
@@ -240,8 +262,73 @@ const BlogPostDetail: React.FC = () => {
       <section className="py-12 bg-white dark:bg-dark-bg border-b border-gray-100 dark:border-dark-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
 
+          {/* Table of Contents Sidebar (Top collapsed on mobile, Right sticky column on desktop) */}
+          <div className="lg:col-span-4 order-1 lg:order-2">
+            <div className="sticky top-24 p-5 sm:p-6 rounded-3xl bg-gray-50/90 dark:bg-dark-surface/60 border border-gray-200/80 dark:border-dark-border space-y-3 shadow-xs">
+              <div
+                onClick={() => setIsMobileTocOpen(!isMobileTocOpen)}
+                className="flex items-center justify-between cursor-pointer lg:cursor-default"
+              >
+                <div className="flex items-center gap-2">
+                  <List className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white">
+                    Table of Contents
+                  </h4>
+                  {tocItems.length > 0 && (
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400">
+                      {tocItems.length}
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="lg:hidden p-1 text-gray-500 hover:text-gray-900 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                  aria-label="Toggle Table of Contents"
+                >
+                  {isMobileTocOpen ? (
+                    <ChevronUp className="w-4 h-4 text-brand-500" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
+              </div>
+
+              <div className={`${isMobileTocOpen ? 'block' : 'hidden lg:block'} pt-2 border-t border-gray-200/80 dark:border-gray-800 transition-all`}>
+                {tocItems.length > 0 ? (
+                  <ul className="space-y-1 text-xs max-h-72 lg:max-h-none overflow-y-auto pr-1">
+                    {tocItems.map((item) => {
+                      const isActive = activeHeadingId === item.id;
+                      const indent = item.level === 1 ? 'pl-0' : item.level === 2 ? 'pl-0' : item.level === 3 ? 'pl-3' : 'pl-5';
+                      return (
+                        <li key={item.id} className={indent}>
+                          <a
+                            href={`#${item.id}`}
+                            onClick={(e) => {
+                              scrollToHeading(e, item.id);
+                              setIsMobileTocOpen(false);
+                            }}
+                            className={`block py-1.5 px-3 rounded-xl transition-all truncate font-medium ${
+                              isActive
+                                ? 'bg-brand-600 text-white font-bold shadow-xs'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-dark-card'
+                            }`}
+                          >
+                            {item.text}
+                          </a>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-gray-400 italic">No section headings available.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Article Main Body */}
-          <div className="lg:col-span-8 space-y-6">
+          <div className="lg:col-span-8 order-2 lg:order-1 space-y-6">
             {/* ref is on a wrapper div so we can querySelectorAll inside it */}
             <div ref={articleRef}>
               <BlogContentRenderer content={post.content} />
@@ -370,46 +457,6 @@ const BlogPostDetail: React.FC = () => {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-
-          {/* Table of Contents Sidebar */}
-          <div className="lg:col-span-4">
-            <div className="sticky top-24 p-6 rounded-3xl bg-gray-50/80 dark:bg-dark-surface/50 border border-gray-200/80 dark:border-dark-border space-y-4">
-              <div className="flex items-center gap-2 border-b border-gray-200/80 dark:border-gray-800 pb-3">
-                <List className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white">
-                  Table of Contents
-                </h4>
-              </div>
-
-              {tocItems.length > 0 ? (
-                <ul className="space-y-1 text-xs">
-                  {tocItems.map((item) => {
-                    const isActive = activeHeadingId === item.id;
-                    const indent = item.level === 1 ? 'pl-0' : item.level === 2 ? 'pl-0' : item.level === 3 ? 'pl-3' : 'pl-5';
-                    return (
-                      <li key={item.id} className={indent}>
-                        <a
-                          href={`#${item.id}`}
-                          onClick={(e) => scrollToHeading(e, item.id)}
-                          className={`block px-3 py-1.5 rounded-lg text-xs transition-all ${
-                            isActive
-                              ? 'text-gray-900 dark:text-white font-bold bg-white dark:bg-dark-surface border-l-2 border-brand-500 pl-3 shadow-xs'
-                              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-dark-surface font-medium'
-                          }`}
-                        >
-                          {item.text}
-                        </a>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="text-xs text-gray-400 italic">
-                  {post.content ? 'Loading outline...' : 'Standard article overview.'}
-                </p>
-              )}
             </div>
           </div>
 

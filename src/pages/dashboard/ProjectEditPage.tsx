@@ -232,17 +232,17 @@ export function ProjectEditPage() {
       <div className="space-y-6 font-sans">
         
         {/* Top Header & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-dark-border pb-5">
           <div className="flex items-center gap-3">
             <Link
               to="/admin/projects"
-              className="w-9 h-9 rounded-xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-white flex items-center justify-center transition-colors shadow-xs"
+              className="w-9 h-9 rounded-xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-white flex items-center justify-center transition-colors shadow-xs shrink-0"
               title="Back to Project Directory"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-white">
+              <h1 className="text-xl sm:text-2xl font-heading font-extrabold text-gray-900 dark:text-white">
                 {isEditing ? `Edit Project: ${title}` : 'Create Studio Project Build'}
               </h1>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
@@ -251,14 +251,16 @@ export function ProjectEditPage() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            form="project-edit-form"
-            className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer w-fit"
-          >
-            <Save className="w-4 h-4" />
-            {isEditing ? 'Save Changes' : 'Create Project'}
-          </button>
+          <div className="flex items-center justify-end w-full sm:w-auto">
+            <button
+              type="submit"
+              form="project-edit-form"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Save className="w-4 h-4" />
+              {isEditing ? 'Save Changes' : 'Create Project'}
+            </button>
+          </div>
         </div>
 
         {/* Project Form Layout */}

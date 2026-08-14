@@ -12,10 +12,10 @@ const getCorsHeaders = (req: Request) => {
   const isAllowed =
     allowedOrigins.includes(origin) ||
     origin.endsWith('.gmdigitalstudio.app') ||
-    origin.endsWith('.vercel.app')
+    (origin.startsWith('https://') && origin.includes('gm-digital-studio') && origin.endsWith('.vercel.app'))
 
   return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : (origin || '*'),
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://gmdigitalstudio.app',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   }
@@ -30,7 +30,7 @@ serve(async (req) => {
   }
 
   try {
-    const resendApiKey = Deno.env.get('RESEND_API_KEY') || Deno.env.get('VITE_RESEND_API_KEY') || ''
+    const resendApiKey = Deno.env.get('RESEND_API_KEY') || ''
     const adminEmail = Deno.env.get('ADMIN_EMAIL') || Deno.env.get('VITE_ADMIN_EMAIL') || ''
     const { to, subject, html, from, mode } = await req.json().catch(() => ({}))
 

@@ -6,6 +6,7 @@ import SEO from '../components/common/SEO';
 import { CASE_STUDIES } from '../constants/portfolioData';
 import { cmsService } from '../services/cmsService';
 import type { CaseStudy } from '../types/portfolio';
+import { resolveAssetUrl, handleImageError } from '../utils/imageUtils';
 
 import heroBgVideo from '../assets/videos/hero-bg.mp4';
 
@@ -128,10 +129,11 @@ const Portfolio: React.FC = () => {
                     {/* Media Header Container */}
                     <div className={`relative ${isWide ? 'aspect-[16/9] md:aspect-[21/9]' : 'aspect-[4/3]'} overflow-hidden bg-gray-900`}>
                       <img
-                        src={project.thumbnailUrl}
+                        src={resolveAssetUrl(project.thumbnailUrl, 'project', project.title)}
                         alt={project.title}
                         loading="lazy"
                         decoding="async"
+                        onError={(e) => handleImageError(e, 'project', project.title)}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       />
                       

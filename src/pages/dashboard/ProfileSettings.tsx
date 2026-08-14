@@ -6,6 +6,7 @@ import { clientService } from '../../services/clientService';
 import { supabase } from '../../services/supabase';
 import type { ClientItem } from '../../types/client';
 import SEO from '../../components/common/SEO';
+import { resolveAssetUrl, handleImageError } from '../../utils/imageUtils';
 import {
   User,
   Mail,
@@ -355,8 +356,9 @@ export function ProfileSettings() {
               <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-4 border-brand-500/80 shadow-md bg-gray-100 dark:bg-dark-surface flex items-center justify-center mx-auto">
                 {avatarUrl ? (
                   <img
-                    src={avatarUrl}
+                    src={resolveAssetUrl(avatarUrl, 'avatar')}
                     alt={user?.fullName}
+                    onError={(e) => handleImageError(e, 'avatar')}
                     className="w-full h-full object-cover object-center"
                   />
                 ) : (
@@ -676,7 +678,7 @@ export function ProfileSettings() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? 'Saving Changes...' : 'Save Profile Changes'}
               </button>
@@ -799,7 +801,7 @@ export function ProfileSettings() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? 'Saving Links...' : 'Save Social Profiles'}
               </button>
@@ -853,7 +855,12 @@ export function ProfileSettings() {
                       {/* Avatar DP */}
                       <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-brand-500/60 bg-gray-200 dark:bg-dark-card flex-shrink-0 flex items-center justify-center">
                         {c.avatarUrl ? (
-                          <img src={c.avatarUrl} alt={c.fullName} className="w-full h-full object-cover object-center" />
+                          <img
+                            src={resolveAssetUrl(c.avatarUrl, 'avatar')}
+                            alt={c.fullName}
+                            onError={(e) => handleImageError(e, 'avatar')}
+                            className="w-full h-full object-cover object-center"
+                          />
                         ) : (
                           <span className="font-heading font-extrabold text-brand-600 dark:text-brand-400 text-base">
                             {(c.fullName || 'C').charAt(0).toUpperCase()}
@@ -969,11 +976,11 @@ export function ProfileSettings() {
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="flex justify-end pt-2">
               <button
                 type="submit"
                 disabled={isUpdatingPassword}
-                className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isUpdatingPassword ? 'Updating Password...' : 'Update Password Now'}
               </button>

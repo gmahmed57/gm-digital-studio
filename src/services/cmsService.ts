@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import type { BlogPost, CaseStudy } from '../types/portfolio';
 import { CASE_STUDIES } from '../constants/portfolioData';
 import { TESTIMONIALS } from '../constants/homeData';
+import { resolveAssetUrl } from '../utils/imageUtils';
 
 export interface AuthorItem {
   id: string;
@@ -62,7 +63,7 @@ export const cmsService = {
         const matchAuthor = dbAuthors?.find(a => (a.name && authorName && a.name.toLowerCase() === authorName.toLowerCase()) || (a.email && rawAuthor.email && a.email.toLowerCase() === rawAuthor.email.toLowerCase()));
         const matchProfile = dbProfiles?.find(p => (p.fullName && authorName && p.fullName.toLowerCase() === authorName.toLowerCase()) || (p.email && rawAuthor.email && p.email.toLowerCase() === rawAuthor.email.toLowerCase()));
 
-        const finalAvatarUrl = matchAuthor?.avatar_url || matchProfile?.avatar_url || rawAuthor.avatarUrl || rawAuthor.avatar_url || '';
+        const finalAvatarUrl = resolveAssetUrl(matchAuthor?.avatar_url || matchProfile?.avatar_url || rawAuthor.avatarUrl || rawAuthor.avatar_url || '', 'avatar');
 
         return {
           id: row.id,
@@ -71,12 +72,12 @@ export const cmsService = {
           category: row.category,
           description: row.description,
           content: row.content,
-          imageUrl: row.image_url,
+          imageUrl: resolveAssetUrl(row.image_url, 'blog', row.title || row.slug),
           readTime: row.read_time,
           publishedAt: row.published_at,
           author: {
-            name: authorName || matchAuthor?.name || matchProfile?.fullName || '',
-            role: matchAuthor?.role || matchProfile?.job_title || rawAuthor.role || '',
+            name: authorName || matchAuthor?.name || matchProfile?.fullName || 'GM Digital Studio',
+            role: matchAuthor?.role || matchProfile?.job_title || rawAuthor.role || 'Solutions Architect',
             avatarUrl: finalAvatarUrl,
           },
           tags: row.tags || [],
@@ -107,7 +108,7 @@ export const cmsService = {
       const matchAuthor = dbAuthors?.find(a => (a.name && authorName && a.name.toLowerCase() === authorName.toLowerCase()) || (a.email && rawAuthor.email && a.email.toLowerCase() === rawAuthor.email.toLowerCase()));
       const matchProfile = dbProfiles?.find(p => (p.fullName && authorName && p.fullName.toLowerCase() === authorName.toLowerCase()) || (p.email && rawAuthor.email && p.email.toLowerCase() === rawAuthor.email.toLowerCase()));
 
-      const finalAvatarUrl = matchAuthor?.avatar_url || matchProfile?.avatar_url || rawAuthor.avatarUrl || rawAuthor.avatar_url || '';
+      const finalAvatarUrl = resolveAssetUrl(matchAuthor?.avatar_url || matchProfile?.avatar_url || rawAuthor.avatarUrl || rawAuthor.avatar_url || '', 'avatar');
 
       return {
         id: data.id,
@@ -116,12 +117,12 @@ export const cmsService = {
         category: data.category,
         description: data.description,
         content: data.content,
-        imageUrl: data.image_url,
+        imageUrl: resolveAssetUrl(data.image_url, 'blog', data.title || data.slug),
         readTime: data.read_time,
         publishedAt: data.published_at,
         author: {
-          name: authorName || matchAuthor?.name || matchProfile?.fullName || '',
-          role: matchAuthor?.role || matchProfile?.job_title || rawAuthor.role || '',
+          name: authorName || matchAuthor?.name || matchProfile?.fullName || 'GM Digital Studio',
+          role: matchAuthor?.role || matchProfile?.job_title || rawAuthor.role || 'Solutions Architect',
           avatarUrl: finalAvatarUrl,
         },
         tags: data.tags || [],

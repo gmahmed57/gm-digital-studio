@@ -6,6 +6,7 @@ import SEO from '../components/common/SEO';
 import { CASE_STUDIES } from '../constants/portfolioData';
 import { cmsService } from '../services/cmsService';
 import type { CaseStudy } from '../types/portfolio';
+import { resolveAssetUrl, handleImageError } from '../utils/imageUtils';
 
 const CaseStudyDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -85,8 +86,9 @@ const CaseStudyDetail: React.FC = () => {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative aspect-[16/9] rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-800 bg-gray-900">
             <img
-              src={caseStudy.heroImageUrl}
+              src={resolveAssetUrl(caseStudy.heroImageUrl, 'project', caseStudy.title)}
               alt={caseStudy.title}
+              onError={(e) => handleImageError(e, 'project', caseStudy.title)}
               className="w-full h-full object-cover"
             />
           </div>
@@ -225,8 +227,9 @@ const CaseStudyDetail: React.FC = () => {
               <div className="flex items-center gap-4 relative z-10">
                 {caseStudy.testimonial.avatarUrl ? (
                   <img
-                    src={caseStudy.testimonial.avatarUrl}
+                    src={resolveAssetUrl(caseStudy.testimonial.avatarUrl, 'avatar')}
                     alt={caseStudy.testimonial.author}
+                    onError={(e) => handleImageError(e, 'avatar')}
                     className="w-12 h-12 rounded-full object-cover border-2 border-brand-500/50 flex-shrink-0"
                   />
                 ) : (

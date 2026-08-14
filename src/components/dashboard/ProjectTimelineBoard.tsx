@@ -6,7 +6,8 @@ import {
   Calendar,
   Layers,
   Check,
-  MessageSquare
+  MessageSquare,
+  Loader2,
 } from 'lucide-react';
 
 interface ProjectTimelineBoardProps {
@@ -18,7 +19,7 @@ interface ProjectTimelineBoardProps {
     milestoneTitle: string,
     newStatus: MilestoneStatus,
     comment?: string
-  ) => void;
+  ) => void | Promise<void>;
 }
 
 export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
@@ -27,6 +28,7 @@ export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
 }) => {
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [revisionNote, setRevisionNote] = useState<string>('');
+  const [submittingActionId, setSubmittingActionId] = useState<string | null>(null);
 
   const getStatusBadge = (status: MilestoneStatus) => {
     switch (status) {
@@ -181,18 +183,35 @@ export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
                       <div className="flex items-center gap-2 flex-wrap pt-2 sm:pt-0">
                         <button
                           type="button"
-                          onClick={() => onMilestoneAction(m.id, m.title, 'approved')}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                          disabled={submittingActionId === m.id}
+                          onClick={async () => {
+                            setSubmittingActionId(m.id);
+                            try {
+                              await onMilestoneAction(m.id, m.title, 'approved');
+                            } finally {
+                              setSubmittingActionId(null);
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                          <Check className="w-3.5 h-3.5" /> Approve Phase
+                          {submittingActionId === m.id ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Approving...
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-3.5 h-3.5" /> Approve Phase
+                            </>
+                          )}
                         </button>
 
                         <button
                           type="button"
+                          disabled={submittingActionId === m.id}
                           onClick={() =>
                             setActiveCommentId(activeCommentId === m.id ? null : m.id)
                           }
-                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-70"
                         >
                           <RotateCcw className="w-3.5 h-3.5" /> Request Revision
                         </button>
@@ -233,14 +252,26 @@ export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            onMilestoneAction(m.id, m.title, 'modification_requested', revisionNote);
-                            setActiveCommentId(null);
-                            setRevisionNote('');
+                          disabled={submittingActionId === m.id}
+                          onClick={async () => {
+                            setSubmittingActionId(m.id);
+                            try {
+                              await onMilestoneAction(m.id, m.title, 'modification_requested', revisionNote);
+                              setActiveCommentId(null);
+                              setRevisionNote('');
+                            } finally {
+                              setSubmittingActionId(null);
+                            }
                           }}
-                          className="px-3 py-1 rounded-xl bg-amber-600 text-white text-xs font-bold"
+                          className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                          Submit Revision Request
+                          {submittingActionId === m.id ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Submitting...
+                            </>
+                          ) : (
+                            'Submit Revision Request'
+                          )}
                         </button>
                       </div>
                     </div>

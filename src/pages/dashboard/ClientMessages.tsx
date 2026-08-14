@@ -60,7 +60,7 @@ export function ClientMessages() {
     if (!newMessage.trim() || !user?.id || isSending) return;
     
     setIsSending(true);
-    const sentMsg = await messageService.sendMessage(user.id, 'client', newMessage.trim());
+    const sentMsg = await messageService.sendMessage(user.id, 'client', newMessage.trim(), 'client');
     setMessages(prev => [...prev, sentMsg]);
     setNewMessage('');
     setIsSending(false);

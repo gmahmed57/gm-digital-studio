@@ -7,6 +7,7 @@ import { supabase } from '../../services/supabase';
 import SEO from '../../components/common/SEO';
 import { useAuth } from '../../context/AuthContext';
 import { BlogContentRenderer } from '../../components/common/BlogContentRenderer';
+import { resolveAssetUrl, handleImageError } from '../../utils/imageUtils';
 import {
   ArrowLeft,
   Save,
@@ -352,26 +353,26 @@ export function AdminBlogEditor() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
           <div className="flex items-center bg-gray-100 dark:bg-dark-bg p-1 rounded-xl border border-gray-200 dark:border-dark-border text-xs font-semibold">
             <button
               type="button"
               onClick={() => setActiveView('editor')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${activeView === 'editor' ? 'bg-white dark:bg-dark-surface text-brand-600 dark:text-brand-400 shadow-xs' : 'text-gray-500'}`}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${activeView === 'editor' ? 'bg-white dark:bg-dark-surface text-brand-600 dark:text-brand-400 shadow-xs' : 'text-gray-500'}`}
             >
               <Edit3 className="w-3.5 h-3.5" /> Editor
             </button>
             <button
               type="button"
               onClick={() => setActiveView('split')}
-              className={`px-3 py-1.5 rounded-lg hidden lg:flex items-center gap-1.5 transition-all ${activeView === 'split' ? 'bg-white dark:bg-dark-surface text-brand-600 dark:text-brand-400 shadow-xs' : 'text-gray-500'}`}
+              className={`px-3 py-1.5 rounded-lg hidden lg:flex items-center gap-1.5 transition-all cursor-pointer ${activeView === 'split' ? 'bg-white dark:bg-dark-surface text-brand-600 dark:text-brand-400 shadow-xs' : 'text-gray-500'}`}
             >
               <FileCode className="w-3.5 h-3.5" /> Split View
             </button>
             <button
               type="button"
               onClick={() => setActiveView('preview')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${activeView === 'preview' ? 'bg-white dark:bg-dark-surface text-brand-600 dark:text-brand-400 shadow-xs' : 'text-gray-500'}`}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${activeView === 'preview' ? 'bg-white dark:bg-dark-surface text-brand-600 dark:text-brand-400 shadow-xs' : 'text-gray-500'}`}
             >
               <Eye className="w-3.5 h-3.5" /> Preview
             </button>
@@ -380,7 +381,7 @@ export function AdminBlogEditor() {
           <button
             onClick={handleSave}
             disabled={isLoading}
-            className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold text-sm rounded-xl flex items-center gap-2 shadow-sm transition-all disabled:opacity-50"
+            className="w-full sm:w-auto px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
           >
             {saveSuccess ? (
               <><CheckCircle2 className="w-4 h-4" /><span>Published</span></>
@@ -573,7 +574,12 @@ export function AdminBlogEditor() {
                 ))}
               </div>
               {formData.imageUrl && (
-                <img src={formData.imageUrl} alt="Preview" className="w-full h-36 object-cover rounded-xl border border-gray-200 dark:border-dark-border" />
+                <img
+                  src={resolveAssetUrl(formData.imageUrl, 'blog', formData.title || formData.slug)}
+                  alt="Preview"
+                  onError={(e) => handleImageError(e, 'blog', formData.title || formData.slug)}
+                  className="w-full h-36 object-cover rounded-xl border border-gray-200 dark:border-dark-border"
+                />
               )}
             </div>
           </div>

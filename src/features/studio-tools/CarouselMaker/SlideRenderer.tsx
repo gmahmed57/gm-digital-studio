@@ -114,8 +114,9 @@ export const SlideRenderer = React.forwardRef<HTMLDivElement, SlideRendererProps
   };
 
   const renderTextContent = () => {
-    const bullets = slide.bodyLines.filter(l => /^[-•]\s/.test(l));
-    const paras = slide.bodyLines.filter(l => !/^[-•]\s/.test(l));
+    const lines = slide.bodyLines || [];
+    const bullets = lines.filter((l: string) => /^[-•]\s/.test(l));
+    const paras = lines.filter((l: string) => !/^[-•]\s/.test(l));
 
     return (
       <div className="content">
@@ -124,10 +125,10 @@ export const SlideRenderer = React.forwardRef<HTMLDivElement, SlideRendererProps
         </div>
         <h2>{slide.headline}</h2>
         <div className="body">
-          {paras.map((p, i) => <p key={`p-${i}`}>{p}</p>)}
+          {paras.map((p: string, i: number) => <p key={`p-${i}`}>{p}</p>)}
           {bullets.length > 0 && (
             <ul>
-              {bullets.map((b, i) => <li key={`b-${i}`}>{b.replace(/^[-•]\s/, '')}</li>)}
+              {bullets.map((b: string, i: number) => <li key={`b-${i}`}>{b.replace(/^[-•]\s/, '')}</li>)}
             </ul>
           )}
         </div>
