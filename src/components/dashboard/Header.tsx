@@ -213,7 +213,7 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
       {/* Right Cluster: Compact Desktop Search Bar & Action Controls */}
       <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-end min-w-0">
         {/* Real Interactive Search Bar */}
-        <div ref={searchContainerRef} className="w-full sm:w-64 md:w-72 relative">
+        <div ref={searchContainerRef} className="w-full max-w-[160px] xs:max-w-[200px] sm:max-w-none sm:w-64 md:w-72 relative">
           <div className="relative flex items-center w-full">
             <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute left-2.5 sm:left-3 pointer-events-none" />
             <input
@@ -225,18 +225,18 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
                 setSearchQuery(e.target.value);
                 setIsSearchFocused(true);
               }}
-              placeholder="Search projects, clients, invoices..."
+              placeholder="Search..."
               className="w-full pl-7 sm:pl-9 pr-7 sm:pr-10 py-1.5 rounded-xl border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-surface text-xs font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all shadow-xs"
             />
             {isSearchLoading ? (
-              <Loader2 className="w-3.5 h-3.5 text-brand-500 animate-spin absolute right-3" />
+              <Loader2 className="w-3.5 h-3.5 text-brand-500 animate-spin absolute right-2.5 sm:right-3" />
             ) : searchQuery ? (
               <button
                 onClick={() => {
                   setSearchQuery('');
                   setSearchResults([]);
                 }}
-                className="absolute right-3 p-0.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                className="absolute right-2.5 sm:right-3 p-0.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -247,9 +247,9 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
             )}
           </div>
 
-          {/* Floating Inline Dropdown Menu */}
+          {/* Floating Inline Dropdown Menu (Fixed & responsive on mobile, anchored on desktop) */}
           {isSearchFocused && searchQuery.trim() !== '' && (
-            <div className="absolute top-full right-0 w-80 sm:w-96 mt-2 z-50 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl p-2 max-h-80 overflow-y-auto space-y-1 font-sans">
+            <div className="fixed left-3 right-3 sm:left-auto sm:right-0 top-16 sm:top-full w-auto sm:w-96 mt-2 z-50 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl p-2 max-h-80 overflow-y-auto space-y-1 font-sans">
               {isSearchLoading && searchResults.length === 0 ? (
                 <div className="p-4 text-center text-xs text-gray-400">
                   Searching database...

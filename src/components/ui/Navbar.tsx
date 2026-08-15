@@ -4,6 +4,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { Moon, Sun, Menu, X, User } from 'lucide-react';
 import logo from '../../assets/icon-logo.png';
 import { settingsService } from '../../services/settingsService';
+import { getPortalUrl } from '../../utils/domainUtils';
 
 const Navbar = () => {
   const { theme, setTheme } = useTheme();
@@ -83,12 +84,12 @@ const Navbar = () => {
             {theme === 'dark' ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5" />}
           </button>
 
-          <Link
-            to="/login"
+          <a
+            href={getPortalUrl('/login')}
             className="hidden lg:inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-gray-300 dark:border-dark-border bg-gray-50 dark:bg-dark-surface px-3 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors whitespace-nowrap flex-shrink-0"
           >
             <User className="w-3.5 h-3.5 text-brand-600" /> Client Portal
-          </Link>
+          </a>
 
           <Link
             to="/contact"
@@ -127,13 +128,13 @@ const Navbar = () => {
               </NavLink>
             ))}
             <div className="pt-2 space-y-2">
-              <Link
-                to="/login"
+              <a
+                href={getPortalUrl('/login')}
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-dark-border bg-gray-50 dark:bg-dark-surface px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200"
               >
                 <User className="w-4 h-4 text-brand-600" /> Client Portal
-              </Link>
+              </a>
               <Link
                 to="/contact"
                 onClick={() => setMobileMenuOpen(false)}

@@ -93,7 +93,7 @@ export function AdminInvoices() {
         : new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
     );
     setCustomTaxRate(inv.taxRate || 0);
-    setCustomNotes(inv.notes || 'Invoice request approved by Studio Admin. Payment due within 14 days.');
+    setCustomNotes(inv.notes || 'Invoice request approved by Studio Admin. Please submit payment before the specified due date.');
     setCustomTip(inv.tipAmount || 0);
 
     const defaultItems: InvoiceLineItem[] = inv.items && inv.items.length > 0
@@ -1402,7 +1402,7 @@ export function AdminInvoices() {
                       rows={2}
                       value={customNotes}
                       onChange={(e) => setCustomNotes(e.target.value)}
-                      placeholder="Payment due within 14 days of approval..."
+                      placeholder="Please submit payment before the specified due date..."
                       className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
                     />
                   </div>

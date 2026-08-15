@@ -18,6 +18,7 @@ import {
   Star,
   Sparkles,
   Send,
+  Loader2,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 
@@ -394,10 +395,12 @@ export function ClientProjectDetailPage() {
                     <button
                       type="submit"
                       disabled={isSubmittingFeedback || !feedbackCommentText.trim()}
-                      className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSubmittingFeedback ? (
-                        'Submitting Feedback...'
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> Submitting Feedback...
+                        </>
                       ) : (
                         <>
                           <Send className="w-3.5 h-3.5" /> Submit Star Rating & Review

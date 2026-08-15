@@ -70,7 +70,7 @@ export function SharedFiles() {
                 </div>
                 
                 <a
-                  href={folder.driveUrl}
+                  href={folder.driveUrl && (folder.driveUrl.startsWith('https://') || folder.driveUrl.startsWith('http://')) ? folder.driveUrl : '#'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-6 w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2"

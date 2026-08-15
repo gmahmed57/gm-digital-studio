@@ -27,6 +27,7 @@ import {
   ExternalLink,
   Eye,
   X,
+  Loader2,
 } from 'lucide-react';
 
 const LinkedinIcon = ({ className }: { className?: string }) => (
@@ -678,9 +679,15 @@ export function ProfileSettings() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {loading ? 'Saving Changes...' : 'Save Profile Changes'}
+                {loading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> Saving Changes...
+                  </>
+                ) : (
+                  'Save Profile Changes'
+                )}
               </button>
             </div>
           </form>
@@ -801,9 +808,15 @@ export function ProfileSettings() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {loading ? 'Saving Links...' : 'Save Social Profiles'}
+                {loading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> Saving Links...
+                  </>
+                ) : (
+                  'Save Social Profiles'
+                )}
               </button>
             </div>
           </form>
@@ -887,16 +900,20 @@ export function ProfileSettings() {
                     </div>
 
                     {/* Social & Contact Highlights */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-200/60 dark:border-dark-border/60 text-[11px] text-gray-500">
-                      <div className="flex items-center gap-2">
-                        {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {c.phone}</span>}
-                        {c.whatsapp && <span className="flex items-center gap-1 text-emerald-600"><MessageSquare className="w-3 h-3" /> WA</span>}
+                    <div className="pt-3 border-t border-gray-200/60 dark:border-dark-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-[11px] text-gray-500">
+                      <div className="flex items-center gap-2 min-h-[20px]">
+                        {c.phone ? (
+                          <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-gray-400" /> {c.phone}</span>
+                        ) : (
+                          <span className="text-gray-400 italic">No direct phone</span>
+                        )}
+                        {c.whatsapp && <span className="flex items-center gap-1 text-emerald-600 font-semibold"><MessageSquare className="w-3 h-3" /> WA</span>}
                       </div>
 
                       <button
                         type="button"
                         onClick={() => setSelectedClientModal(c)}
-                        className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] flex items-center gap-1.5 transition-all cursor-pointer"
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" /> View Full Profile Detail
                       </button>
@@ -980,9 +997,15 @@ export function ProfileSettings() {
               <button
                 type="submit"
                 disabled={isUpdatingPassword}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isUpdatingPassword ? 'Updating Password...' : 'Update Password Now'}
+                {isUpdatingPassword ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> Updating Password...
+                  </>
+                ) : (
+                  'Update Password Now'
+                )}
               </button>
             </div>
           </form>

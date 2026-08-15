@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { messageService, type Message } from '../../services/messageService';
-import { MessageSquare, Send, Building, Download } from 'lucide-react';
+import { MessageSquare, Send, Building, Download, Loader2 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import { RichTextDisplay } from '../../components/common/RichTextDisplay';
 
@@ -166,10 +166,19 @@ export function ClientMessages() {
           <button
             type="submit"
             disabled={!newMessage.trim() || isSending}
-            className="px-6 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Send className="w-4 h-4" />
-            <span className="hidden sm:inline">Send</span>
+            {isSending ? (
+              <>
+                <Loader2 className="w-4 h-4 text-white animate-spin" />
+                <span className="hidden sm:inline">Sending...</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                <span className="hidden sm:inline">Send</span>
+              </>
+            )}
           </button>
         </form>
 

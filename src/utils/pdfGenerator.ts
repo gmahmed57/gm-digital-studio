@@ -48,7 +48,7 @@ export const generateInvoicePDF = (invoice: InvoiceItem): jsPDF => {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(textGray[0], textGray[1], textGray[2]);
-  doc.text('Digital Product & Creative Studio • www.gmdigitalstudio.app', 32, 25);
+  doc.text('Digital Product & Creative Studio • portal.gmdigitalstudio.app', 32, 25);
 
   // Invoice Title & Number
   doc.setFont('helvetica', 'bold');
@@ -98,7 +98,7 @@ export const generateInvoicePDF = (invoice: InvoiceItem): jsPDF => {
   doc.setFontSize(9);
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
   doc.text(invoice.date || 'Today', rightX, 48);
-  doc.text(invoice.dueDate || '14 Days', rightX + 30, 48);
+  doc.text(invoice.dueDate || 'Upon Receipt', rightX + 30, 48);
 
   // Status Badge
   doc.setFont('helvetica', 'bold');
@@ -223,7 +223,7 @@ export const generateInvoicePDF = (invoice: InvoiceItem): jsPDF => {
   doc.setTextColor(textGray[0], textGray[1], textGray[2]);
   doc.text(
     invoice.notes ||
-      'Please submit payment within 14 business days. For bank wire transfer or card checkout details, visit your client portal.',
+      'Please submit payment before the specified due date. For payment submission and status tracking, visit your client portal.',
     15,
     footerY + 11,
     { maxWidth: 180 }

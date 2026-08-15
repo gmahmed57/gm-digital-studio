@@ -5,17 +5,10 @@ import { activityLogService } from './activityLogService';
 
 // Helper to normalize milestones and compute progress based on approved milestones
 const computeProjectMetrics = (milestones: MilestoneItem[], currentStatus: ProjectStatus) => {
-  const normalizedMs = (milestones || []).map((m) => {
-    let status: MilestoneStatus = m.status;
-    if (!status) {
-      status = m.completed ? 'approved' : 'in_progress';
-    }
-    return {
-      ...m,
-      status,
-      completed: status === 'approved',
-    };
-  });
+  const normalizedMs = (milestones || []).map((m) => ({
+    ...m,
+    status: m.status || 'pending',
+  }));
 
   const totalMs = normalizedMs.length;
   const completedMs = normalizedMs.filter((m) => m.status === 'approved').length;
@@ -238,7 +231,6 @@ export const projectService = {
         ? {
             ...m,
             status: newStatus,
-            completed: newStatus === 'approved',
             clientComment: clientComment !== undefined ? clientComment : m.clientComment,
           }
         : m

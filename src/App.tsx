@@ -1,12 +1,13 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import RootLayout from './layouts/RootLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
 import PageLoader from './components/common/PageLoader';
+import { isPortalHostname, isLocalhost, getPortalUrl } from './utils/domainUtils';
 
 // Public Web Pages (Lazy Loaded)
 const Home = lazy(() => import('./pages/Home'));
@@ -78,13 +79,57 @@ const AdminEmailPage = lazy(() =>
   import('./pages/dashboard/AdminEmailPage').then((m) => ({ default: m.AdminEmailPage }))
 );
 
+function DomainRoutingGuard({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const { user, role } = useAuth();
+  const isPortal = isPortalHostname();
+
+  useEffect(() => {
+    // Keep standard single-origin routing on localhost for local testing
+    if (isLocalhost()) return;
+
+    const path = location.pathname;
+
+    // 1. If currently browsing on portal subdomain (portal.gmdigitalstudio.app)
+    if (isPortal) {
+      // Keep portal 100% independent; redirect root and marketing URLs to portal login/dashboard
+      const isMarketingPath = ['/about', '/services', '/portfolio', '/pricing', '/faq', '/blog', '/contact', '/privacy', '/terms'].some((mp) => path === mp || path.startsWith(`${mp}/`));
+      if (path === '/' || isMarketingPath) {
+        if (user) {
+          const userRole = role || user.role;
+          if (userRole === 'admin') {
+            window.location.replace('/admin/dashboard');
+          } else if (userRole === 'author') {
+            window.location.replace('/author/cms');
+          } else {
+            window.location.replace('/client/dashboard');
+          }
+        } else {
+          window.location.replace('/login');
+        }
+        return;
+      }
+    } else {
+      // 2. If currently browsing on main marketing domain (gmdigitalstudio.app)
+      // Direct login and operational portal spaces to portal.gmdigitalstudio.app
+      const portalPaths = ['/login', '/forgot-password', '/admin', '/client', '/author'];
+      if (portalPaths.some((pp) => path === pp || path.startsWith(`${pp}/`))) {
+        window.location.replace(getPortalUrl(path + location.search));
+      }
+    }
+  }, [location.pathname, location.search, user, role, isPortal]);
+
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <AuthProvider>
         <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
+          <DomainRoutingGuard>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
               {/* Public Website Routes */}
               <Route path="/" element={<RootLayout />}>
                 <Route index element={<Home />} />
@@ -180,8 +225,9 @@ function App() {
             </Routes>
           </Suspense>
           <PWAInstallPrompt />
-        </BrowserRouter>
-      </AuthProvider>
+        </DomainRoutingGuard>
+      </BrowserRouter>
+    </AuthProvider>
     </ThemeProvider>
   );
 }

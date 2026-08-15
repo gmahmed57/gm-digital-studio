@@ -1,0 +1,20 @@
+# Google & Global Search Engine Crawler Directives
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /services
+Allow: /portfolio
+Allow: /pricing
+Allow: /blog
+Allow: /contact
+Allow: /faq
+
+# Disallow Private Client Portal & Administration Dashboards
+Disallow: /admin/
+Disallow: /client/
+Disallow: /author/
+Disallow: /login
+Disallow: /forgot-password
+
+# Sitemap Location
+Sitemap: https://gmdigitalstudio.app/sitemap.xml

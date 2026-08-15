@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import logo from '../../assets/icon-logo.png';
 import { settingsService, type WebsiteSettings } from '../../services/settingsService';
+import { getPortalUrl } from '../../utils/domainUtils';
 
 const Footer = () => {
   const [settings, setSettings] = useState<WebsiteSettings | null>(null);
@@ -50,7 +51,7 @@ const Footer = () => {
           <div>
             <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Company & Client Portal</h3>
             <ul className="space-y-3 text-sm text-gray-400">
-              <li><Link to="/login" className="hover:text-brand-400 font-semibold text-brand-400 transition-colors">Client Portal Login</Link></li>
+              <li><a href={getPortalUrl('/login')} className="hover:text-brand-400 font-semibold text-brand-400 transition-colors">Client Portal Login</a></li>
               <li><Link to="/about" className="hover:text-brand-400 transition-colors">About Us</Link></li>
               <li><Link to="/portfolio" className="hover:text-brand-400 transition-colors">Portfolio & Case Studies</Link></li>
               <li><Link to="/blog" className="hover:text-brand-400 transition-colors">Blog & Insights</Link></li>

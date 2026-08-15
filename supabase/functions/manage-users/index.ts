@@ -5,6 +5,8 @@ const getCorsHeaders = (req: Request) => {
   const origin = req.headers.get('origin') || ''
   const allowedOrigins = [
     'https://gmdigitalstudio.app',
+    'https://www.gmdigitalstudio.app',
+    'https://portal.gmdigitalstudio.app',
     'http://localhost:5173',
     'http://localhost:3000',
     'http://localhost:4173',
@@ -55,8 +57,8 @@ serve(async (req) => {
 
     // Role MUST come from server-controlled app_metadata or server secret to prevent client privilege escalation
     const userRole = user.app_metadata?.role
-    const superAdminEmail = Deno.env.get('SUPERADMIN_EMAIL') || Deno.env.get('ADMIN_EMAIL') || Deno.env.get('VITE_ADMIN_EMAIL')
-    const isSuperAdmin = (superAdminEmail && user.email === superAdminEmail) || userRole === 'superadmin'
+    const superAdminEmail = (Deno.env.get('ADMIN_EMAIL') || Deno.env.get('VITE_ADMIN_EMAIL') || Deno.env.get('SUPERADMIN_EMAIL') || '').toLowerCase().trim()
+    const isSuperAdmin = (superAdminEmail && user.email?.toLowerCase().trim() === superAdminEmail) || userRole === 'admin' || userRole === 'superadmin'
     if (userRole !== 'admin' && !isSuperAdmin) {
       console.warn(`User ${user.email} (role: ${userRole}) attempted admin action but was blocked.`)
       return new Response(JSON.stringify({ error: 'Unauthorized: Admins only' }), {
@@ -236,14 +238,36 @@ serve(async (req) => {
         })
       }
 
-      // Delete from Auth first
-      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
-      if (deleteError) {
-        console.warn(`User ${userId} not found in Auth during deletion: ${deleteError.message}`)
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
+
+      // 1. Delete from Auth first ONLY if it's a valid UUID
+      if (isUUID) {
+        try {
+          const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+          if (deleteError) {
+            console.warn(`User ${userId} not found in Auth during deletion: ${deleteError.message}`)
+          }
+        } catch (err: any) {
+          console.warn(`Error deleting user from Auth: ${err.message}`)
+        }
       }
 
-      // Delete from DB
+      // 2. Also delete from profiles if exists
+      try {
+        await supabaseAdmin.from('profiles').delete().eq('id', userId)
+      } catch (err: any) {
+        console.warn(`Error deleting user from profiles: ${err.message}`)
+      }
+
+      // 3. Delete from DB (cleaning up child records if any)
       if (role === 'client') {
+        try {
+          await supabaseAdmin.from('messages').delete().eq('client_id', userId)
+          await supabaseAdmin.from('shared_folders').delete().eq('client_id', userId)
+        } catch (err: any) {
+          console.warn(`Error deleting client child records: ${err.message}`)
+        }
+
         const { error: dbError } = await supabaseAdmin.from('clients').delete().eq('id', userId)
         if (dbError) {
           return new Response(JSON.stringify({ error: `Auth deleted but DB sync failed: ${dbError.message}` }), {

@@ -9,6 +9,8 @@ import {
   type ClientReportData,
   type ToolsUsageReportData
 } from '../../services/reportingService';
+import { activityLogService } from '../../services/activityLogService';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import { 
   BarChart3, 
   DollarSign, 
@@ -22,7 +24,8 @@ import {
   Clock, 
   PieChart as PieIcon,
   Loader2,
-  Wrench
+  Wrench,
+  Trash2
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -47,6 +50,12 @@ export function AdvancedReportsPage() {
   const [toolsData, setToolsData] = useState<ToolsUsageReportData | null>(null);
   const [timeframe, setTimeframe] = useState<'all' | 'month' | 'quarter' | 'year'>('all');
 
+  // Tool Logs Management State
+  const [selectedToolLogIds, setSelectedToolLogIds] = useState<string[]>([]);
+  const [pendingDeleteToolLogId, setPendingDeleteToolLogId] = useState<string | null>(null);
+  const [showBatchDeleteToolLogsModal, setShowBatchDeleteToolLogsModal] = useState<boolean>(false);
+  const [isDeletingToolLogs, setIsDeletingToolLogs] = useState<boolean>(false);
+
   const reportRef = useRef<HTMLDivElement>(null);
 
   const fetchReports = async () => {
@@ -62,11 +71,63 @@ export function AdvancedReportsPage() {
       setProjectData(proj);
       setClientData(cli);
       setToolsData(tls);
+      setSelectedToolLogIds([]);
     } catch (err) {
       console.error('Failed to load reports:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleToggleSelectToolLog = (logId: string) => {
+    setSelectedToolLogIds((prev) =>
+      prev.includes(logId) ? prev.filter((id) => id !== logId) : [...prev, logId]
+    );
+  };
+
+  const handleToggleSelectAllToolLogs = () => {
+    const list = toolsData?.clientActivityList || [];
+    if (selectedToolLogIds.length === list.length) {
+      setSelectedToolLogIds([]);
+    } else {
+      setSelectedToolLogIds(list.map((l) => l.id).filter(Boolean));
+    }
+  };
+
+  const confirmDeleteSingleToolLog = async () => {
+    if (!pendingDeleteToolLogId) return;
+    setIsDeletingToolLogs(true);
+    const success = await activityLogService.deleteLog(pendingDeleteToolLogId);
+    if (success) {
+      setToolsData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          clientActivityList: prev.clientActivityList.filter((l) => l.id !== pendingDeleteToolLogId)
+        };
+      });
+      setSelectedToolLogIds((prev) => prev.filter((id) => id !== pendingDeleteToolLogId));
+    }
+    setIsDeletingToolLogs(false);
+    setPendingDeleteToolLogId(null);
+  };
+
+  const confirmBatchDeleteToolLogs = async () => {
+    if (selectedToolLogIds.length === 0) return;
+    setIsDeletingToolLogs(true);
+    const success = await activityLogService.deleteLogs(selectedToolLogIds);
+    if (success) {
+      setToolsData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          clientActivityList: prev.clientActivityList.filter((l) => !selectedToolLogIds.includes(l.id))
+        };
+      });
+      setSelectedToolLogIds([]);
+    }
+    setIsDeletingToolLogs(false);
+    setShowBatchDeleteToolLogsModal(false);
   };
 
   const handleRefresh = async () => {
@@ -547,34 +608,84 @@ export function AdvancedReportsPage() {
 
                 {toolsData?.clientActivityList && toolsData.clientActivityList.length > 0 && !exportingPDF && (
                   <div className="pt-2">
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Recent Client Tool Activity Log</p>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Recent Client Tool Activity Log</p>
+                      
+                      <div className="flex items-center gap-2">
+                        {selectedToolLogIds.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowBatchDeleteToolLogsModal(true)}
+                            className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] flex items-center gap-1 shadow-xs transition-all cursor-pointer animate-fade-in"
+                          >
+                            <Trash2 className="w-3 h-3" /> Delete Selected ({selectedToolLogIds.length})
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleToggleSelectAllToolLogs}
+                          className="text-[11px] font-semibold text-brand-600 dark:text-brand-400 hover:underline cursor-pointer"
+                        >
+                          {selectedToolLogIds.length === toolsData.clientActivityList.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="overflow-x-auto pb-1">
-                      <div className={`bg-white dark:bg-dark-surface rounded-xl border border-gray-200 dark:border-dark-border divide-y divide-gray-100 dark:divide-dark-border min-w-[520px] ${
+                      <div className={`bg-white dark:bg-dark-surface rounded-xl border border-gray-200 dark:border-dark-border divide-y divide-gray-100 dark:divide-dark-border min-w-[540px] ${
                         exportingPDF ? 'max-h-none overflow-visible' : 'max-h-64 overflow-y-auto'
                       }`}>
-                        {toolsData.clientActivityList.slice(0, 10).map((act, idx) => (
-                          <div key={`tool-act-${idx}`} className="p-3 text-xs flex items-center justify-between gap-4">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-gray-900 dark:text-white">{act.user_name}</span>
-                                <span className="text-[11px] text-gray-500 dark:text-gray-400">({act.user_email})</span>
+                        {toolsData.clientActivityList.slice(0, 15).map((act, idx) => {
+                          const isSelected = selectedToolLogIds.includes(act.id);
+                          return (
+                            <div
+                              key={act.id || `tool-act-${idx}`}
+                              className={`p-3 text-xs flex items-center justify-between gap-3 transition-colors ${
+                                isSelected ? 'bg-brand-50/60 dark:bg-brand-950/20' : 'hover:bg-gray-50/50 dark:hover:bg-dark-surface/40'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleSelectToolLog(act.id)}
+                                  className="w-3.5 h-3.5 rounded text-brand-600 border-gray-300 dark:border-dark-border focus:ring-brand-500 cursor-pointer flex-shrink-0"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-gray-900 dark:text-white">{act.user_name}</span>
+                                    <span className="text-[11px] text-gray-500 dark:text-gray-400">({act.user_email})</span>
+                                  </div>
+                                  <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">{act.details}</p>
+                                </div>
                               </div>
-                              <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">{act.details}</p>
+
+                              <div className="shrink-0 flex items-center gap-2">
+                                <div className="text-right">
+                                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase whitespace-nowrap ${
+                                    act.action === 'TOOL_EXECUTED'
+                                      ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
+                                      : 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400'
+                                  }`}>
+                                    {act.action === 'TOOL_EXECUTED' ? 'Main Execution' : 'Workspace Launch'}
+                                  </span>
+                                  <span className="block text-[10px] text-gray-400 mt-0.5 font-mono">
+                                    {new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setPendingDeleteToolLogId(act.id)}
+                                  className="p-1 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer flex-shrink-0"
+                                  title="Delete tool log entry"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
-                            <div className="shrink-0 text-right">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase whitespace-nowrap ${
-                                act.action === 'TOOL_EXECUTED'
-                                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
-                                  : 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400'
-                              }`}>
-                                {act.action === 'TOOL_EXECUTED' ? 'Main Execution' : 'Workspace Launch'}
-                              </span>
-                              <span className="block text-[10px] text-gray-400 mt-1 font-mono">
-                                {new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -586,6 +697,32 @@ export function AdvancedReportsPage() {
         </div>
 
       </div>
+
+      {/* Delete Single Tool Log Modal */}
+      <ConfirmModal
+        isOpen={Boolean(pendingDeleteToolLogId)}
+        title="Delete Tool Log Record"
+        message="Are you sure you want to delete this tool activity record? This will be removed from your activity audit trail."
+        confirmText="Delete Record"
+        cancelText="Cancel"
+        variant="danger"
+        isProcessing={isDeletingToolLogs}
+        onConfirm={confirmDeleteSingleToolLog}
+        onClose={() => setPendingDeleteToolLogId(null)}
+      />
+
+      {/* Batch Delete Tool Logs Modal */}
+      <ConfirmModal
+        isOpen={showBatchDeleteToolLogsModal}
+        title={`Delete ${selectedToolLogIds.length} Selected Tool Log${selectedToolLogIds.length > 1 ? 's' : ''}`}
+        message={`Are you sure you want to delete the ${selectedToolLogIds.length} selected tool activity records? This action cannot be undone.`}
+        confirmText={`Delete ${selectedToolLogIds.length} Logs`}
+        cancelText="Cancel"
+        variant="danger"
+        isProcessing={isDeletingToolLogs}
+        onConfirm={confirmBatchDeleteToolLogs}
+        onClose={() => setShowBatchDeleteToolLogsModal(false)}
+      />
 
     </div>
   );

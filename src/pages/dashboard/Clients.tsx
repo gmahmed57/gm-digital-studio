@@ -72,16 +72,25 @@ export function Clients() {
     setActiveMenuId(null);
   };
 
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   const handleDeleteClient = async (id: string) => {
     setDeletingClientId(id);
   };
 
   const confirmDeleteClient = async () => {
     if (!deletingClientId) return;
-    const updated = await clientService.deleteClient(deletingClientId);
-    setClients(updated);
-    setActiveMenuId(null);
-    setDeletingClientId(null);
+    setIsDeleting(true);
+    try {
+      const updated = await clientService.deleteClient(deletingClientId);
+      setClients(updated);
+      setActiveMenuId(null);
+      setDeletingClientId(null);
+    } catch (err: any) {
+      console.error('Failed to delete client:', err);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleOpenEditPage = (clientId: string) => {
@@ -383,6 +392,7 @@ export function Clients() {
         variant="danger"
         onConfirm={confirmDeleteClient}
         onClose={() => setDeletingClientId(null)}
+        isProcessing={isDeleting}
       />
     </>
   );

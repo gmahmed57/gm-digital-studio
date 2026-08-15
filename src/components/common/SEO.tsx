@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 import { settingsService } from '../../services/settingsService';
+import { isPortalHostname } from '../../utils/domainUtils';
 
 interface SEOProps {
   title: string;
   description: string;
+  noIndex?: boolean;
 }
 
-const SEO: React.FC<SEOProps> = ({ title, description }) => {
+const SEO: React.FC<SEOProps> = ({ title, description, noIndex }) => {
   useEffect(() => {
     // 1. Update meta description tag
     let metaDescription = document.querySelector('meta[name="description"]');
@@ -16,6 +18,23 @@ const SEO: React.FC<SEOProps> = ({ title, description }) => {
       document.head.appendChild(metaDescription);
     }
     metaDescription.setAttribute('content', description);
+
+    // 2. Manage robots index/noindex (Portal and private pages are strictly 100% noindex, nofollow)
+    let metaRobots = document.querySelector('meta[name="robots"]');
+    if (!metaRobots) {
+      metaRobots = document.createElement('meta');
+      metaRobots.setAttribute('name', 'robots');
+      document.head.appendChild(metaRobots);
+    }
+    const isPrivatePath = typeof window !== 'undefined' && (
+      window.location.pathname.startsWith('/admin') ||
+      window.location.pathname.startsWith('/client') ||
+      window.location.pathname.startsWith('/author') ||
+      window.location.pathname.startsWith('/login') ||
+      window.location.pathname.startsWith('/forgot-password')
+    );
+    const shouldNoIndex = noIndex || isPortalHostname() || isPrivatePath;
+    metaRobots.setAttribute('content', shouldNoIndex ? 'noindex, nofollow' : 'index, follow');
 
     // 2. Fetch settings for dynamic title brand and favicons
     const applyBranding = async () => {

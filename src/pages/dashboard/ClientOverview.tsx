@@ -74,7 +74,7 @@ export function ClientOverview() {
   // Total completed vs in-progress milestones
   const totalMilestonesCount = projects.reduce((acc, p) => acc + p.milestones.length, 0);
   const completedMilestonesCount = projects.reduce(
-    (acc, p) => acc + p.milestones.filter((m) => m.status === 'approved' || m.completed).length,
+    (acc, p) => acc + p.milestones.filter((m) => m.status === 'approved').length,
     0
   );
 

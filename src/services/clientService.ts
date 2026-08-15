@@ -344,6 +344,10 @@ export const clientService = {
       throw new Error(error?.message || data?.error || 'Failed to delete client.');
     }
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('studio_client_updated'));
+    }
+
     return await clientService.getClients();
   },
 };

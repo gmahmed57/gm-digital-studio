@@ -122,9 +122,37 @@ export const activityLogService = {
         console.error('Error deleting activity log:', error.message);
         return false;
       }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('studio_activity_logged'));
+      }
       return true;
     } catch (err) {
       console.error('Exception deleting activity log:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Delete multiple activity log entries in batch (Admin only)
+   */
+  async deleteLogs(logIds: string[]): Promise<boolean> {
+    if (!logIds || logIds.length === 0) return true;
+    try {
+      const { error } = await supabase
+        .from('activity_logs')
+        .delete()
+        .in('id', logIds);
+
+      if (error) {
+        console.error('Error deleting activity logs:', error.message);
+        return false;
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('studio_activity_logged'));
+      }
+      return true;
+    } catch (err) {
+      console.error('Exception deleting activity logs in batch:', err);
       return false;
     }
   },
@@ -142,6 +170,9 @@ export const activityLogService = {
       if (error) {
         console.error('Error clearing activity logs:', error.message);
         return false;
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('studio_activity_logged'));
       }
       return true;
     } catch (err) {

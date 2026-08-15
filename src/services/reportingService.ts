@@ -35,6 +35,7 @@ export interface ClientReportData {
 }
 
 export interface ClientToolActivityDetail {
+  id: string;
   user_name: string;
   user_email: string;
   tool_id: string;
@@ -142,7 +143,7 @@ export const reportingService = {
 
         if (p.milestones && Array.isArray(p.milestones)) {
           totalMilestones += p.milestones.length;
-          completedMilestones += p.milestones.filter((m) => m.completed || m.status === 'approved').length;
+          completedMilestones += p.milestones.filter((m) => m.status === 'approved').length;
         }
       });
 
@@ -233,6 +234,7 @@ export const reportingService = {
         toolUsageBreakdown[toolId] = (toolUsageBreakdown[toolId] || 0) + 1;
 
         clientActivityList.push({
+          id: log.id,
           user_name: log.user_name || 'Client User',
           user_email: log.user_email || 'client@company.com',
           tool_id: toolId,

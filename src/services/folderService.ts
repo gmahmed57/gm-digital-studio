@@ -40,10 +40,15 @@ export const folderService = {
   addFolder: async (clientId: string, folderName: string, driveUrl: string): Promise<SharedFolder> => {
     if (!supabase) throw new Error('Database service is not initialized.');
 
+    const cleanUrl = (driveUrl || '').trim();
+    if (!cleanUrl.startsWith('https://') && !cleanUrl.startsWith('http://')) {
+      throw new Error('Invalid URL. Shared cloud drive folder URL must start with https://');
+    }
+
     const dbPayload = {
       client_id: clientId,
-      folder_name: folderName,
-      drive_url: driveUrl,
+      folder_name: folderName.trim(),
+      drive_url: cleanUrl,
     };
 
     const { data, error } = await supabase

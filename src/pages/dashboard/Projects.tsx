@@ -274,7 +274,7 @@ export function Projects() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((proj) => {
               const effectiveStatus = getEffectiveStatus(proj);
-              const approvedMilestones = proj.milestones.filter((m) => m.status === 'approved' || m.completed).length;
+              const approvedMilestones = proj.milestones.filter((m) => m.status === 'approved').length;
               const computedProgress = proj.milestones.length > 0
                 ? Math.round((approvedMilestones / proj.milestones.length) * 100)
                 : proj.progress;

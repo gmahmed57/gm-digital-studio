@@ -113,7 +113,7 @@ export const invoiceService = {
         date: invoice.date || new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
         dueDate: invoice.dueDate || new Date(Date.now() + 14 * 86400000).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
         requestedByClient: false,
-        notes: invoice.notes || 'Payment due within 14 days of invoice issuance.',
+        notes: invoice.notes || 'Please submit payment before the specified due date.',
         clientMessage: invoice.clientMessage,
         proofUrl: invoice.proofUrl,
         items: invoice.items || [
@@ -251,7 +251,7 @@ export const invoiceService = {
       total: total,
       tip_amount: tip,
       amount: formattedAmount,
-      notes: customizedData?.notes || existing?.notes || 'Invoice request approved by Admin. Payment due within 14 days.',
+      notes: customizedData?.notes || existing?.notes || 'Invoice request approved by Admin. Please submit payment before the specified due date.',
       admin_rejection_reason: null,
     }).eq('id', id);
 

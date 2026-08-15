@@ -51,7 +51,7 @@ export const InlineEmailComposer: React.FC<InlineEmailComposerProps> = ({
   const [rawHtmlCode, setRawHtmlCode] = useState<string>('');
 
   const [ctaText, setCtaText] = useState<string>('Access Client Portal');
-  const [ctaUrl, setCtaUrl] = useState<string>('https://gmdigitalstudio.app/login');
+  const [ctaUrl, setCtaUrl] = useState<string>('https://portal.gmdigitalstudio.app/login');
   const [includeCta, setIncludeCta] = useState<boolean>(true);
 
   const [isSending, setIsSending] = useState<boolean>(false);
@@ -156,7 +156,7 @@ export const InlineEmailComposer: React.FC<InlineEmailComposerProps> = ({
       isOpen: true,
       type: 'button',
       label: selectedText || 'Access Portal',
-      url: 'https://gmdigitalstudio.app/login',
+      url: 'https://portal.gmdigitalstudio.app/login',
       start,
       end,
     });
@@ -178,7 +178,7 @@ export const InlineEmailComposer: React.FC<InlineEmailComposerProps> = ({
       isOpen: true,
       type: 'link',
       label: selectedText || 'Click Here',
-      url: 'https://gmdigitalstudio.app',
+      url: 'https://portal.gmdigitalstudio.app',
       start,
       end,
     });
@@ -190,9 +190,9 @@ export const InlineEmailComposer: React.FC<InlineEmailComposerProps> = ({
 
     let insertion = '';
     if (type === 'button') {
-      insertion = `\n[button text="${label || 'Access Portal'}" url="${url || 'https://gmdigitalstudio.app/login'}"]\n`;
+      insertion = `\n[button text="${label || 'Access Portal'}" url="${url || 'https://portal.gmdigitalstudio.app/login'}"]\n`;
     } else {
-      insertion = ` [${label || 'Click Here'}](${url || 'https://gmdigitalstudio.app'}) `;
+      insertion = ` [${label || 'Click Here'}](${url || 'https://portal.gmdigitalstudio.app'}) `;
     }
 
     if (start !== undefined && end !== undefined && start !== end) {

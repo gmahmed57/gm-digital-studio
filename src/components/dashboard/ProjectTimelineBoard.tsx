@@ -50,6 +50,12 @@ export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
             <RotateCcw className="w-3.5 h-3.5" /> Revision Requested
           </span>
         );
+      case 'pending':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+            <Clock className="w-3.5 h-3.5" /> Pending
+          </span>
+        );
       case 'in_progress':
       default:
         return (
@@ -60,7 +66,7 @@ export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
     }
   };
 
-  const approvedCount = milestones.filter((m) => m.status === 'approved' || m.completed).length;
+  const approvedCount = milestones.filter((m) => m.status === 'approved').length;
   const progressPercent = milestones.length > 0 ? Math.round((approvedCount / milestones.length) * 100) : 0;
 
   return (
@@ -101,7 +107,7 @@ export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
 
             {/* Nodes */}
             {milestones.map((m, idx) => {
-              const isApproved = m.status === 'approved' || m.completed;
+              const isApproved = m.status === 'approved';
               const isInReview = m.status === 'in_review';
               const isRevision = m.status === 'modification_requested';
 
@@ -141,7 +147,7 @@ export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
       ) : (
         <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-gray-200 dark:before:bg-dark-border">
           {milestones.map((m, idx) => {
-            const isApproved = m.status === 'approved' || m.completed;
+            const isApproved = m.status === 'approved';
             const isInReview = m.status === 'in_review';
             const isRevision = m.status === 'modification_requested';
 
@@ -162,25 +168,25 @@ export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
                   {isApproved ? <Check className="w-3 h-3" /> : idx + 1}
                 </div>
 
-                <div className="p-5 rounded-2xl border border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/50 space-y-3 hover:border-brand-500/30 transition-all">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
+                <div className="p-5 rounded-2xl border border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/50 space-y-3 hover:border-brand-500/30 transition-all overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
                         {getStatusBadge(m.status)}
                         {m.dueDate && (
-                          <span className="text-[11px] font-semibold text-gray-500 flex items-center gap-1">
+                          <span className="text-[11px] font-semibold text-gray-500 flex items-center gap-1 shrink-0">
                             <Calendar className="w-3 h-3 text-gray-400" /> Target Date: {m.dueDate}
                           </span>
                         )}
                       </div>
-                      <h3 className="text-sm font-heading font-bold text-gray-900 dark:text-white">
+                      <h3 className="text-sm font-heading font-bold text-gray-900 dark:text-white break-words">
                         Phase {idx + 1}: {m.title}
                       </h3>
                     </div>
 
                     {/* Milestone Actions for Client when in_review */}
                     {onMilestoneAction && isInReview && (
-                      <div className="flex items-center gap-2 flex-wrap pt-2 sm:pt-0">
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
                         <button
                           type="button"
                           disabled={submittingActionId === m.id}
@@ -219,13 +225,22 @@ export const ProjectTimelineBoard: React.FC<ProjectTimelineBoardProps> = ({
                     )}
                   </div>
 
+                  {/* Milestone Admin Comment / Note */}
+                  {m.comment && (
+                    <div className="w-full bg-white/80 dark:bg-dark-card/80 p-3 rounded-xl border border-gray-200/60 dark:border-dark-border/60">
+                      <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed break-words break-all whitespace-pre-wrap">
+                        {m.comment}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Client Revision Note Alert */}
                   {m.clientComment && (
                     <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-700 dark:text-red-300 space-y-1">
                       <p className="font-bold flex items-center gap-1">
                         <MessageSquare className="w-3.5 h-3.5" /> Client Requested Revision Note:
                       </p>
-                      <p className="text-[11px] leading-relaxed">{m.clientComment}</p>
+                      <p className="text-[11px] leading-relaxed break-words break-all whitespace-pre-wrap">{m.clientComment}</p>
                     </div>
                   )}
 

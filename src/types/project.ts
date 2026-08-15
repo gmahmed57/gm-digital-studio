@@ -13,14 +13,14 @@ export type ProjectCategory =
   | 'Cloud Infrastructure'
   | (string & {});
 
-export type MilestoneStatus = 'in_progress' | 'in_review' | 'approved' | 'modification_requested';
+export type MilestoneStatus = 'pending' | 'in_progress' | 'in_review' | 'approved' | 'modification_requested';
 
 export interface MilestoneItem {
   id: string;
   title: string;
   dueDate: string;
   status: MilestoneStatus;
-  completed?: boolean; // Legacy fallback helper
+  comment?: string;
   clientComment?: string;
 }
 

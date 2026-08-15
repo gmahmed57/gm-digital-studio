@@ -4,6 +4,8 @@ const getCorsHeaders = (req: Request) => {
   const origin = req.headers.get('origin') || ''
   const allowedOrigins = [
     'https://gmdigitalstudio.app',
+    'https://www.gmdigitalstudio.app',
+    'https://portal.gmdigitalstudio.app',
     'http://localhost:5173',
     'http://localhost:3000',
     'http://localhost:4173',

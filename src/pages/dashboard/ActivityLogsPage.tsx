@@ -27,6 +27,9 @@ export function ActivityLogsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDeleteSingleId, setPendingDeleteSingleId] = useState<string | null>(null);
   const [showClearAllConfirm, setShowClearAllConfirm] = useState<boolean>(false);
+  const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
+  const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState<boolean>(false);
+  const [isBatchDeleting, setIsBatchDeleting] = useState<boolean>(false);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -37,6 +40,7 @@ export function ActivityLogsPage() {
         limit: 150
       });
       setLogs(data);
+      setSelectedLogIds([]);
     } catch (err) {
       console.error('Failed to load activity logs:', err);
     } finally {
@@ -59,6 +63,20 @@ export function ActivityLogsPage() {
     fetchLogs();
   };
 
+  const handleToggleSelect = (logId: string) => {
+    setSelectedLogIds((prev) =>
+      prev.includes(logId) ? prev.filter((id) => id !== logId) : [...prev, logId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedLogIds.length === logs.length) {
+      setSelectedLogIds([]);
+    } else {
+      setSelectedLogIds(logs.map((l) => l.id));
+    }
+  };
+
   const handleDeleteSingle = async (logId: string) => {
     setPendingDeleteSingleId(logId);
   };
@@ -69,9 +87,22 @@ export function ActivityLogsPage() {
     const success = await activityLogService.deleteLog(pendingDeleteSingleId);
     if (success) {
       setLogs((prev) => prev.filter((l) => l.id !== pendingDeleteSingleId));
+      setSelectedLogIds((prev) => prev.filter((id) => id !== pendingDeleteSingleId));
     }
     setDeletingId(null);
     setPendingDeleteSingleId(null);
+  };
+
+  const confirmDeleteSelected = async () => {
+    if (selectedLogIds.length === 0) return;
+    setIsBatchDeleting(true);
+    const success = await activityLogService.deleteLogs(selectedLogIds);
+    if (success) {
+      setLogs((prev) => prev.filter((l) => !selectedLogIds.includes(l.id)));
+      setSelectedLogIds([]);
+    }
+    setIsBatchDeleting(false);
+    setShowDeleteSelectedConfirm(false);
   };
 
   const handleClearAll = async () => {
@@ -82,6 +113,7 @@ export function ActivityLogsPage() {
     const success = await activityLogService.clearAllLogs();
     if (success) {
       setLogs([]);
+      setSelectedLogIds([]);
     }
     setShowClearAllConfirm(false);
   };
@@ -191,7 +223,17 @@ export function ActivityLogsPage() {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {selectedLogIds.length > 0 && (
+            <button
+              onClick={() => setShowDeleteSelectedConfirm(true)}
+              className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer animate-fade-in"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Selected ({selectedLogIds.length})
+            </button>
+          )}
+
           <button
             onClick={fetchLogs}
             className="px-3 py-2 rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-surface transition-colors flex items-center gap-1.5 cursor-pointer"
@@ -306,9 +348,18 @@ export function ActivityLogsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[700px]">
+            <table className="w-full text-left border-collapse min-w-[750px]">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/50 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={logs.length > 0 && selectedLogIds.length === logs.length}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 rounded text-brand-600 border-gray-300 dark:border-dark-border focus:ring-brand-500 cursor-pointer"
+                      title="Select all logs"
+                    />
+                  </th>
                   <th className="py-3.5 px-4">Timestamp</th>
                   <th className="py-3.5 px-4">User</th>
                   <th className="py-3.5 px-4">Entity</th>
@@ -318,63 +369,82 @@ export function ActivityLogsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-dark-border text-xs text-gray-700 dark:text-gray-300">
-                {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-dark-surface/30 transition-colors">
-                    
-                    {/* Timestamp */}
-                    <td className="py-3.5 px-4 whitespace-nowrap text-gray-500 dark:text-gray-400 font-mono text-[11px]">
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-gray-400" />
-                        <span>{new Date(log.created_at).toLocaleString()}</span>
-                      </div>
-                    </td>
+                {logs.map((log) => {
+                  const isSelected = selectedLogIds.includes(log.id);
+                  return (
+                    <tr
+                      key={log.id}
+                      className={`transition-colors ${
+                        isSelected
+                          ? 'bg-brand-50/60 dark:bg-brand-950/20'
+                          : 'hover:bg-gray-50/50 dark:hover:bg-dark-surface/30'
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <td className="py-3.5 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelect(log.id)}
+                          className="w-4 h-4 rounded text-brand-600 border-gray-300 dark:border-dark-border focus:ring-brand-500 cursor-pointer"
+                        />
+                      </td>
 
-                    {/* User */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-xs uppercase">
-                          {log.user_name ? log.user_name.charAt(0) : 'U'}
+                      {/* Timestamp */}
+                      <td className="py-3.5 px-4 whitespace-nowrap text-gray-500 dark:text-gray-400 font-mono text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-gray-400" />
+                          <span>{new Date(log.created_at).toLocaleString()}</span>
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900 dark:text-white leading-tight">{log.user_name}</p>
-                          <p className="text-[11px] text-gray-400">{log.user_email}</p>
+                      </td>
+
+                      {/* User */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-xs uppercase">
+                            {log.user_name ? log.user_name.charAt(0) : 'U'}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 dark:text-white leading-tight">{log.user_name}</p>
+                            <p className="text-[11px] text-gray-400">{log.user_email}</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Entity Type Badge */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${getEntityBadgeStyle(log.entity_type)}`}>
-                        {getEntityIcon(log.entity_type)}
-                        <span className="capitalize">{log.entity_type}</span>
-                      </span>
-                    </td>
+                      {/* Entity Type Badge */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${getEntityBadgeStyle(log.entity_type)}`}>
+                          {getEntityIcon(log.entity_type)}
+                          <span className="capitalize">{log.entity_type}</span>
+                        </span>
+                      </td>
 
-                    {/* Action */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className="font-mono text-[11px] font-bold text-gray-900 dark:text-gray-200">
-                        {log.action}
-                      </span>
-                    </td>
+                      {/* Action */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="font-mono text-[11px] font-bold text-gray-900 dark:text-gray-200">
+                          {log.action}
+                        </span>
+                      </td>
 
-                    {/* Details */}
-                    <td className="py-3.5 px-4 max-w-md text-gray-600 dark:text-gray-300">
-                      <p className="line-clamp-2">{log.details}</p>
-                    </td>
+                      {/* Details */}
+                      <td className="py-3.5 px-4 max-w-md text-gray-600 dark:text-gray-300">
+                        <p className="line-clamp-2">{log.details}</p>
+                      </td>
 
-                    {/* Single Delete Action */}
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => handleDeleteSingle(log.id)}
-                        disabled={deletingId === log.id}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                        title="Delete log record"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      {/* Single Delete Action */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <button
+                          onClick={() => handleDeleteSingle(log.id)}
+                          disabled={deletingId === log.id}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                          title="Delete log record"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -391,6 +461,19 @@ export function ActivityLogsPage() {
         variant="danger"
         onConfirm={confirmDeleteSingle}
         onClose={() => setPendingDeleteSingleId(null)}
+      />
+
+      {/* Delete Multiple Selected Logs Modal */}
+      <ConfirmModal
+        isOpen={showDeleteSelectedConfirm}
+        title={`Delete ${selectedLogIds.length} Selected Activity Log${selectedLogIds.length > 1 ? 's' : ''}`}
+        message={`Are you sure you want to permanently delete the ${selectedLogIds.length} selected activity log entries? This action cannot be undone.`}
+        confirmText={`Delete ${selectedLogIds.length} Logs`}
+        cancelText="Cancel"
+        variant="danger"
+        isProcessing={isBatchDeleting}
+        onConfirm={confirmDeleteSelected}
+        onClose={() => setShowDeleteSelectedConfirm(false)}
       />
 
       {/* Clear All Logs Modal */}

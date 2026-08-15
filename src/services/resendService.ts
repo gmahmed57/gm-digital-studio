@@ -113,24 +113,24 @@ export const renderEmailShell = (title: string, bodyHtml: string, ctaText?: stri
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #334155; margin: 0; padding: 32px 16px; }
-    .email-wrapper { max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #334155; margin: 0; padding: 24px 12px; }
+    .email-wrapper { max-width: 580px; width: 100%; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
     .accent-bar { height: 4px; background: linear-gradient(90deg, #ea580c 0%, #f97316 100%); }
-    .header { padding: 28px 32px 20px 32px; border-bottom: 1px solid #f1f5f9; text-align: left; }
-    .brand-title { color: #0f172a; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin: 0; }
+    .header { padding: 24px 24px 18px 24px; border-bottom: 1px solid #f1f5f9; text-align: left; }
+    .brand-title { color: #0f172a; font-size: 19px; font-weight: 800; letter-spacing: -0.5px; margin: 0; }
     .brand-sub { color: #ea580c; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; margin-top: 4px; }
-    .content { padding: 32px; font-size: 15px; line-height: 1.6; color: #334155; }
-    .content-title { color: #0f172a; font-size: 20px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.3px; }
-    .info-table { width: 100%; border-collapse: collapse; margin: 24px 0; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
-    .info-table td { padding: 14px 18px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+    .content { padding: 24px; font-size: 14px; line-height: 1.6; color: #334155; }
+    .content-title { color: #0f172a; font-size: 18px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.3px; }
+    .info-table { width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; margin: 20px 0; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; }
+    .info-table td { padding: 11px 14px; border-bottom: 1px solid #e2e8f0; font-size: 13px; vertical-align: middle; word-wrap: break-word; word-break: break-word; overflow-wrap: anywhere; }
     .info-table tr:last-child td { border-bottom: none; }
-    .info-table td.label { font-weight: 600; color: #64748b; width: 38%; }
-    .info-table td.value { color: #0f172a; font-weight: 700; }
-    .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
-    .cta-container { text-align: left; margin: 32px 0 16px 0; }
+    .info-table td.label { font-weight: 600; color: #64748b; width: 34%; }
+    .info-table td.value { color: #0f172a; font-weight: 700; width: 66%; word-break: break-word; overflow-wrap: anywhere; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; max-width: 100%; box-sizing: border-box; }
+    .cta-container { text-align: left; margin: 28px 0 16px 0; }
     .cta-button { display: inline-block; background-color: #ea580c; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25); }
-    .quote-box { background: #f8fafc; padding: 16px; border-left: 4px solid #ea580c; border-radius: 8px; color: #0f172a; font-size: 14px; margin: 16px 0; border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; font-weight: 500; }
-    .footer { background-color: #f8fafc; padding: 24px 32px; text-align: left; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; line-height: 1.5; }
+    .quote-box { background: #f8fafc; padding: 16px; border-left: 4px solid #ea580c; border-radius: 8px; color: #0f172a; font-size: 14px; margin: 16px 0; border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; font-weight: 500; word-break: break-word; overflow-wrap: anywhere; }
+    .footer { background-color: #f8fafc; padding: 20px 24px; text-align: left; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; line-height: 1.5; }
     .footer-brand { font-weight: 800; color: #1e293b; font-size: 13px; margin-bottom: 4px; letter-spacing: -0.2px; }
     .footer-copy { color: #94a3b8; font-size: 12px; }
     .footer-link { color: #ea580c; text-decoration: none; font-weight: 600; }
@@ -154,7 +154,7 @@ export const renderEmailShell = (title: string, bodyHtml: string, ctaText?: stri
     </div>
     <div class="footer">
       <div class="footer-brand">GM DIGITAL STUDIO</div>
-      <div class="footer-copy">&copy; ${new Date().getFullYear()} GM Digital Studio. All rights reserved. • <a href="https://gmdigitalstudio.app" class="footer-link">gmdigitalstudio.app</a></div>
+      <div class="footer-copy">&copy; ${new Date().getFullYear()} GM Digital Studio. All rights reserved. • <a href="https://portal.gmdigitalstudio.app" class="footer-link">portal.gmdigitalstudio.app</a></div>
     </div>
   </div>
 </body>
@@ -216,7 +216,7 @@ export const sendContactEmail = async (formData: ContactFormData): Promise<SendE
       <p>A new project inquiry has been submitted via the contact form on GM Digital Studio:</p>
       <table class="info-table">
         <tr><td class="label">Full Name</td><td class="value">${safeName}</td></tr>
-        <tr><td class="label">Email Address</td><td class="value">${safeEmail}</td></tr>
+        <tr><td class="label">Email Address</td><td class="value" style="word-break: break-all;">${safeEmail}</td></tr>
         <tr><td class="label">Company</td><td class="value">${safeCompany}</td></tr>
         <tr><td class="label">Service Required</td><td class="value"><span class="badge">${safeService}</span></td></tr>
         <tr><td class="label">Budget Range</td><td class="value">${safeBudget}</td></tr>
@@ -225,9 +225,8 @@ export const sendContactEmail = async (formData: ContactFormData): Promise<SendE
       <div class="quote-box">
         ${safeMessage}
       </div>
-    `,
-    'View Contact Submissions',
-    'https://gmdigitalstudio.app/admin/dashboard'
+    `,    'View Contact Submissions',
+    'https://portal.gmdigitalstudio.app/admin/dashboard'
   );
 
   const res = await sendViaResend([ADMIN_EMAIL], `New Inquiry from ${safeName}`, adminHtml, undefined, 'contact_form');
@@ -256,8 +255,8 @@ export const sendWelcomeClientEmail = async (clientData: WelcomeClientData): Pro
         <tr><td class="label">Client Name</td><td class="value">${safeFullName}</td></tr>
         <tr><td class="label">Company</td><td class="value">${safeCompany}</td></tr>
         <tr><td class="label">Assigned Package</td><td class="value"><span class="badge">${safePackage}</span></td></tr>
-        <tr><td class="label">Portal Email</td><td class="value">${safeEmail}</td></tr>
-        ${safePassword ? `<tr><td class="label">Initial Password</td><td class="value" style="font-family: monospace; color: #ea580c;">${safePassword}</td></tr>` : ''}
+        <tr><td class="label">Portal Email</td><td class="value" style="word-break: break-all; color: #2563eb;">${safeEmail}</td></tr>
+        ${safePassword ? `<tr><td class="label">Initial Password</td><td class="value" style="font-family: monospace; color: #ea580c; font-size: 15px; letter-spacing: 1px;">${safePassword}</td></tr>` : ''}
       </table>
       <p>You can now log into your private client workspace to track active project progress, view interactive milestones, download invoices, and communicate directly with our team.</p>
       <p style="background: #fff7ed; padding: 12px 16px; border-left: 4px solid #ea580c; border-radius: 6px; color: #c2410c; font-size: 13px; margin-top: 16px;">
@@ -265,7 +264,7 @@ export const sendWelcomeClientEmail = async (clientData: WelcomeClientData): Pro
       </p>
     `,
     'Access Client Portal',
-    'https://gmdigitalstudio.app/login'
+    'https://portal.gmdigitalstudio.app/login'
   );
 
   return await sendViaResend([clientData.email], `Welcome to GM Digital Studio - Portal Account Ready`, html);
@@ -309,7 +308,7 @@ export const sendInvoiceAlertEmail = async (invoiceData: InvoiceAlertData): Prom
         <p>Client <strong>${safeClientName}</strong> has submitted payment proof for invoice <strong>${safeInvoiceNum}</strong>.</p>
         <table class="info-table">
           <tr><td class="label">Invoice Number</td><td class="value">${safeInvoiceNum}</td></tr>
-          <tr><td class="label">Client Email</td><td class="value">${safeClientEmail}</td></tr>
+          <tr><td class="label">Client Email</td><td class="value" style="word-break: break-all;">${safeClientEmail}</td></tr>
           <tr><td class="label">Amount</td><td class="value">${safeAmount}</td></tr>
           <tr><td class="label">Status</td><td class="value"><span class="badge" style="background: #eab308; color: #000;">Under Review</span></td></tr>
         </table>
@@ -341,10 +340,10 @@ export const sendInvoiceAlertEmail = async (invoiceData: InvoiceAlertData): Prom
           <tr><td class="label">Status</td><td class="value"><span class="badge" style="background: #ef4444;">Action Required</span></td></tr>
         </table>
         ${safeRejectionReason ? `
-          <p><strong>Admin Rejection Notes:</strong></p>
-          <blockquote style="background: #1e293b; padding: 12px; border-left: 4px solid #ef4444; color: #f8fafc;">
+          <p style="margin-top: 20px; margin-bottom: 6px; font-weight: 700; color: #991b1b; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Admin Rejection Notes:</p>
+          <div style="background-color: #fef2f2; padding: 14px 18px; border-left: 4px solid #ef4444; border-radius: 8px; border-top: 1px solid #fecaca; border-right: 1px solid #fecaca; border-bottom: 1px solid #fecaca; color: #991b1b; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
             ${safeRejectionReason}
-          </blockquote>
+          </div>
         ` : ''}
         <p>Please update your invoice details or re-submit valid payment proof in your portal workspace.</p>
       `;
@@ -357,7 +356,7 @@ export const sendInvoiceAlertEmail = async (invoiceData: InvoiceAlertData): Prom
         <p>Client <strong>${safeClientName}</strong> (${safeClientEmail}) has requested a new custom invoice statement.</p>
         <table class="info-table">
           <tr><td class="label">Client Name</td><td class="value">${safeClientName}</td></tr>
-          <tr><td class="label">Client Email</td><td class="value">${safeClientEmail}</td></tr>
+          <tr><td class="label">Client Email</td><td class="value" style="word-break: break-all;">${safeClientEmail}</td></tr>
           <tr><td class="label">Project Scope</td><td class="value"><strong>${escapeHtml(invoiceData.projectName || 'Custom Scope')}</strong></td></tr>
           ${invoiceData.clientMessage ? `<tr><td class="label">Client Message</td><td class="value">${escapeHtml(invoiceData.clientMessage)}</td></tr>` : ''}
           <tr><td class="label">Status</td><td class="value"><span class="badge" style="background: #ea580c; color: #fff;">Invoice Request Received</span></td></tr>
@@ -370,7 +369,7 @@ export const sendInvoiceAlertEmail = async (invoiceData: InvoiceAlertData): Prom
       bodyContent = `<p>Invoice status updated to <strong>${escapeHtml(invoiceData.status)}</strong> for invoice ${safeInvoiceNum}.</p>`;
   }
 
-  const html = renderEmailShell(title, bodyContent, 'View Invoices in Portal', 'https://gmdigitalstudio.app/client/invoices');
+  const html = renderEmailShell(title, bodyContent, 'View Invoices in Portal', 'https://portal.gmdigitalstudio.app/client/invoices');
   return await sendViaResend([recipient], title, html);
 };
 
@@ -396,15 +395,15 @@ export const sendProjectStatusAlertEmail = async (projectData: ProjectAlertData)
       ${safeMilestoneStatus ? `<tr><td class="label">Phase Status</td><td class="value">${safeMilestoneStatus}</td></tr>` : ''}
     </table>
     ${safeNotes ? `
-      <p><strong>Update Notes:</strong></p>
-      <blockquote style="background: #1e293b; padding: 12px; border-left: 4px solid #ea580c; color: #f8fafc;">
+      <p style="margin-top: 20px; margin-bottom: 6px; font-weight: 700; color: #0f172a; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Update Notes:</p>
+      <div style="background-color: #f8fafc; padding: 14px 18px; border-left: 4px solid #ea580c; border-radius: 8px; border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
         ${safeNotes}
-      </blockquote>
+      </div>
     ` : ''}
     <p>Log into your interactive project board to review progress updates or sign off on deliverables.</p>
   `;
 
-  const html = renderEmailShell(title, bodyContent, 'View Interactive Timeline', 'https://gmdigitalstudio.app/client/projects');
+  const html = renderEmailShell(title, bodyContent, 'View Interactive Timeline', 'https://portal.gmdigitalstudio.app/client/projects');
   return await sendViaResend([projectData.clientEmail], title, html);
 };
 
@@ -428,7 +427,7 @@ export const sendToolRequestAlertEmail = async (data: ToolRequestAlertData): Pro
       <p>Client <strong>${safeClientName}</strong> (${safeClientEmail}) has requested access to the studio tool: <strong>${safeToolName}</strong>.</p>
       <table class="info-table">
         <tr><td class="label">Client Name</td><td class="value">${safeClientName}</td></tr>
-        <tr><td class="label">Client Email</td><td class="value">${safeClientEmail}</td></tr>
+        <tr><td class="label">Client Email</td><td class="value" style="word-break: break-all;">${safeClientEmail}</td></tr>
         <tr><td class="label">Requested Tool</td><td class="value"><span class="badge">${safeToolName}</span></td></tr>
         <tr><td class="label">Status</td><td class="value">Pending Admin Review</td></tr>
       </table>
@@ -458,7 +457,7 @@ export const sendToolRequestAlertEmail = async (data: ToolRequestAlertData): Pro
     `;
   }
 
-  const html = renderEmailShell(title, bodyContent, 'Access Client Tools', 'https://gmdigitalstudio.app/client/tools');
+  const html = renderEmailShell(title, bodyContent, 'Access Client Tools', 'https://portal.gmdigitalstudio.app/client/tools');
   const res = await sendViaResend([recipient], title, html);
   return {
     success: res.success,
@@ -475,7 +474,7 @@ export const sendProjectFeedbackAlertEmail = async (data: {
   clientEmail: string;
   rating: number;
   comment: string;
-}): Promise<SendEmailResponse> => {
+  }): Promise<SendEmailResponse> => {
   const safeTitle = escapeHtml(data.projectTitle);
   const safeClientName = escapeHtml(data.clientName);
   const safeClientEmail = escapeHtml(data.clientEmail);
@@ -497,7 +496,7 @@ export const sendProjectFeedbackAlertEmail = async (data: {
     <p>You can view all project feedback inside the Admin Control Center.</p>
   `;
 
-  const html = renderEmailShell(title, bodyContent, 'View Admin Dashboard', 'https://gmdigitalstudio.app/admin/dashboard');
+  const html = renderEmailShell(title, bodyContent, 'View Admin Dashboard', 'https://portal.gmdigitalstudio.app/admin/dashboard');
   const res = await sendViaResend([ADMIN_EMAIL], title, html);
   return {
     success: res.success,
