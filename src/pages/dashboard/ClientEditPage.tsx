@@ -237,12 +237,12 @@ export function ClientEditPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 w-full sm:w-auto">
             {isEditing && (
               <button
                 type="button"
                 onClick={handleToggleActiveStatus}
-                className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                className={`w-full sm:w-auto px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
                   status === 'active'
                     ? 'border-gray-300 dark:border-dark-border text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface'
                     : 'border-emerald-300 bg-emerald-50 text-emerald-700 font-bold'
@@ -256,7 +256,7 @@ export function ClientEditPage() {
             <button
               type="submit"
               form="client-edit-form"
-              className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               {isEditing ? 'Save Changes' : 'Provision Client'}

@@ -11,6 +11,28 @@
 
 ---
 
+## 📸 Platform UI Showcase
+
+<div align="center">
+
+### 🌐 Public Agency Showcase
+| Home Landing Experience | Agency Services Matrix |
+| :---: | :---: |
+| ![Home Preview](docs/screenshots/01-home.png) | ![Services Preview](docs/screenshots/02-services.png) |
+
+| Bento Portfolio & Case Studies | Tiered Service Pricing |
+| :---: | :---: |
+| ![Portfolio Preview](docs/screenshots/03-portfolio.png) | ![Pricing Preview](docs/screenshots/04-pricing.png) |
+
+### 🛡️ Client Portal & Studio Management
+| Client Deliverables Workspace | Studio Executive Dashboard |
+| :---: | :---: |
+| ![Client Portal Hub](docs/screenshots/client-portal.png) | ![Admin Dashboard](docs/screenshots/admin-portal.png) |
+
+</div>
+
+---
+
 ## ✨ Core Features & Modules
 
 ### 🌐 1. Public Agency Showcase

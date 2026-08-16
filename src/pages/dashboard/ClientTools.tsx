@@ -120,7 +120,7 @@ export function ClientTools() {
     setActiveToolId(toolId);
     activityLogService.logActivity({
       user_name: clientData?.fullName || user?.email || 'Studio User',
-      user_email: clientData?.email || user?.email || 'user@gmstudio.com',
+      user_email: clientData?.email || user?.email || '',
       user_role: 'client',
       action: 'TOOL_LAUNCHED',
       entity_type: 'tools',
@@ -142,7 +142,7 @@ export function ClientTools() {
 
     activityLogService.logActivity({
       user_name: clientData?.fullName || user?.email || 'Studio User',
-      user_email: clientData?.email || user?.email || 'user@gmstudio.com',
+      user_email: clientData?.email || user?.email || '',
       user_role: 'client',
       action: 'TOOL_EXECUTED',
       entity_type: 'tools',
@@ -207,7 +207,7 @@ export function ClientTools() {
 
     activityLogService.logActivity({
       user_name: clientData?.fullName || user?.email || 'Studio User',
-      user_email: clientData?.email || user?.email || 'user@gmstudio.com',
+      user_email: clientData?.email || user?.email || '',
       user_role: 'client',
       action: 'TOOL_EXECUTED',
       entity_type: 'tools',
@@ -255,7 +255,7 @@ export function ClientTools() {
 
     activityLogService.logActivity({
       user_name: clientData?.fullName || user?.email || 'Studio User',
-      user_email: clientData?.email || user?.email || 'user@gmstudio.com',
+      user_email: clientData?.email || user?.email || '',
       user_role: 'client',
       action: 'TOOL_EXECUTED',
       entity_type: 'tools',
@@ -279,7 +279,7 @@ export function ClientTools() {
 
     activityLogService.logActivity({
       user_name: clientData?.fullName || user?.email || 'Studio User',
-      user_email: clientData?.email || user?.email || 'user@gmstudio.com',
+      user_email: clientData?.email || user?.email || '',
       user_role: 'client',
       action: 'TOOL_EXECUTED',
       entity_type: 'tools',

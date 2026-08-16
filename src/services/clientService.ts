@@ -214,7 +214,7 @@ export const clientService = {
     if (client) {
       activityLogService.logActivity({
         user_name: 'Studio Admin',
-        user_email: 'admin@gmstudio.com',
+        user_email: '',
         user_role: 'admin',
         action: 'TOOL_PERMISSIONS_UPDATED',
         entity_type: 'tools',
@@ -302,7 +302,7 @@ export const clientService = {
 
       activityLogService.logActivity({
         user_name: 'Studio Admin',
-        user_email: 'admin@gmstudio.com',
+        user_email: '',
         user_role: 'admin',
         action: approve ? 'TOOL_ACCESS_GRANTED' : 'TOOL_ACCESS_DECLINED',
         entity_type: 'tools',

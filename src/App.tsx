@@ -27,6 +27,7 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 // Auth Pages (Lazy Loaded)
 const Login = lazy(() => import('./pages/auth/Login'));
 const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 
 // Dashboard Overview & Feature Pages (Lazy Loaded)
 const AdminOverview = lazy(() => import('./pages/dashboard/AdminOverview'));
@@ -112,7 +113,7 @@ function DomainRoutingGuard({ children }: { children: React.ReactNode }) {
     } else {
       // 2. If currently browsing on main marketing domain (gmdigitalstudio.app)
       // Direct login and operational portal spaces to portal.gmdigitalstudio.app
-      const portalPaths = ['/login', '/forgot-password', '/admin', '/client', '/author'];
+      const portalPaths = ['/login', '/forgot-password', '/reset-password', '/admin', '/client', '/author'];
       if (portalPaths.some((pp) => path === pp || path.startsWith(`${pp}/`))) {
         window.location.replace(getPortalUrl(path + location.search));
       }
@@ -149,6 +150,7 @@ function App() {
               {/* Public Auth Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Admin Protected Dashboard Routes */}
               <Route

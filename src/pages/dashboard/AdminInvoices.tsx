@@ -421,7 +421,7 @@ export function AdminInvoices() {
 
           <button
             onClick={() => setShowModal(true)}
-            className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer w-fit"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Create New Invoice
           </button>

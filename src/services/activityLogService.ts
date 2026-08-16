@@ -7,11 +7,38 @@ export const activityLogService = {
    */
   async logActivity(data: CreateActivityLogDTO): Promise<boolean> {
     try {
+      let resolvedUserId = data.user_id || null;
+      let resolvedUserName = data.user_name;
+      let resolvedUserEmail = data.user_email;
+      let resolvedUserRole = data.user_role;
+
+      // Automatically resolve active authenticated session if user details are not explicitly provided
+      if (!resolvedUserEmail || !resolvedUserId) {
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData?.user) {
+            resolvedUserId = resolvedUserId || authData.user.id;
+            resolvedUserEmail = resolvedUserEmail || authData.user.email || '';
+            resolvedUserName =
+              resolvedUserName ||
+              authData.user.user_metadata?.full_name ||
+              authData.user.user_metadata?.fullName ||
+              (authData.user.app_metadata?.role === 'admin'
+                ? 'Studio Admin'
+                : authData.user.email?.split('@')[0] || 'Studio User');
+            resolvedUserRole =
+              resolvedUserRole || (authData.user.app_metadata?.role as any) || 'client';
+          }
+        } catch {
+          // Fallback to provided data
+        }
+      }
+
       const payload = {
-        user_id: data.user_id || null,
-        user_name: data.user_name || 'System User',
-        user_email: data.user_email || 'system@gmstudio.com',
-        user_role: data.user_role || 'client',
+        user_id: resolvedUserId,
+        user_name: resolvedUserName || 'Studio User',
+        user_email: resolvedUserEmail || '',
+        user_role: resolvedUserRole || 'client',
         action: data.action,
         entity_type: data.entity_type,
         entity_id: data.entity_id || null,

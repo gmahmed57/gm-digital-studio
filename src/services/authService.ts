@@ -287,11 +287,23 @@ export const authService = {
 
   async resetPassword(email: string): Promise<boolean> {
     if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const isPortal = typeof window !== 'undefined' && (window.location.hostname.includes('portal.') || window.location.hostname.includes('localhost'));
+      const origin = isPortal ? window.location.origin : 'https://portal.gmdigitalstudio.app';
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${origin}/reset-password`,
       });
       if (error) {
         throw new Error(error.message || 'Failed to send reset email.');
+      }
+    }
+    return true;
+  },
+
+  async updatePassword(password: string): Promise<boolean> {
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        throw new Error(error.message || 'Failed to update password.');
       }
     }
     return true;

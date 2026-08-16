@@ -249,7 +249,7 @@ export function Header({ onToggleMobileSidebar }: HeaderProps) {
 
           {/* Floating Inline Dropdown Menu (Fixed & responsive on mobile, anchored on desktop) */}
           {isSearchFocused && searchQuery.trim() !== '' && (
-            <div className="fixed left-3 right-3 sm:left-auto sm:right-0 top-16 sm:top-full w-auto sm:w-96 mt-2 z-50 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl p-2 max-h-80 overflow-y-auto space-y-1 font-sans">
+            <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-0 sm:right-auto sm:top-full w-auto sm:w-96 mt-2 z-50 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl p-2 max-h-80 overflow-y-auto space-y-1 font-sans">
               {isSearchLoading && searchResults.length === 0 ? (
                 <div className="p-4 text-center text-xs text-gray-400">
                   Searching database...

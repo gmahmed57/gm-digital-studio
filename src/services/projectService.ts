@@ -164,7 +164,7 @@ export const projectService = {
 
     activityLogService.logActivity({
       user_name: targetItem.clientName || 'Studio Admin',
-      user_email: targetItem.clientEmail || 'admin@gmstudio.com',
+      user_email: targetItem.clientEmail || '',
       user_role: 'admin',
       action: project.id ? 'PROJECT_UPDATED' : 'PROJECT_CREATED',
       entity_type: 'project',

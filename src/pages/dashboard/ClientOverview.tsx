@@ -34,18 +34,22 @@ export function ClientOverview() {
       setLoading(true);
       try {
         const [allProjects, allInvoices] = await Promise.all([
-          projectService.getProjects(),
-          invoiceService.getInvoices(),
+          projectService.getProjects(user),
+          invoiceService.getInvoices(user),
         ]);
 
         const clientEmailLower = user.email.toLowerCase();
 
-        // Filter strictly by authenticated client email
+        // Filter strictly by authenticated client email or client ID
         const userProjects = allProjects.filter(
-          (p) => p.clientEmail.toLowerCase() === clientEmailLower
+          (p) =>
+            p.clientEmail.toLowerCase() === clientEmailLower ||
+            (user.id && p.clientId === user.id)
         );
         const userInvoices = allInvoices.filter(
-          (i) => i.clientEmail.toLowerCase() === clientEmailLower
+          (i) =>
+            i.clientEmail.toLowerCase() === clientEmailLower ||
+            (user.id && i.clientId === user.id)
         );
 
         setProjects(userProjects);
