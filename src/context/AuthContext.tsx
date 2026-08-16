@@ -108,8 +108,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password?: string) => {
     setIsLoading(true);
     try {
-      const profile = await authService.signIn(email, password);
-      setUser(profile);
+      const result = await authService.signIn(email, password);
+      if (!result.mfaRequired && result.user) {
+        setUser(result.user);
+      }
+      return result;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyMFA = async (factorId: string, code: string, tempUser: UserProfile) => {
+    setIsLoading(true);
+    try {
+      const verifiedProfile = await authService.verifyLoginMFA(factorId, code, tempUser);
+      setUser(verifiedProfile);
+      return verifiedProfile;
     } finally {
       setIsLoading(false);
     }
@@ -143,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!user,
     isLoading,
     login,
+    verifyMFA,
     logout,
     setRole,
     updateAuthUser,

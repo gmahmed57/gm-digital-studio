@@ -24,6 +24,27 @@ export interface UserProfile {
   createdAt?: string;
 }
 
+export interface SignInResult {
+  mfaRequired: boolean;
+  factorId?: string;
+  user?: UserProfile;
+  tempUser?: UserProfile;
+}
+
+export interface MFAFactor {
+  id: string;
+  status: 'verified' | 'unverified';
+  friendly_name?: string;
+  factor_type: string;
+}
+
+export interface MFAEnrollResult {
+  id: string;
+  qrCode: string;
+  secret: string;
+  uri: string;
+}
+
 export interface AuthState {
   user: UserProfile | null;
   role: UserRole | null;
@@ -32,7 +53,8 @@ export interface AuthState {
 }
 
 export interface AuthContextType extends AuthState {
-  login: (email: string, password?: string) => Promise<void>;
+  login: (email: string, password?: string) => Promise<SignInResult>;
+  verifyMFA: (factorId: string, code: string, tempUser: UserProfile) => Promise<UserProfile>;
   logout: () => Promise<void>;
   setRole: (role: UserRole) => void;
   updateAuthUser: (updatedData: Partial<UserProfile>) => void;

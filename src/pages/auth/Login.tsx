@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { settingsService, type WebsiteSettings } from '../../services/settingsService';
-import { Lock, Mail, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import type { UserProfile, UserRole } from '../../types/auth';
+import { Lock, Mail, Eye, EyeOff, ArrowRight, ShieldCheck, ArrowLeft, KeyRound } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SEO from '../../components/common/SEO';
 import logo from '../../assets/icon-logo.png';
@@ -33,13 +34,19 @@ const SLIDES = [
 
 export function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, verifyMFA } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Two-Step Verification (MFA) state
+  const [isMfaRequired, setIsMfaRequired] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState('');
+  const [tempUser, setTempUser] = useState<UserProfile | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
 
   // Active slide index for text rotation
   const [activeSlide, setActiveSlide] = useState(0);
@@ -57,6 +64,16 @@ export function Login() {
     return () => clearInterval(timer);
   }, []);
 
+  const handleRoleRedirect = (role?: UserRole) => {
+    if (role === 'admin') {
+      navigate('/admin/dashboard');
+    } else if (role === 'author') {
+      navigate('/author/cms');
+    } else {
+      navigate('/client/dashboard');
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -68,32 +85,51 @@ export function Login() {
     setIsSubmitting(true);
 
     try {
-      await login(email, password);
+      const result = await login(email, password);
 
-      const savedUser = localStorage.getItem('studio_auth_user');
-      if (savedUser) {
-        try {
-          const parsed = JSON.parse(savedUser);
-          if (parsed.role === 'admin') {
-            navigate('/admin/dashboard');
-            return;
-          } else if (parsed.role === 'author') {
-            navigate('/author/cms');
-            return;
-          } else if (parsed.role === 'client') {
-            navigate('/client/dashboard');
-            return;
-          }
-        } catch (e) {
-          // Fallback
-        }
+      if (result.mfaRequired && result.factorId && result.tempUser) {
+        setIsMfaRequired(true);
+        setMfaFactorId(result.factorId);
+        setTempUser(result.tempUser);
+        setErrorMsg('');
+        return;
       }
-      navigate('/client/dashboard');
+
+      handleRoleRedirect(result.user?.role);
     } catch (err: any) {
       setErrorMsg(err.message || 'Invalid login credentials. Please check your email and password.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleVerifyMFA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCode = mfaCode.trim().replace(/\s+/g, '');
+    if (cleanCode.length !== 6) {
+      setErrorMsg('Please enter the 6-digit code from Google Authenticator.');
+      return;
+    }
+
+    setErrorMsg('');
+    setIsSubmitting(true);
+
+    try {
+      const verifiedUser = await verifyMFA(mfaFactorId, cleanCode, tempUser!);
+      handleRoleRedirect(verifiedUser.role);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Invalid verification code. Please check Google Authenticator and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelMFA = () => {
+    setIsMfaRequired(false);
+    setMfaFactorId('');
+    setTempUser(null);
+    setMfaCode('');
+    setErrorMsg('');
   };
 
   const currentSlide = SLIDES[activeSlide];
@@ -168,101 +204,179 @@ export function Login() {
           {/* Right Panel: Perfectly Balanced Portal Login Form */}
           <div className="lg:col-span-6 p-6 sm:p-8 md:p-10 flex flex-col justify-center space-y-6">
             <div>
-              <div className="mb-6">
-                <h1 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-white mb-1.5">
-                  Sign In to Portal
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
-                  Enter your credentials to access your GM Digital Studio portal workspace.
-                </p>
-              </div>
+              {isMfaRequired ? (
+                /* Two-Step Verification View */
+                <div className="space-y-6 animate-fade-in text-center sm:text-left">
+                  <div className="text-center">
+                    <div className="mx-auto w-14 h-14 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20 flex items-center justify-center mb-3.5 shadow-xs">
+                      <ShieldCheck className="w-7 h-7" />
+                    </div>
+                    <h1 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-white mb-1.5 tracking-tight">
+                      Two-Step Verification
+                    </h1>
+                    <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm leading-relaxed max-w-sm mx-auto">
+                      Enter the 6-digit verification code generated by your Google Authenticator or TOTP app.
+                    </p>
+                  </div>
 
-              {errorMsg && (
-                <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/60 text-red-600 dark:text-red-400 text-xs font-medium">
-                  {errorMsg}
+                  {errorMsg && (
+                    <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/60 text-red-600 dark:text-red-400 text-xs font-medium text-center">
+                      {errorMsg}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleVerifyMFA} className="space-y-5">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider text-center">
+                        6-Digit Security Code
+                      </label>
+                      <div className="relative max-w-xs mx-auto">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                          <KeyRound className="w-4 h-4 text-brand-500" />
+                        </div>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          autoFocus
+                          required
+                          value={mfaCode}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+                            setMfaCode(val);
+                          }}
+                          placeholder="000000"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 text-center tracking-[0.5em] text-xl font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-brand-600 transition-all shadow-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmitting || mfaCode.length !== 6}
+                      className="w-full py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          Verify & Access Workspace <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </>
+                      )}
+                    </button>
+
+                    <div className="text-center pt-1">
+                      <button
+                        type="button"
+                        onClick={handleCancelMFA}
+                        className="text-xs text-gray-500 hover:text-brand-600 dark:hover:text-brand-400 inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" /> Back to email & password
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                /* Standard Login View */
+                <div>
+                  <div className="mb-6">
+                    <h1 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-white mb-1.5">
+                      Sign In to Portal
+                    </h1>
+                    <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">
+                      Enter your credentials to access your GM Digital Studio portal workspace.
+                    </p>
+                  </div>
+
+                  {errorMsg && (
+                    <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/60 text-red-600 dark:text-red-400 text-xs font-medium">
+                      {errorMsg}
+                    </div>
+                  )}
+
+                  {/* Login Form */}
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">
+                        Email Address
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                          <Mail className="w-4 h-4" />
+                        </div>
+                        <input
+                          type="email"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="your.email@company.com"
+                          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-600 text-sm transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                          Password
+                        </label>
+                        <Link
+                          to="/forgot-password"
+                          className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium"
+                        >
+                          Forgot password?
+                        </Link>
+                      </div>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                          <Lock className="w-4 h-4" />
+                        </div>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-600 text-sm transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="rounded border-gray-300 text-brand-600 focus:ring-brand-600"
+                        />
+                        Remember me for 30 days
+                      </label>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          Sign In to Workspace <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </>
+                      )}
+                    </button>
+                  </form>
                 </div>
               )}
-
-              {/* Login Form */}
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                      <Mail className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="your.email@company.com"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-600 text-sm transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Password
-                    </label>
-                    <Link
-                      to="/forgot-password"
-                      className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium"
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                      <Lock className="w-4 h-4" />
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-600 text-sm transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-1">
-                  <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-600"
-                    />
-                    Remember me for 30 days
-                  </label>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      Sign In to Workspace <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </>
-                  )}
-                </button>
-              </form>
             </div>
 
             {/* Tightly Integrated Footer Support Link */}

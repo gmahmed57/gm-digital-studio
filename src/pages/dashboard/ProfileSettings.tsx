@@ -3,9 +3,12 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { userService } from '../../services/userService';
 import { clientService } from '../../services/clientService';
+import { authService } from '../../services/authService';
 import { supabase } from '../../services/supabase';
 import type { ClientItem } from '../../types/client';
+import type { MFAEnrollResult } from '../../types/auth';
 import SEO from '../../components/common/SEO';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import { resolveAssetUrl, handleImageError } from '../../utils/imageUtils';
 import {
   User,
@@ -18,6 +21,7 @@ import {
   Upload,
   Trash2,
   ShieldCheck,
+  ShieldAlert,
   KeyRound,
   Clock,
   Briefcase,
@@ -28,6 +32,11 @@ import {
   Eye,
   X,
   Loader2,
+  Smartphone,
+  QrCode,
+  Copy,
+  Check,
+  CheckCircle2,
 } from 'lucide-react';
 
 const LinkedinIcon = ({ className }: { className?: string }) => (
@@ -98,6 +107,18 @@ export function ProfileSettings() {
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState<boolean>(false);
 
+  // 2FA Security State (Admin Only)
+  const [mfaStatus, setMfaStatus] = useState<{ enabled: boolean; factorId?: string; factorName?: string }>({ enabled: false });
+  const [isEnrollingMfa, setIsEnrollingMfa] = useState(false);
+  const [mfaEnrollData, setMfaEnrollData] = useState<MFAEnrollResult | null>(null);
+  const [showMfaModal, setShowMfaModal] = useState(false);
+  const [verifyCode, setVerifyCode] = useState('');
+  const [isVerifyingMfa, setIsVerifyingMfa] = useState(false);
+  const [mfaError, setMfaError] = useState('');
+  const [copiedSecret, setCopiedSecret] = useState(false);
+  const [showDisableMfaConfirm, setShowDisableMfaConfirm] = useState(false);
+  const [isDisablingMfa, setIsDisablingMfa] = useState(false);
+
   // Admin View Client Profiles State
   const [clientsList, setClientsList] = useState<ClientItem[]>([]);
   const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
@@ -121,7 +142,78 @@ export function ProfileSettings() {
       setGithub(user.socialLinks?.github || '');
       setWebsite(user.socialLinks?.website || '');
     }
-  }, [user]);
+
+    if (isAdmin) {
+      authService.getMFAStatus().then((status) => setMfaStatus(status));
+    }
+  }, [user, isAdmin]);
+
+  // 2FA Handlers
+  const handleStartMFAEnrollment = async () => {
+    setIsEnrollingMfa(true);
+    setMfaError('');
+    try {
+      const enrollData = await authService.enrollMFA('Super Admin Device');
+      setMfaEnrollData(enrollData);
+      setShowMfaModal(true);
+      setVerifyCode('');
+    } catch (err: any) {
+      setMfaError(err.message || 'Failed to initialize 2FA enrollment.');
+    } finally {
+      setIsEnrollingMfa(false);
+    }
+  };
+
+  const handleConfirmMFA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = verifyCode.trim().replace(/\s+/g, '');
+    if (!mfaEnrollData || clean.length !== 6) {
+      setMfaError('Please enter the 6-digit code from Google Authenticator.');
+      return;
+    }
+
+    setIsVerifyingMfa(true);
+    setMfaError('');
+    try {
+      await authService.verifyMFAEnrollment(mfaEnrollData.id, clean);
+      setSuccessMessage('Two-Factor Authentication is now ACTIVE on your Super Admin account!');
+      setShowMfaModal(false);
+      setMfaEnrollData(null);
+      setVerifyCode('');
+      const updated = await authService.getMFAStatus();
+      setMfaStatus(updated);
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err: any) {
+      setMfaError(err.message || 'Invalid verification code. Please check Google Authenticator and try again.');
+    } finally {
+      setIsVerifyingMfa(false);
+    }
+  };
+
+  const handleDisableMFA = async () => {
+    if (!mfaStatus.factorId) return;
+    setIsDisablingMfa(true);
+    try {
+      await authService.unenrollMFA(mfaStatus.factorId);
+      setMfaStatus({ enabled: false });
+      setShowDisableMfaConfirm(false);
+      setSuccessMessage('Two-Factor Authentication has been successfully disabled.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to disable 2FA.');
+      setTimeout(() => setErrorMessage(null), 3000);
+    } finally {
+      setIsDisablingMfa(false);
+    }
+  };
+
+  const handleCopySecret = () => {
+    if (mfaEnrollData?.secret) {
+      navigator.clipboard.writeText(mfaEnrollData.secret);
+      setCopiedSecret(true);
+      setTimeout(() => setCopiedSecret(false), 2500);
+    }
+  };
 
   // Universal Profile Sync: fetch live data from authors, profiles, and clients tables
   useEffect(() => {
@@ -489,13 +581,18 @@ export function ProfileSettings() {
           <button
             type="button"
             onClick={() => setActiveTab('security')}
-            className={`pb-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+            className={`pb-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'security'
                 ? 'border-brand-600 text-brand-600 dark:text-brand-400'
                 : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
-            Security & Password
+            <KeyRound className="w-3.5 h-3.5" /> Security & Password
+            {isAdmin && mfaStatus.enabled && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-white">
+                2FA Active
+              </span>
+            )}
           </button>
         </div>
 
@@ -927,90 +1024,336 @@ export function ProfileSettings() {
 
         {/* Tab 3: Security & Password */}
         {activeTab === 'security' && (
-          <form onSubmit={handlePasswordSubmit} className="p-6 md:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6">
-            <h2 className="text-base font-heading font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-brand-600" /> Account Security & Password Management
-            </h2>
+          <div className="space-y-6">
+            {/* Admin Exclusive: Two-Factor Authentication (2FA) */}
+            {isAdmin && (
+              <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100 dark:border-dark-border">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-3 rounded-2xl ${mfaStatus.enabled ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'}`}>
+                      {mfaStatus.enabled ? <ShieldCheck className="w-6 h-6" /> : <ShieldAlert className="w-6 h-6" />}
+                    </div>
+                    <div>
+                      <h2 className="text-base font-heading font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        Two-Factor Authentication (2FA)
+                      </h2>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Secure your Super Admin account with Google Authenticator (TOTP).
+                      </p>
+                    </div>
+                  </div>
 
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Update your account password. Changes take effect immediately upon saving.
-            </p>
+                  <div>
+                    {mfaStatus.enabled ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowDisableMfaConfirm(true)}
+                        className="px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 text-xs font-bold transition-all border border-red-200 dark:border-red-800/60 cursor-pointer"
+                      >
+                        Disable 2FA
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isEnrollingMfa}
+                        onClick={handleStartMFAEnrollment}
+                        className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                      >
+                        {isEnrollingMfa ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <QrCode className="w-4 h-4" /> Set Up 2-Step Verification
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-            <div className="space-y-4 max-w-2xl">
+                {/* Status Box */}
+                <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  mfaStatus.enabled
+                    ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300'
+                    : 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300'
+                }`}>
+                  <div className="flex items-center gap-2.5">
+                    {mfaStatus.enabled ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" /> : <Lock className="w-5 h-5 text-amber-600 shrink-0" />}
+                    <div>
+                      <div className="text-xs font-bold">
+                        {mfaStatus.enabled ? '2-Step Verification is Active' : '2-Step Verification is Disabled'}
+                      </div>
+                      <div className="text-[11px] opacity-80 mt-0.5">
+                        {mfaStatus.enabled
+                          ? 'Your account requires a live 6-digit code from Google Authenticator on every login.'
+                          : 'Require a 6-digit code from Google Authenticator whenever you log in.'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider self-start sm:self-auto ${
+                    mfaStatus.enabled ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'
+                  }`}>
+                    {mfaStatus.enabled ? 'Active' : 'Disabled'}
+                  </span>
+                </div>
+
+                {/* Quick 3-step Guide (Shown ONLY when 2FA is disabled) */}
+                {!mfaStatus.enabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs pt-1">
+                    <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border space-y-1.5">
+                      <span className="w-6 h-6 rounded-lg bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-xs">1</span>
+                      <h4 className="font-bold text-gray-900 dark:text-white text-xs">Install App</h4>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">Download Google Authenticator or Microsoft Authenticator on your phone.</p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border space-y-1.5">
+                      <span className="w-6 h-6 rounded-lg bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-xs">2</span>
+                      <h4 className="font-bold text-gray-900 dark:text-white text-xs">Scan QR Code</h4>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">Click "Set Up 2-Step Verification" and scan the generated QR code.</p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border space-y-1.5">
+                      <span className="w-6 h-6 rounded-lg bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-xs">3</span>
+                      <h4 className="font-bold text-gray-900 dark:text-white text-xs">Verify Code</h4>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">Enter the current 6-digit code displayed in the app to activate.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Password Management Form */}
+            <form onSubmit={handlePasswordSubmit} className="p-6 md:p-8 rounded-3xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6">
+              <h2 className="text-base font-heading font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-brand-600" /> Account Password Management
+              </h2>
+
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Update your account password. Changes take effect immediately upon saving.
+              </p>
+
+              <div className="space-y-4 max-w-2xl">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    Current Password <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-amber-500 absolute left-3.5 top-3" />
+                    <input
+                      type="password"
+                      required
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Enter your current password to verify identity"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Minimum 6 characters"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter new password"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={isUpdatingPassword}
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isUpdatingPassword ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> Updating Password...
+                    </>
+                  ) : (
+                    'Update Password Now'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+
+      {/* 2FA Setup Modal with QR Code */}
+      {showMfaModal && mfaEnrollData && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-dark-border">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-heading font-bold text-gray-900 dark:text-white">
+                    Set Up Google Authenticator
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Scan the QR code with your mobile authenticator app.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMfaModal(false);
+                  setMfaEnrollData(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* QR Code Container */}
+            <div className="flex flex-col items-center justify-center p-6 bg-gray-50 dark:bg-dark-surface rounded-2xl border border-gray-200 dark:border-dark-border space-y-3">
+              {mfaEnrollData.qrCode.startsWith('data:') ? (
+                <img
+                  src={mfaEnrollData.qrCode}
+                  alt="2FA QR Code"
+                  className="w-48 h-48 rounded-xl bg-white p-2 border shadow-xs"
+                />
+              ) : (
+                <div
+                  className="w-48 h-48 bg-white p-2 rounded-xl border flex items-center justify-center shadow-xs [&>svg]:w-full [&>svg]:h-full"
+                  dangerouslySetInnerHTML={{ __html: mfaEnrollData.qrCode }}
+                />
+              )}
+
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center">
+                Point your Google Authenticator or Microsoft Authenticator camera at this QR code.
+              </p>
+            </div>
+
+            {/* Manual Secret Key Fallback */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Manual Setup Key (If camera unavailable)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={mfaEnrollData.secret}
+                  className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-dark-border bg-gray-50 dark:bg-dark-surface text-gray-900 dark:text-white font-mono text-xs font-bold select-all"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopySecret}
+                  className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-dark-surface dark:hover:bg-dark-border text-gray-700 dark:text-gray-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  {copiedSecret ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedSecret ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            {/* Verification Form */}
+            <form onSubmit={handleConfirmMFA} className="space-y-4 pt-2">
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                  Current Password <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  Enter 6-Digit Code from App
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-amber-500 absolute left-3.5 top-3" />
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                    <KeyRound className="w-4 h-4 text-brand-500" />
+                  </div>
                   <input
-                    type="password"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    autoFocus
                     required
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter your current password to verify identity"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
+                    value={verifyCode}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+                      setVerifyCode(val);
+                    }}
+                    placeholder="000000"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white placeholder-gray-400 text-center tracking-[0.4em] text-lg font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-600"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                    New Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
-                    <input
-                      type="password"
-                      required
-                      minLength={6}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Minimum 6 characters"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
-                    />
-                  </div>
+              {mfaError && (
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/60 text-red-600 dark:text-red-400 text-xs font-medium">
+                  {mfaError}
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                    Confirm New Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
-                    <input
-                      type="password"
-                      required
-                      minLength={6}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter new password"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600 transition-all"
-                    />
-                  </div>
-                </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMfaModal(false);
+                    setMfaEnrollData(null);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border text-gray-700 dark:text-gray-300 text-xs font-bold hover:bg-gray-50 dark:hover:bg-dark-surface cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVerifyingMfa || verifyCode.trim().length !== 6}
+                  className="flex-1 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isVerifyingMfa ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    'Verify & Activate 2FA'
+                  )}
+                </button>
               </div>
-            </div>
+            </form>
+          </div>
+        </div>
+      )}
 
-            <div className="flex justify-end pt-2">
-              <button
-                type="submit"
-                disabled={isUpdatingPassword}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isUpdatingPassword ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> Updating Password...
-                  </>
-                ) : (
-                  'Update Password Now'
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
+      {/* Disable 2FA Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDisableMfaConfirm}
+        title="Disable Two-Factor Authentication"
+        message="Are you sure you want to disable 2-Step Verification on your Super Admin account? Your login will revert to password-only authentication."
+        confirmText={isDisablingMfa ? 'Disabling...' : 'Yes, Disable 2FA'}
+        cancelText="Keep 2FA Active"
+        variant="danger"
+        onConfirm={handleDisableMFA}
+        onClose={() => setShowDisableMfaConfirm(false)}
+      />
 
       {/* Admin Full Client Profile Detail Modal */}
       {selectedClientModal && createPortal(
