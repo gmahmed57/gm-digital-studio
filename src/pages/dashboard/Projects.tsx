@@ -33,6 +33,7 @@ export function Projects() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [deletingProject, setDeletingProject] = useState<{ id: string; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const loadProjects = async () => {
     setLoading(true);
@@ -62,14 +63,19 @@ export function Projects() {
   };
 
   const confirmDeleteProject = async () => {
-    if (!deletingProject) return;
-    const updated = await projectService.deleteProject(deletingProject.id);
-    if (isAdmin) {
-      setProjects(updated);
-    } else {
-      setProjects(updated.filter((p) => p.clientEmail.toLowerCase() === user?.email?.toLowerCase()));
+    if (!deletingProject || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const updated = await projectService.deleteProject(deletingProject.id);
+      if (isAdmin) {
+        setProjects(updated);
+      } else {
+        setProjects(updated.filter((p) => p.clientEmail.toLowerCase() === user?.email?.toLowerCase()));
+      }
+      setDeletingProject(null);
+    } finally {
+      setIsDeleting(false);
     }
-    setDeletingProject(null);
   };
 
   const getEffectiveStatus = (proj: ProjectItem): ProjectStatus => {
@@ -412,6 +418,7 @@ export function Projects() {
         confirmText="Permanently Delete Project"
         cancelText="Cancel"
         variant="danger"
+        isProcessing={isDeleting}
         onConfirm={confirmDeleteProject}
         onClose={() => setDeletingProject(null)}
       />

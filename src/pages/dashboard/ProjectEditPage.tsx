@@ -20,6 +20,7 @@ import {
   MessageSquare,
   Send,
   Star,
+  Loader2,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 
@@ -27,6 +28,8 @@ export function ProjectEditPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id && id !== 'new');
+
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -181,59 +184,66 @@ export function ProjectEditPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    const matchedClient = clientsList.find((c) => c.id === selectedClientId);
+    try {
+      const matchedClient = clientsList.find((c) => c.id === selectedClientId);
 
-    const approvedCount = milestones.filter((m) => m.status === 'approved').length;
-    const computedProgress = milestones.length > 0 ? Math.round((approvedCount / milestones.length) * 100) : 0;
+      const approvedCount = milestones.filter((m) => m.status === 'approved').length;
+      const computedProgress = milestones.length > 0 ? Math.round((approvedCount / milestones.length) * 100) : 0;
 
-    const parsedDeliverables = deliverablesText
-      ? deliverablesText.split(',').map((s) => s.trim()).filter(Boolean)
-      : [];
+      const parsedDeliverables = deliverablesText
+        ? deliverablesText.split(',').map((s) => s.trim()).filter(Boolean)
+        : [];
 
-    const targetProjectId = isEditing && id ? id : `proj-${Date.now()}`;
+      const targetProjectId = isEditing && id ? id : `proj-${Date.now()}`;
 
-    await projectService.saveProject({
-      id: targetProjectId,
-      title,
-      description,
-      category,
-      status,
-      budget,
-      startDate,
-      dueDate,
-      clientId: matchedClient?.id || 'client-1',
-      clientName: matchedClient?.fullName || 'Client User',
-      clientCompany: matchedClient?.company || 'Client Company',
-      clientEmail: matchedClient?.email || 'client@company.com',
-      progress: computedProgress,
-      milestones,
-      deliverables: parsedDeliverables,
-    });
+      await projectService.saveProject({
+        id: targetProjectId,
+        title,
+        description,
+        category,
+        status,
+        budget,
+        startDate,
+        dueDate,
+        clientId: matchedClient?.id || 'client-1',
+        clientName: matchedClient?.fullName || 'Client User',
+        clientCompany: matchedClient?.company || 'Client Company',
+        clientEmail: matchedClient?.email || 'client@company.com',
+        progress: computedProgress,
+        milestones,
+        deliverables: parsedDeliverables,
+      });
 
-    const targetEmail = matchedClient?.email || 'client@company.com';
-    const hasInReview = milestones.some((m) => m.status === 'in_review') || status === 'in_review';
+      const targetEmail = matchedClient?.email || 'client@company.com';
+      const hasInReview = milestones.some((m) => m.status === 'in_review') || status === 'in_review';
 
-    // Dispatch live in-app notification to client account
-    await notificationService.addNotification({
-      title: hasInReview ? 'Milestones Submitted for Review' : 'Project Milestones & Progress Updated',
-      message: `Admin updated milestone status & progress details for "${title}". Click to review workspace.`,
-      type: 'review',
-      targetRole: 'client',
-      targetEmail: targetEmail,
-      link: `/client/projects/view/${targetProjectId}`,
-    });
+      // Dispatch live in-app notification to client account
+      await notificationService.addNotification({
+        title: hasInReview ? 'Milestones Submitted for Review' : 'Project Milestones & Progress Updated',
+        message: `Admin updated milestone status & progress details for "${title}". Click to review workspace.`,
+        type: 'review',
+        targetRole: 'client',
+        targetEmail: targetEmail,
+        link: `/client/projects/view/${targetProjectId}`,
+      });
 
-    // Dispatch project status email notification to client
-    sendProjectStatusAlertEmail({
-      projectTitle: title,
-      clientName: matchedClient?.fullName || matchedClient?.company || 'Valued Client',
-      clientEmail: targetEmail,
-      status: status,
-      notes: `Project status updated to ${status.toUpperCase()}. Overall progress: ${computedProgress}%.`,
-    }).catch((err) => console.warn('Project update email notice:', err));
+      // Dispatch project status email notification to client
+      sendProjectStatusAlertEmail({
+        projectTitle: title,
+        clientName: matchedClient?.fullName || matchedClient?.company || 'Valued Client',
+        clientEmail: targetEmail,
+        status: status,
+        notes: `Project status updated to ${status.toUpperCase()}. Overall progress: ${computedProgress}%.`,
+      }).catch((err) => console.warn('Project update email notice:', err));
 
-    navigate('/admin/projects');
+      navigate('/admin/projects');
+    } catch (err) {
+      console.error('Failed to save project:', err);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -244,10 +254,9 @@ export function ProjectEditPage() {
       />
 
       <div className="space-y-6 font-sans">
-        
-        {/* Top Header & Actions */}
+        {/* Header Action Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-dark-border pb-5">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <Link
               to="/admin/projects"
               className="w-9 h-9 rounded-xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-white flex items-center justify-center transition-colors shadow-xs shrink-0"
@@ -255,9 +264,9 @@ export function ProjectEditPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-heading font-extrabold text-gray-900 dark:text-white">
-                {isEditing ? `Edit Project: ${title}` : 'Create Studio Project Build'}
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-heading font-extrabold text-gray-900 dark:text-white truncate">
+                {isEditing ? `Edit Project: ${title || 'Untitled'}` : 'Create Studio Project Build'}
               </h1>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 Assign client accounts, define deliverable categories, and manage completion milestones.
@@ -265,27 +274,30 @@ export function ProjectEditPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-end w-full sm:w-auto">
+          <div className="flex items-center justify-end w-full sm:w-auto shrink-0">
             <button
               type="submit"
               form="project-edit-form"
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              disabled={isSubmitting}
+              className={`w-full sm:w-auto px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 ${
+                isSubmitting ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
+              }`}
             >
-              <Save className="w-4 h-4" />
-              {isEditing ? 'Save Changes' : 'Create Project'}
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSubmitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Project'}
             </button>
           </div>
         </div>
 
         {/* Project Form Layout */}
-        <form id="project-edit-form" onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <form id="project-edit-form" onSubmit={handleSave} className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           
           {/* Left Column: Core Info & Client Assignment */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6">
+          <div className="xl:col-span-7 space-y-6 min-w-0">
+            <div className="p-5 sm:p-7 rounded-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6">
               
               <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-dark-border">
-                <div className="w-10 h-10 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold shrink-0">
                   <FolderGit2 className="w-5 h-5" />
                 </div>
                 <div>
@@ -299,6 +311,7 @@ export function ProjectEditPage() {
               </div>
 
               <div className="space-y-4">
+                {/* Project Title */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                     Project Title
@@ -313,138 +326,139 @@ export function ProjectEditPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                      Assigned Client Company
-                    </label>
-                    <div className="relative">
-                      <Building className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
-                      <select
-                        value={selectedClientId}
-                        onChange={(e) => setSelectedClientId(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-600 text-sm transition-all appearance-none"
-                      >
-                        {clientsList.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.company} ({c.fullName})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                        Service Category
-                      </label>
-                      {!isAddingCustomCategory && (
-                        <button
-                          type="button"
-                          onClick={() => setIsAddingCustomCategory(true)}
-                          className="text-[11px] font-bold text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3" /> Add Custom Category
-                        </button>
-                      )}
-                    </div>
-
-                    {isAddingCustomCategory ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={newCustomCategoryInput}
-                          onChange={(e) => setNewCustomCategoryInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddCustomCategory();
-                            }
-                          }}
-                          placeholder="e.g. Blockchain & Web3 Security"
-                          className="flex-1 px-3 py-2 rounded-xl border border-brand-500 bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600"
-                          autoFocus
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddCustomCategory}
-                          className="px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-700 transition-colors"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAddingCustomCategory(false);
-                            setNewCustomCategoryInput('');
-                          }}
-                          className="px-3 py-2 rounded-xl bg-gray-200 dark:bg-dark-surface text-gray-700 dark:text-gray-300 text-xs font-bold hover:bg-gray-300 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <Layers className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
-                        <select
-                          value={category}
-                          onChange={(e) => {
-                            if (e.target.value === '__add_new__') {
-                              setIsAddingCustomCategory(true);
-                            } else {
-                              setCategory(e.target.value as ProjectCategory);
-                            }
-                          }}
-                          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-600 text-sm transition-all appearance-none"
-                        >
-                          <option value="Enterprise Web Development">Enterprise Web Development</option>
-                          <option value="UI/UX & Product Design">UI/UX & Product Design</option>
-                          <option value="Digital Marketing">Digital Marketing</option>
-                          <option value="Social Media Management">Social Media Management</option>
-                          <option value="SEO">SEO</option>
-                          <option value="Virtual Assistant">Virtual Assistant</option>
-                          <option value="AI Automation Suite">AI Automation Suite</option>
-                          <option value="Brand Identity Strategy">Brand Identity Strategy</option>
-                          <option value="Mobile App Development">Mobile App Development</option>
-                          <option value="Cloud Infrastructure">Cloud Infrastructure</option>
-
-                          {/* Custom Categories */}
-                          {customCategories.map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-
-                          {/* Currently Selected Custom Category if not in presets */}
-                          {category &&
-                            ![
-                              'Enterprise Web Development',
-                              'UI/UX & Product Design',
-                              'Digital Marketing',
-                              'Social Media Management',
-                              'SEO',
-                              'Virtual Assistant',
-                              'AI Automation Suite',
-                              'Brand Identity Strategy',
-                              'Mobile App Development',
-                              'Cloud Infrastructure',
-                              ...customCategories,
-                            ].includes(category) && (
-                              <option value={category}>{category}</option>
-                            )}
-
-                          <option value="__add_new__" className="font-bold text-brand-600">
-                            + Add New Custom Category...
-                          </option>
-                        </select>
-                      </div>
-                    )}
+                {/* Assigned Client Company */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                    Assigned Client Company
+                  </label>
+                  <div className="relative">
+                    <Building className="w-4 h-4 absolute left-3.5 top-3.5 text-gray-400 pointer-events-none" />
+                    <select
+                      value={selectedClientId}
+                      onChange={(e) => setSelectedClientId(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-600 text-sm transition-all appearance-none"
+                    >
+                      {clientsList.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.company ? `${c.company} (${c.fullName})` : c.fullName}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
+                {/* Service Category */}
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Service Category
+                    </label>
+                    {!isAddingCustomCategory && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingCustomCategory(true)}
+                        className="text-[11px] font-bold text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Plus className="w-3 h-3" /> Add Custom Category
+                      </button>
+                    )}
+                  </div>
+
+                  {isAddingCustomCategory ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newCustomCategoryInput}
+                        onChange={(e) => setNewCustomCategoryInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCustomCategory();
+                          }
+                        }}
+                        placeholder="e.g. Blockchain & Web3 Security"
+                        className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-brand-500 bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomCategory}
+                        className="px-4 py-2.5 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-700 transition-colors shrink-0"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddingCustomCategory(false);
+                          setNewCustomCategoryInput('');
+                        }}
+                        className="px-3.5 py-2.5 rounded-xl bg-gray-200 dark:bg-dark-surface text-gray-700 dark:text-gray-300 text-xs font-bold hover:bg-gray-300 transition-colors shrink-0"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Layers className="w-4 h-4 absolute left-3.5 top-3.5 text-gray-400 pointer-events-none" />
+                      <select
+                        value={category}
+                        onChange={(e) => {
+                          if (e.target.value === '__add_new__') {
+                            setIsAddingCustomCategory(true);
+                          } else {
+                            setCategory(e.target.value as ProjectCategory);
+                          }
+                        }}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-600 text-sm transition-all appearance-none"
+                      >
+                        <option value="Enterprise Web Development">Enterprise Web Development</option>
+                        <option value="UI/UX & Product Design">UI/UX & Product Design</option>
+                        <option value="Digital Marketing">Digital Marketing</option>
+                        <option value="Social Media Management">Social Media Management</option>
+                        <option value="SEO">SEO</option>
+                        <option value="Virtual Assistant">Virtual Assistant</option>
+                        <option value="AI Automation Suite">AI Automation Suite</option>
+                        <option value="Brand Identity Strategy">Brand Identity Strategy</option>
+                        <option value="Mobile App Development">Mobile App Development</option>
+                        <option value="Cloud Infrastructure">Cloud Infrastructure</option>
+
+                        {/* Custom Categories */}
+                        {customCategories.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+
+                        {/* Selected Custom Category if not in presets */}
+                        {category &&
+                          ![
+                            'Enterprise Web Development',
+                            'UI/UX & Product Design',
+                            'Digital Marketing',
+                            'Social Media Management',
+                            'SEO',
+                            'Virtual Assistant',
+                            'AI Automation Suite',
+                            'Brand Identity Strategy',
+                            'Mobile App Development',
+                            'Cloud Infrastructure',
+                            ...customCategories,
+                          ].includes(category) && (
+                            <option value={category}>{category}</option>
+                          )}
+
+                        <option value="__add_new__" className="font-bold text-brand-600">
+                          + Add New Custom Category...
+                        </option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Status & Budget Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="min-w-0">
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                       Project Status
                     </label>
@@ -460,12 +474,12 @@ export function ProjectEditPage() {
                     </select>
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                       Total Budget
                     </label>
                     <div className="relative">
-                      <DollarSign className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                      <DollarSign className="w-4 h-4 absolute left-3.5 top-3.5 text-gray-400 pointer-events-none" />
                       <input
                         type="text"
                         value={budget}
@@ -475,13 +489,31 @@ export function ProjectEditPage() {
                       />
                     </div>
                   </div>
+                </div>
 
-                  <div>
+                {/* Start Date & Target Due Date Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="min-w-0">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                      Start Date
+                    </label>
+                    <div className="relative">
+                      <Calendar className="w-4 h-4 absolute left-3.5 top-3.5 text-gray-400 pointer-events-none" />
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-600 text-sm transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="min-w-0">
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                       Target Due Date
                     </label>
                     <div className="relative">
-                      <Calendar className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                      <Calendar className="w-4 h-4 absolute left-3.5 top-3.5 text-gray-400 pointer-events-none" />
                       <input
                         type="date"
                         value={dueDate}
@@ -492,12 +524,13 @@ export function ProjectEditPage() {
                   </div>
                 </div>
 
+                {/* Deliverables */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                     Project Deliverables (Comma separated)
                   </label>
                   <div className="relative">
-                    <Package className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+                    <Package className="w-4 h-4 absolute left-3.5 top-3.5 text-gray-400 pointer-events-none" />
                     <input
                       type="text"
                       value={deliverablesText}
@@ -508,6 +541,7 @@ export function ProjectEditPage() {
                   </div>
                 </div>
 
+                {/* Project Scope */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                     Project Scope & Description
@@ -525,47 +559,58 @@ export function ProjectEditPage() {
           </div>
 
           {/* Right Column: Milestones & Progress Tracker */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-6">
+          <div className="xl:col-span-5 space-y-6 min-w-0">
+            <div className="p-5 sm:p-7 rounded-2xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-xs space-y-5">
               
-              <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-dark-border">
+              <div className="pb-3 border-b border-gray-100 dark:border-dark-border">
+                <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-white">
+                  Milestones Roadmap
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Re-edit requested modifications, update titles, and submit for review.
+                </p>
+              </div>
+
+              {/* Add New Milestone Form Card */}
+              <div className="p-4 rounded-2xl bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border space-y-3">
                 <div>
-                  <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-white">
-                    Milestones Roadmap
-                  </h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Re-edit requested modifications, update titles, and submit for review.
-                  </p>
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                    New Milestone Title
+                  </label>
+                  <input
+                    type="text"
+                    value={newMilestoneTitle}
+                    onChange={(e) => setNewMilestoneTitle(e.target.value)}
+                    placeholder="e.g. Database Architecture Migration"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-end">
+                  <div className="space-y-1 min-w-0">
+                    <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-gray-400 shrink-0" /> Target Date
+                    </label>
+                    <input
+                      type="date"
+                      value={newMilestoneDueDate}
+                      onChange={(e) => setNewMilestoneDueDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-brand-600"
+                      title="Milestone Target Date"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddMilestone}
+                    className="w-full py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-all"
+                  >
+                    <Plus className="w-4 h-4 shrink-0" /> Add Milestone
+                  </button>
                 </div>
               </div>
 
-              {/* Add New Milestone */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  value={newMilestoneTitle}
-                  onChange={(e) => setNewMilestoneTitle(e.target.value)}
-                  placeholder="e.g. Database Architecture Migration"
-                  className="flex-1 px-3.5 py-2 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600"
-                />
-                <input
-                  type="date"
-                  value={newMilestoneDueDate}
-                  onChange={(e) => setNewMilestoneDueDate(e.target.value)}
-                  className="px-2.5 py-2 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-600"
-                  title="Milestone Target Date"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddMilestone}
-                  className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold flex items-center justify-center gap-1 cursor-pointer shrink-0"
-                >
-                  <Plus className="w-4 h-4" /> Add
-                </button>
-              </div>
-
               {/* Milestones List with Status Selector & Re-Edit Controls */}
-              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+              <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
                 {milestones.length === 0 ? (
                   <div className="p-6 text-center border border-dashed border-gray-200 dark:border-dark-border rounded-2xl">
                     <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">No milestones added yet.</p>
@@ -580,7 +625,7 @@ export function ProjectEditPage() {
                         className={`p-4 rounded-xl border space-y-3 ${
                           isModificationRequested
                             ? 'border-red-300 bg-red-50/40 dark:bg-red-950/20'
-                            : 'border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-dark-surface/50'
+                            : 'border-gray-200 dark:border-dark-border bg-gray-50/70 dark:bg-dark-surface/70'
                         }`}
                       >
                         {/* Title Editable Input */}
@@ -589,12 +634,12 @@ export function ProjectEditPage() {
                             type="text"
                             value={m.title}
                             onChange={(e) => updateMilestoneTitle(m.id, e.target.value)}
-                            className="flex-1 px-2.5 py-1 rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-brand-600"
+                            className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-brand-600"
                           />
                           <button
                             type="button"
                             onClick={() => removeMilestone(m.id)}
-                            className="text-gray-400 hover:text-red-500 p-1 transition-colors cursor-pointer"
+                            className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-border transition-colors cursor-pointer shrink-0"
                             title="Remove Milestone"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -603,13 +648,15 @@ export function ProjectEditPage() {
 
                         {/* Milestone Note / Comment for Client */}
                         <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-gray-500">Milestone Note / Comment for Client:</label>
+                          <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+                            Milestone Note / Comment for Client:
+                          </label>
                           <input
                             type="text"
                             value={m.comment || ''}
                             onChange={(e) => updateMilestoneComment(m.id, e.target.value)}
                             placeholder="e.g. Completed initial design mockups, waiting for client feedback..."
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white text-xs placeholder-gray-400 focus:ring-2 focus:ring-brand-600"
+                            className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs placeholder-gray-400 focus:ring-2 focus:ring-brand-600"
                           />
                         </div>
 
@@ -617,32 +664,34 @@ export function ProjectEditPage() {
                         {m.clientComment && (
                           <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-700 dark:text-red-300 space-y-1">
                             <p className="font-bold flex items-center gap-1 text-[11px]">
-                              <MessageSquare className="w-3.5 h-3.5 text-red-500" /> Client Revision Feedback:
+                              <MessageSquare className="w-3.5 h-3.5 text-red-500 shrink-0" /> Client Revision Feedback:
                             </p>
                             <p className="text-[11px] leading-relaxed">{m.clientComment}</p>
                           </div>
                         )}
 
                         {/* Target Due Date & Status Controls Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                          <div className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-white/60 dark:bg-dark-surface/60 border border-gray-200 dark:border-dark-border">
-                            <label className="text-[11px] font-bold text-gray-500 flex items-center gap-1 shrink-0">
-                              <Calendar className="w-3 h-3 text-gray-400" /> Target Date:
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-gray-400 shrink-0" /> Target Date:
                             </label>
                             <input
                               type="date"
                               value={m.dueDate || ''}
                               onChange={(e) => updateMilestoneDueDate(m.id, e.target.value)}
-                              className="px-2 py-0.5 rounded-md border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs font-semibold focus:ring-1 focus:ring-brand-500"
+                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-brand-600 transition-all"
                             />
                           </div>
 
-                          <div className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-white/60 dark:bg-dark-surface/60 border border-gray-200 dark:border-dark-border">
-                            <label className="text-[11px] font-bold text-gray-500 shrink-0">Status:</label>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+                              Status:
+                            </label>
                             <select
                               value={m.status || 'pending'}
                               onChange={(e) => updateMilestoneStatusLocal(m.id, e.target.value as MilestoneStatus)}
-                              className="w-full max-w-[170px] px-2 py-1 rounded-md border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs font-semibold focus:ring-1 focus:ring-brand-500"
+                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-brand-600 transition-all appearance-none cursor-pointer"
                             >
                               <option value="pending">Pending</option>
                               <option value="in_progress">In Progress</option>
@@ -703,7 +752,6 @@ export function ProjectEditPage() {
           </div>
 
         </form>
-
       </div>
     </>
   );

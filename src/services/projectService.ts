@@ -172,6 +172,10 @@ export const projectService = {
       details: `Project "${targetItem.title}" ${project.id ? 'updated' : 'created'} with status ${targetItem.status} (${targetItem.progress}% complete).`
     });
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('studio_project_updated'));
+    }
+
     return await projectService.getProjects();
   },
 
@@ -207,6 +211,10 @@ export const projectService = {
 
     if (error) {
       console.warn('[Project Service] Milestone feedback notice:', error.message);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('studio_project_updated'));
     }
 
     return updatedProject;
@@ -258,6 +266,10 @@ export const projectService = {
       console.warn('[Project Service] Milestone update notice:', error.message);
     }
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('studio_project_updated'));
+    }
+
     return updatedProject;
   },
 
@@ -267,6 +279,10 @@ export const projectService = {
 
     const { error } = await supabase.from('projects').delete().eq('id', id);
     if (error) throw error;
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('studio_project_updated'));
+    }
 
     return await projectService.getProjects();
   },

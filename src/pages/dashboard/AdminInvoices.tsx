@@ -29,9 +29,11 @@ import {
   ShieldCheck,
   Percent,
   Loader2,
+  QrCode,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import ConfirmModal from '../../components/common/ConfirmModal';
+import InvoiceQrModal from '../../components/dashboard/InvoiceQrModal';
 
 export function AdminInvoices() {
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
@@ -41,12 +43,13 @@ export function AdminInvoices() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
   const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+  const [qrModalInvoice, setQrModalInvoice] = useState<InvoiceItem | null>(null);
 
   const handleDownloadPDF = async (inv: InvoiceItem) => {
     setDownloadingPdfId(inv.id);
     try {
       await new Promise((resolve) => setTimeout(resolve, 350));
-      downloadInvoicePDF(inv);
+      await downloadInvoicePDF(inv);
     } catch (err) {
       console.error('Failed to download invoice PDF:', err);
     } finally {
@@ -83,6 +86,8 @@ export function AdminInvoices() {
   const [customTip, setCustomTip] = useState<number>(0);
   const [requestRejectMode, setRequestRejectMode] = useState<boolean>(false);
   const [requestRejectReason, setRequestRejectReason] = useState<string>('');
+  const [isReviewSubmitting, setIsReviewSubmitting] = useState<boolean>(false);
+  const [isDeletingInvoice, setIsDeletingInvoice] = useState<boolean>(false);
 
   const openReviewModal = (inv: InvoiceItem) => {
     setReviewingRequest(inv);
@@ -132,52 +137,62 @@ export function AdminInvoices() {
   };
 
   const handleApproveRequestWithCustomization = async () => {
-    if (!reviewingRequest) return;
+    if (!reviewingRequest || isReviewSubmitting) return;
 
-    const subtotal = customItems.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
-    const updated = await invoiceService.approveInvoiceRequest(reviewingRequest.id, {
-      description: customDescription,
-      dueDate: customDueDate,
-      taxRate: customTaxRate,
-      subtotal: subtotal,
-      items: customItems,
-      tipAmount: customTip,
-      notes: customNotes,
-    });
+    setIsReviewSubmitting(true);
+    try {
+      const subtotal = customItems.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+      const updated = await invoiceService.approveInvoiceRequest(reviewingRequest.id, {
+        description: customDescription,
+        dueDate: customDueDate,
+        taxRate: customTaxRate,
+        subtotal: subtotal,
+        items: customItems,
+        tipAmount: customTip,
+        notes: customNotes,
+      });
 
-    sendInvoiceAlertEmail({
-      invoiceNumber: reviewingRequest.invoiceNumber,
-      clientName: reviewingRequest.clientName,
-      clientEmail: reviewingRequest.clientEmail,
-      amount: reviewingRequest.amount,
-      dueDate: customDueDate,
-      status: 'Pending',
-    }).catch((err) => console.warn('Invoice approve email notice:', err));
+      sendInvoiceAlertEmail({
+        invoiceNumber: reviewingRequest.invoiceNumber,
+        clientName: reviewingRequest.clientName,
+        clientEmail: reviewingRequest.clientEmail,
+        amount: reviewingRequest.amount,
+        dueDate: customDueDate,
+        status: 'Pending',
+      }).catch((err) => console.warn('Invoice approve email notice:', err));
 
-    setInvoices(updated);
-    setReviewingRequest(null);
-    setRequestRejectMode(false);
-    setRequestRejectReason('');
+      setInvoices(updated);
+      setReviewingRequest(null);
+      setRequestRejectMode(false);
+      setRequestRejectReason('');
+    } finally {
+      setIsReviewSubmitting(false);
+    }
   };
 
   const handleRejectRequestWithReason = async () => {
-    if (!reviewingRequest || !requestRejectReason.trim()) return;
+    if (!reviewingRequest || !requestRejectReason.trim() || isReviewSubmitting) return;
 
-    const updated = await invoiceService.rejectInvoiceRequest(reviewingRequest.id, requestRejectReason.trim());
+    setIsReviewSubmitting(true);
+    try {
+      const updated = await invoiceService.rejectInvoiceRequest(reviewingRequest.id, requestRejectReason.trim());
 
-    sendInvoiceAlertEmail({
-      invoiceNumber: reviewingRequest.invoiceNumber,
-      clientName: reviewingRequest.clientName,
-      clientEmail: reviewingRequest.clientEmail,
-      amount: reviewingRequest.amount,
-      status: 'Request Rejected',
-      rejectionReason: requestRejectReason.trim(),
-    }).catch((err) => console.warn('Invoice reject email notice:', err));
+      sendInvoiceAlertEmail({
+        invoiceNumber: reviewingRequest.invoiceNumber,
+        clientName: reviewingRequest.clientName,
+        clientEmail: reviewingRequest.clientEmail,
+        amount: reviewingRequest.amount,
+        status: 'Request Rejected',
+        rejectionReason: requestRejectReason.trim(),
+      }).catch((err) => console.warn('Invoice reject email notice:', err));
 
-    setInvoices(updated);
-    setReviewingRequest(null);
-    setRequestRejectMode(false);
-    setRequestRejectReason('');
+      setInvoices(updated);
+      setReviewingRequest(null);
+      setRequestRejectMode(false);
+      setRequestRejectReason('');
+    } finally {
+      setIsReviewSubmitting(false);
+    }
   };
 
 
@@ -329,13 +344,18 @@ export function AdminInvoices() {
   };
 
   const confirmDeleteInvoice = async () => {
-    if (!deletingInvoiceId) return;
-    const updated = await invoiceService.deleteInvoice(deletingInvoiceId);
-    setInvoices(updated);
-    if (inspectingInvoice && inspectingInvoice.id === deletingInvoiceId) {
-      setInspectingInvoice(null);
+    if (!deletingInvoiceId || isDeletingInvoice) return;
+    setIsDeletingInvoice(true);
+    try {
+      const updated = await invoiceService.deleteInvoice(deletingInvoiceId);
+      setInvoices(updated);
+      if (inspectingInvoice && inspectingInvoice.id === deletingInvoiceId) {
+        setInspectingInvoice(null);
+      }
+      setDeletingInvoiceId(null);
+    } finally {
+      setIsDeletingInvoice(false);
     }
-    setDeletingInvoiceId(null);
   };
 
   const filteredInvoices = invoices.filter((inv) => {
@@ -662,6 +682,17 @@ export function AdminInvoices() {
 
                       {/* Actions */}
                       <td className="py-4 px-6 text-right whitespace-nowrap space-x-2">
+
+                        {inv.status === 'Paid' && (
+                          <button
+                            type="button"
+                            onClick={() => setQrModalInvoice(inv)}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
+                            title="View verified payment QR code"
+                          >
+                            <QrCode className="w-3.5 h-3.5" /> Verify QR
+                          </button>
+                        )}
 
                         {inv.status === 'Under Approval' && (
                           <button
@@ -1226,11 +1257,12 @@ export function AdminInvoices() {
                     </button>
                     <button
                       type="button"
-                      disabled={!requestRejectReason.trim()}
+                      disabled={!requestRejectReason.trim() || isReviewSubmitting}
                       onClick={handleRejectRequestWithReason}
-                      className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md disabled:opacity-50"
+                      className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
                     >
-                      Confirm Decline
+                      {isReviewSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      {isReviewSubmitting ? 'Declining...' : 'Confirm Decline'}
                     </button>
                   </div>
                 </div>
@@ -1411,8 +1443,9 @@ export function AdminInvoices() {
                   <div className="pt-4 border-t border-gray-100 dark:border-dark-border flex items-center justify-between gap-3">
                     <button
                       type="button"
+                      disabled={isReviewSubmitting}
                       onClick={() => setRequestRejectMode(true)}
-                      className="px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 cursor-pointer"
+                      className="px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 cursor-pointer disabled:opacity-50"
                     >
                       Decline Request
                     </button>
@@ -1432,9 +1465,13 @@ export function AdminInvoices() {
 
                       <button
                         type="submit"
-                        className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                        disabled={isReviewSubmitting}
+                        className={`px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 ${
+                          isReviewSubmitting ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
+                        }`}
                       >
-                        <ShieldCheck className="w-4 h-4" /> Approve & Issue Invoice
+                        {isReviewSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                        {isReviewSubmitting ? 'Approving...' : 'Approve & Issue Invoice'}
                       </button>
                     </div>
                   </div>
@@ -1455,8 +1492,15 @@ export function AdminInvoices() {
         confirmText="Delete Invoice"
         cancelText="Cancel"
         variant="danger"
+        isProcessing={isDeletingInvoice}
         onConfirm={confirmDeleteInvoice}
         onClose={() => setDeletingInvoiceId(null)}
+      />
+
+      {/* Official Payment Verification QR Code Seal Modal */}
+      <InvoiceQrModal
+        invoice={qrModalInvoice}
+        onClose={() => setQrModalInvoice(null)}
       />
     </>
   );

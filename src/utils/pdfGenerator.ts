@@ -7,14 +7,25 @@ import type {
   ToolsUsageReportData 
 } from '../services/reportingService';
 import logoImg from '../assets/icon-logo.png';
+import { generateInvoiceQRCodeDataUrl } from './qrCodeGenerator';
 
-export const generateInvoicePDF = (invoice: InvoiceItem): jsPDF => {
+export const generateInvoicePDF = async (invoice: InvoiceItem): Promise<jsPDF> => {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
     compress: true, // Enable built-in stream compression for minimal file size
   });
+
+  // Pre-generate QR code data URL if invoice is Paid
+  let qrCodeDataUrl = '';
+  if (invoice.status === 'Paid') {
+    try {
+      qrCodeDataUrl = await generateInvoiceQRCodeDataUrl(invoice, { width: 300, margin: 1 });
+    } catch (e) {
+      console.warn('QR code generation failed for PDF:', e);
+    }
+  }
 
   const brandOrange = [249, 115, 22]; // #f97316
   const textDark = [17, 24, 39]; // #111827
@@ -174,6 +185,55 @@ export const generateInvoicePDF = (invoice: InvoiceItem): jsPDF => {
   const taxLabel = invoice.taxRate !== undefined ? `Tax (${invoice.taxRate}%):` : tax > 0 ? `Tax:` : `Tax (0%):`;
 
   let currentCalcY = lineY + 6;
+
+  // Render Official QR Payment Verification Seal Box on the Left if Paid
+  if (invoice.status === 'Paid') {
+    const qrBoxY = lineY + 4;
+    const qrBoxWidth = 105;
+    const qrBoxHeight = 32;
+
+    // Box Background & Border (Clean Emerald Subtle Tint)
+    doc.setFillColor(240, 253, 244); // #f0fdf4
+    doc.roundedRect(15, qrBoxY, qrBoxWidth, qrBoxHeight, 2, 2, 'F');
+    doc.setDrawColor(187, 247, 208); // #bbf7d0
+    doc.setLineWidth(0.3);
+    doc.roundedRect(15, qrBoxY, qrBoxWidth, qrBoxHeight, 2, 2, 'S');
+
+    // Embed QR Code
+    if (qrCodeDataUrl) {
+      try {
+        doc.addImage(qrCodeDataUrl, 'PNG', 18, qrBoxY + 3.5, 25, 25);
+      } catch (err) {
+        console.warn('Could not embed QR code on PDF:', err);
+      }
+    }
+
+    // Verification Seal Header & Text
+    const textStartX = 46;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(21, 128, 61); // #15803d
+    doc.text('VERIFIED PAYMENT', textStartX, qrBoxY + 7);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text('Status: Paid & Digitally Verified', textStartX, qrBoxY + 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+    doc.text('Issuer: GM Digital Studio', textStartX, qrBoxY + 16.5);
+    
+    if (invoice.transactionId) {
+      const safeTxn = invoice.transactionId.length > 24 ? `${invoice.transactionId.substring(0, 24)}...` : invoice.transactionId;
+      doc.text(`Txn Ref: ${safeTxn}`, textStartX, qrBoxY + 21);
+    } else {
+      doc.text(`Doc ID: ${invoice.id}`, textStartX, qrBoxY + 21);
+    }
+    doc.text('Scan QR to verify invoice authenticity.', textStartX, qrBoxY + 25.5);
+  }
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(textGray[0], textGray[1], textGray[2]);
@@ -199,14 +259,25 @@ export const generateInvoicePDF = (invoice: InvoiceItem): jsPDF => {
 
   // Total Highlights Line
   currentCalcY += 5;
-  doc.setFillColor(brandOrange[0], brandOrange[1], brandOrange[2]);
-  doc.rect(130, currentCalcY, 65, 9, 'F');
+  if (invoice.status === 'Paid') {
+    doc.setFillColor(16, 185, 129); // Emerald Green for Paid
+    doc.rect(130, currentCalcY, 65, 9, 'F');
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(255, 255, 255);
-  doc.text('TOTAL DUE:', 135, currentCalcY + 6);
-  doc.text(`$${total.toLocaleString()}`, 190, currentCalcY + 6, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text('TOTAL PAID:', 135, currentCalcY + 6);
+    doc.text(`$${total.toLocaleString()}`, 190, currentCalcY + 6, { align: 'right' });
+  } else {
+    doc.setFillColor(brandOrange[0], brandOrange[1], brandOrange[2]);
+    doc.rect(130, currentCalcY, 65, 9, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text('TOTAL DUE:', 135, currentCalcY + 6);
+    doc.text(`$${total.toLocaleString()}`, 190, currentCalcY + 6, { align: 'right' });
+  }
 
   // 5. Payment Terms & Footnote
   const footerY = 245;
@@ -232,13 +303,13 @@ export const generateInvoicePDF = (invoice: InvoiceItem): jsPDF => {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(156, 163, 175);
-  doc.text('GM Digital Studio Inc. • Official Client Billing Statement • Confidential', 105, 285, { align: 'center' });
+  doc.text('GM Digital Studio Inc. • Official Client Billing Statement • Support: support@gmdigitalstudio.app', 105, 285, { align: 'center' });
 
   return doc;
 };
 
-export const downloadInvoicePDF = (invoice: InvoiceItem) => {
-  const doc = generateInvoicePDF(invoice);
+export const downloadInvoicePDF = async (invoice: InvoiceItem) => {
+  const doc = await generateInvoicePDF(invoice);
   const filename = `${invoice.invoiceNumber || 'Invoice'}_GM_Digital_Studio.pdf`;
   doc.save(filename);
 };

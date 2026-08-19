@@ -22,9 +22,11 @@ import {
   ShieldAlert,
   Upload,
   Loader2,
+  QrCode,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import { supabase } from '../../services/supabase';
+import InvoiceQrModal from '../../components/dashboard/InvoiceQrModal';
 
 export function ClientInvoices() {
   const { user } = useAuth();
@@ -33,12 +35,13 @@ export function ClientInvoices() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+  const [qrModalInvoice, setQrModalInvoice] = useState<InvoiceItem | null>(null);
 
   const handleDownloadPDF = async (inv: InvoiceItem) => {
     setDownloadingPdfId(inv.id);
     try {
       await new Promise((resolve) => setTimeout(resolve, 350));
-      downloadInvoicePDF(inv);
+      await downloadInvoicePDF(inv);
     } catch (err) {
       console.error('Failed to download invoice PDF:', err);
     } finally {
@@ -561,6 +564,18 @@ export function ClientInvoices() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                    {/* View Official Verified QR Receipt for Paid Invoices */}
+                    {inv.status === 'Paid' && (
+                      <button
+                        type="button"
+                        onClick={() => setQrModalInvoice(inv)}
+                        className="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                        title="View verified payment QR code"
+                      >
+                        <QrCode className="w-3.5 h-3.5" /> View QR Code
+                      </button>
+                    )}
+
                     {/* Payment Proof Action Button States */}
                     {inv.status === 'Pending Verification' ? (
                       <button
@@ -1016,6 +1031,12 @@ export function ClientInvoices() {
           </div>,
           document.body
         )}
+
+        {/* Official Payment Verification QR Code Seal Modal */}
+        <InvoiceQrModal
+          invoice={qrModalInvoice}
+          onClose={() => setQrModalInvoice(null)}
+        />
 
       </div>
     </>

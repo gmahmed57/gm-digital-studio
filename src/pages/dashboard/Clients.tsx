@@ -60,9 +60,15 @@ export function Clients() {
     const handleUpdate = () => loadClientData();
     window.addEventListener('studio_client_updated', handleUpdate);
     window.addEventListener('studio_tools_updated', handleUpdate);
+    window.addEventListener('studio_project_updated', handleUpdate);
+    window.addEventListener('studio_invoice_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
     return () => {
       window.removeEventListener('studio_client_updated', handleUpdate);
       window.removeEventListener('studio_tools_updated', handleUpdate);
+      window.removeEventListener('studio_project_updated', handleUpdate);
+      window.removeEventListener('studio_invoice_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
     };
   }, []);
 

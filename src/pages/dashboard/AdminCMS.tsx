@@ -24,6 +24,7 @@ import {
   CornerDownRight,
   Quote,
   Star,
+  Loader2,
 } from 'lucide-react';
 
 export function AdminCMS() {
@@ -92,6 +93,9 @@ export function AdminCMS() {
 
   // Loading & Action State
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingAuthor, setIsSavingAuthor] = useState(false);
+  const [isSavingTestimonial, setIsSavingTestimonial] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const loadAllData = async () => {
@@ -146,18 +150,24 @@ export function AdminCMS() {
 
   const handleSaveTestimonial = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSavingTestimonial) return;
     if (!testimonialForm.name || !testimonialForm.content) {
       alert('Please fill out the client name and testimonial content.');
       return;
     }
 
-    const success = await cmsService.saveTestimonial(testimonialForm);
-    if (success) {
-      setIsTestimonialModalOpen(false);
-      triggerSuccess(editingTestimonial ? 'Client testimonial updated!' : 'New client testimonial added!');
-      loadAllData();
-    } else {
-      alert('Failed to save testimonial.');
+    setIsSavingTestimonial(true);
+    try {
+      const success = await cmsService.saveTestimonial(testimonialForm);
+      if (success) {
+        setIsTestimonialModalOpen(false);
+        triggerSuccess(editingTestimonial ? 'Client testimonial updated!' : 'New client testimonial added!');
+        loadAllData();
+      } else {
+        alert('Failed to save testimonial.');
+      }
+    } finally {
+      setIsSavingTestimonial(false);
     }
   };
 
@@ -195,8 +205,9 @@ export function AdminCMS() {
     title: string;
   } | null>(null);
 
+  // Delete Handlers
   const handleDeleteTestimonial = async (id: string) => {
-    setPendingDelete({ type: 'testimonial', id, title: 'Testimonial' });
+    setPendingDelete({ type: 'testimonial', id, title: 'Client Testimonial' });
   };
 
   const handleDeleteBlog = async (id: string) => {
@@ -216,29 +227,34 @@ export function AdminCMS() {
   };
 
   const confirmPendingDelete = async () => {
-    if (!pendingDelete) return;
+    if (!pendingDelete || isDeleting) return;
+    setIsDeleting(true);
     const { type, id } = pendingDelete;
     let success = false;
 
-    if (type === 'testimonial') {
-      success = await cmsService.deleteTestimonial(id);
-      if (success) triggerSuccess('Testimonial deleted successfully.');
-    } else if (type === 'blog') {
-      success = await cmsService.deleteBlog(id);
-      if (success) triggerSuccess('Blog article removed.');
-    } else if (type === 'caseStudy') {
-      success = await cmsService.deleteCaseStudy(id);
-      if (success) triggerSuccess('Case study deleted.');
-    } else if (type === 'comment') {
-      success = await cmsService.deleteComment(id);
-      if (success) triggerSuccess('Comment deleted.');
-    } else if (type === 'author') {
-      success = await cmsService.deleteAuthor(id);
-      if (success) triggerSuccess('Author profile removed.');
-    }
+    try {
+      if (type === 'testimonial') {
+        success = await cmsService.deleteTestimonial(id);
+        if (success) triggerSuccess('Testimonial deleted successfully.');
+      } else if (type === 'blog') {
+        success = await cmsService.deleteBlog(id);
+        if (success) triggerSuccess('Blog article removed.');
+      } else if (type === 'caseStudy') {
+        success = await cmsService.deleteCaseStudy(id);
+        if (success) triggerSuccess('Case study deleted.');
+      } else if (type === 'comment') {
+        success = await cmsService.deleteComment(id);
+        if (success) triggerSuccess('Comment deleted.');
+      } else if (type === 'author') {
+        success = await cmsService.deleteAuthor(id);
+        if (success) triggerSuccess('Author profile removed.');
+      }
 
-    if (success) loadAllData();
-    setPendingDelete(null);
+      if (success) loadAllData();
+      setPendingDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleSaveReply = async (commentId: string) => {
@@ -299,13 +315,19 @@ export function AdminCMS() {
 
   const handleSaveAuthor = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSavingAuthor) return;
     if (!authorForm.name) return;
 
-    const success = await cmsService.saveAuthor(authorForm);
-    if (success) {
-      setIsAuthorModalOpen(false);
-      triggerSuccess(editingAuthor ? 'Author profile updated!' : 'New author profile added!');
-      loadAllData();
+    setIsSavingAuthor(true);
+    try {
+      const success = await cmsService.saveAuthor(authorForm);
+      if (success) {
+        setIsAuthorModalOpen(false);
+        triggerSuccess(editingAuthor ? 'Author profile updated!' : 'New author profile added!');
+        loadAllData();
+      }
+    } finally {
+      setIsSavingAuthor(false);
     }
   };
 
@@ -1102,9 +1124,11 @@ export function AdminCMS() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs rounded-xl shadow-xs"
+                  disabled={isSavingAuthor}
+                  className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs rounded-xl shadow-xs disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer"
                 >
-                  Save Profile
+                  {isSavingAuthor && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {isSavingAuthor ? 'Saving...' : 'Save Profile'}
                 </button>
               </div>
             </form>
@@ -1220,9 +1244,11 @@ export function AdminCMS() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs rounded-xl shadow-xs cursor-pointer"
+                    disabled={isSavingTestimonial}
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs rounded-xl shadow-xs cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-1.5"
                   >
-                    Save Testimonial
+                    {isSavingTestimonial && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    {isSavingTestimonial ? 'Saving...' : 'Save Testimonial'}
                   </button>
                 </div>
               </form>
@@ -1240,6 +1266,7 @@ export function AdminCMS() {
         confirmText="Permanently Delete"
         cancelText="Cancel"
         variant="danger"
+        isProcessing={isDeleting}
         onConfirm={confirmPendingDelete}
         onClose={() => setPendingDelete(null)}
       />

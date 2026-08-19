@@ -24,6 +24,7 @@ import {
   Edit3,
   Bold,
   MousePointerClick,
+  Loader2,
 } from 'lucide-react';
 
 export interface ComposeEmailModalProps {
@@ -214,6 +215,7 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSending) return;
     setFeedback(null);
 
     if (!subject.trim()) {
@@ -702,10 +704,12 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
               <button
                 type="submit"
                 disabled={isSending}
-                className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isSending ? (
-                  'Dispatching Email...'
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Dispatching Email...
+                  </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" /> Send Email

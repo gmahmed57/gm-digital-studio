@@ -354,7 +354,7 @@ export function ProfileSettings() {
   // Save Profile Details
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.email) return;
+    if (!user?.email || loading) return;
 
     setLoading(true);
     setSuccessMessage(null);
@@ -387,6 +387,7 @@ export function ProfileSettings() {
   // Handle Password Update via Supabase Auth
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isUpdatingPassword) return;
     setSuccessMessage(null);
     setErrorMessage(null);
 

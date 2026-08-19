@@ -26,6 +26,7 @@ import {
   Link as LinkIcon,
   Plus,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 
@@ -33,6 +34,9 @@ export function ClientEditPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id && id !== 'new');
+
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isTogglingStatus, setIsTogglingStatus] = useState<boolean>(false);
 
   const [fullName, setFullName] = useState('');
   const [company, setCompany] = useState('');
@@ -139,10 +143,14 @@ export function ClientEditPage() {
     e.preventDefault();
     setFormError('');
 
+    if (isSubmitting) return;
+
     if (!isEditing && (!portalPassword || portalPassword.length < 6)) {
       setFormError('Initial Portal Password must be at least 6 characters long.');
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       await clientService.saveClient({
@@ -171,6 +179,8 @@ export function ClientEditPage() {
       navigate('/admin/clients');
     } catch (err: any) {
       setFormError(err.message || 'Failed to provision client account.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -203,8 +213,14 @@ export function ClientEditPage() {
 
   const handleToggleActiveStatus = async () => {
     if (id && isEditing) {
-      await clientService.toggleClientStatus(id);
-      setStatus(status === 'active' ? 'inactive' : 'active');
+      if (isTogglingStatus) return;
+      setIsTogglingStatus(true);
+      try {
+        await clientService.toggleClientStatus(id);
+        setStatus(status === 'active' ? 'inactive' : 'active');
+      } finally {
+        setIsTogglingStatus(false);
+      }
     }
   };
 
@@ -242,13 +258,16 @@ export function ClientEditPage() {
               <button
                 type="button"
                 onClick={handleToggleActiveStatus}
-                className={`w-full sm:w-auto px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                disabled={isTogglingStatus}
+                className={`w-full sm:w-auto px-4 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                  isTogglingStatus ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                } ${
                   status === 'active'
                     ? 'border-gray-300 dark:border-dark-border text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface'
                     : 'border-emerald-300 bg-emerald-50 text-emerald-700 font-bold'
                 }`}
               >
-                <Power className="w-4 h-4" />
+                {isTogglingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : <Power className="w-4 h-4" />}
                 {status === 'active' ? 'Deactivate Account' : 'Activate Account'}
               </button>
             )}
@@ -256,10 +275,13 @@ export function ClientEditPage() {
             <button
               type="submit"
               form="client-edit-form"
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              disabled={isSubmitting}
+              className={`w-full sm:w-auto px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 ${
+                isSubmitting ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
+              }`}
             >
-              <Save className="w-4 h-4" />
-              {isEditing ? 'Save Changes' : 'Provision Client'}
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSubmitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Provision Client'}
             </button>
           </div>
         </div>

@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Image as ImageIcon,
   X,
+  Loader2,
 } from 'lucide-react';
 
 export function AdminPortfolioEditor() {
@@ -162,6 +163,7 @@ export function AdminPortfolioEditor() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     if (!formData.title || !formData.slug || !formData.client) {
       alert('Please complete the Title, Slug, and Client Name fields before saving.');
       return;
@@ -177,7 +179,6 @@ export function AdminPortfolioEditor() {
     const deliverables = formData.deliverablesString.split('\n').map((s) => s.trim()).filter(Boolean);
     const techStack = formData.techStackString.split('\n').map((s) => s.trim()).filter(Boolean);
     const results = formData.resultsString.split('\n').map((s) => s.trim()).filter(Boolean);
-
     const testimonial = formData.quote
       ? {
           quote: formData.quote,
@@ -247,7 +248,7 @@ export function AdminPortfolioEditor() {
         <button
           onClick={handleSave}
           disabled={isLoading}
-          className="w-full sm:w-auto px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+          className="w-full sm:w-auto px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
         >
           {saveSuccess ? (
             <>
@@ -256,7 +257,7 @@ export function AdminPortfolioEditor() {
             </>
           ) : (
             <>
-              <Save className="w-4 h-4" />
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               <span>{isLoading ? 'Saving...' : isEditing ? 'Update Case Study' : 'Publish Case Study'}</span>
             </>
           )}

@@ -28,31 +28,98 @@ export const clientService = {
       throw error;
     }
 
-    let invoiceSumByClient: Record<string, number> = {};
-    let invoiceSumByEmail: Record<string, number> = {};
+    // 1. Live Aggregate Projects by Client (ID, Email, Company, Name)
+    const activeProjectsByClient: Record<string, number> = {};
+    const activeProjectsByEmail: Record<string, number> = {};
+    const activeProjectsByCompany: Record<string, number> = {};
+    const activeProjectsByName: Record<string, number> = {};
+    const latestCategoryByClient: Record<string, string> = {};
+    const latestCategoryByEmail: Record<string, string> = {};
+
     try {
-      const { data: invData } = await supabase.from('invoices').select('client_id, client_email, total, amount, status');
-      if (invData) {
-        invData.forEach((inv: any) => {
-          if (inv.status === 'Paid' || inv.status === 'Issued' || inv.status === 'Overdue') {
-            const val = Number(inv.total) || parseFloat(String(inv.amount || '0').replace(/[^0-9.]/g, '')) || 0;
-            if (inv.client_id) {
-              invoiceSumByClient[inv.client_id] = (invoiceSumByClient[inv.client_id] || 0) + val;
-            }
-            if (inv.client_email) {
-              const emailKey = inv.client_email.toLowerCase().trim();
-              invoiceSumByEmail[emailKey] = (invoiceSumByEmail[emailKey] || 0) + val;
-            }
+      const { data: projData } = await supabase
+        .from('projects')
+        .select('id, client_id, client_email, client_company, client_name, status, category');
+
+      if (projData) {
+        projData.forEach((p: any) => {
+          const status = String(p.status || '').toLowerCase().trim();
+          const isActive = status !== 'completed' && status !== 'on_hold';
+
+          const cId = p.client_id || p.clientId;
+          const cEmail = String(p.client_email || p.clientEmail || '').toLowerCase().trim();
+          const cCompany = String(p.client_company || p.clientCompany || '').toLowerCase().trim();
+          const cName = String(p.client_name || p.clientName || '').toLowerCase().trim();
+
+          if (isActive) {
+            if (cId) activeProjectsByClient[cId] = (activeProjectsByClient[cId] || 0) + 1;
+            if (cEmail) activeProjectsByEmail[cEmail] = (activeProjectsByEmail[cEmail] || 0) + 1;
+            if (cCompany) activeProjectsByCompany[cCompany] = (activeProjectsByCompany[cCompany] || 0) + 1;
+            if (cName) activeProjectsByName[cName] = (activeProjectsByName[cName] || 0) + 1;
+          }
+
+          if (p.category) {
+            if (cId && !latestCategoryByClient[cId]) latestCategoryByClient[cId] = p.category;
+            if (cEmail && !latestCategoryByEmail[cEmail]) latestCategoryByEmail[cEmail] = p.category;
           }
         });
       }
-    } catch {
-      // Fallback
+    } catch (projErr) {
+      console.warn('[Client Service] Projects telemetry notice:', projErr);
+    }
+
+    // 2. Live Aggregate Invoices / Total Billed by Client (ID, Email, Company, Name)
+    const invoiceSumByClient: Record<string, number> = {};
+    const invoiceSumByEmail: Record<string, number> = {};
+    const invoiceSumByCompany: Record<string, number> = {};
+    const invoiceSumByName: Record<string, number> = {};
+
+    try {
+      const { data: invData } = await supabase
+        .from('invoices')
+        .select('client_id, client_email, client_company, client_name, total, amount, status');
+
+      if (invData) {
+        invData.forEach((inv: any) => {
+          if (inv.status !== 'Request Rejected') {
+            const val = Number(inv.total) || parseFloat(String(inv.amount || '0').replace(/[^0-9.]/g, '')) || 0;
+            const cId = inv.client_id || inv.clientId;
+            const cEmail = String(inv.client_email || inv.clientEmail || '').toLowerCase().trim();
+            const cCompany = String(inv.client_company || inv.clientCompany || '').toLowerCase().trim();
+            const cName = String(inv.client_name || inv.clientName || '').toLowerCase().trim();
+
+            if (cId) invoiceSumByClient[cId] = (invoiceSumByClient[cId] || 0) + val;
+            if (cEmail) invoiceSumByEmail[cEmail] = (invoiceSumByEmail[cEmail] || 0) + val;
+            if (cCompany) invoiceSumByCompany[cCompany] = (invoiceSumByCompany[cCompany] || 0) + val;
+            if (cName) invoiceSumByName[cName] = (invoiceSumByName[cName] || 0) + val;
+          }
+        });
+      }
+    } catch (invErr) {
+      console.warn('[Client Service] Invoices telemetry notice:', invErr);
     }
 
     if (data) {
       return data.map((row: any) => {
-        const computedBilledSum = (row.id && invoiceSumByClient[row.id]) || (row.email && invoiceSumByEmail[row.email.toLowerCase().trim()]);
+        const emailKey = String(row.email || '').toLowerCase().trim();
+        const companyKey = String(row.company || '').toLowerCase().trim();
+        const nameKey = String(row.fullName || row.fullname || row.full_name || '').toLowerCase().trim();
+
+        // 1. Live Active Projects Count calculation with multi-key resolution
+        const liveActiveCount =
+          (row.id && activeProjectsByClient[row.id] !== undefined ? activeProjectsByClient[row.id] : undefined) ??
+          (emailKey && activeProjectsByEmail[emailKey] !== undefined ? activeProjectsByEmail[emailKey] : undefined) ??
+          (companyKey && activeProjectsByCompany[companyKey] !== undefined ? activeProjectsByCompany[companyKey] : undefined) ??
+          (nameKey && activeProjectsByName[nameKey] !== undefined ? activeProjectsByName[nameKey] : undefined) ??
+          (row.activeProjectsCount ?? row.activeprojectscount ?? 0);
+
+        // 2. Live Total Billed calculation with multi-key resolution
+        const computedBilledSum =
+          (row.id && invoiceSumByClient[row.id] !== undefined ? invoiceSumByClient[row.id] : undefined) ??
+          (emailKey && invoiceSumByEmail[emailKey] !== undefined ? invoiceSumByEmail[emailKey] : undefined) ??
+          (companyKey && invoiceSumByCompany[companyKey] !== undefined ? invoiceSumByCompany[companyKey] : undefined) ??
+          (nameKey && invoiceSumByName[nameKey] !== undefined ? invoiceSumByName[nameKey] : undefined);
+
         const rawBilled = row.totalBilled || row.totalbilled || row.total_billed;
         let displayBilled = '$0';
         if (computedBilledSum !== undefined && computedBilledSum > 0) {
@@ -60,6 +127,19 @@ export const clientService = {
         } else if (rawBilled && rawBilled !== '$0') {
           displayBilled = String(rawBilled).startsWith('$') ? String(rawBilled) : `$${Number(rawBilled).toLocaleString()}`;
         }
+
+        // 3. Assigned Package resolution
+        const latestCategory =
+          (row.id && latestCategoryByClient[row.id]) ||
+          (emailKey && latestCategoryByEmail[emailKey]);
+
+        const assignedPackage =
+          row.assignedPackage ||
+          row.assignedpackage ||
+          row.assigned_package ||
+          row.package ||
+          latestCategory ||
+          'Enterprise Web Development';
 
         return {
           id: row.id,
@@ -71,9 +151,9 @@ export const clientService = {
           avatarUrl: row.avatarUrl || row.avatarurl || row.avatar_url || '',
           status: row.status || 'active',
           joinedDate: row.joinedDate || row.joineddate || row.joined_date || '',
-          activeProjectsCount: row.activeProjectsCount ?? row.activeprojectscount ?? 0,
+          activeProjectsCount: liveActiveCount,
           totalBilled: displayBilled,
-          assignedPackage: row.assignedPackage || row.assignedpackage || 'Standard Package',
+          assignedPackage,
           allowedToolIds: parseToolArray(row.allowedToolIds ?? row.allowedtoolids ?? row.allowed_tool_ids),
           requestedToolIds: parseToolArray(row.requestedToolIds ?? row.requestedtoolids ?? row.requested_tool_ids),
           whatsapp: row.whatsapp || '',

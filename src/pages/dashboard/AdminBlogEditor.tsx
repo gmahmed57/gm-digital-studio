@@ -20,6 +20,7 @@ import {
   UserCheck,
   FileCode,
   X,
+  Loader2,
 } from 'lucide-react';
 
 const PRESET_IMAGES = [
@@ -226,6 +227,7 @@ export function AdminBlogEditor() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     const content =
       editorMode === 'html' && htmlTextareaRef.current
         ? htmlTextareaRef.current.value
@@ -381,12 +383,15 @@ export function AdminBlogEditor() {
           <button
             onClick={handleSave}
             disabled={isLoading}
-            className="w-full sm:w-auto px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+            className="w-full sm:w-auto px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
           >
             {saveSuccess ? (
               <><CheckCircle2 className="w-4 h-4" /><span>Published</span></>
             ) : (
-              <><Save className="w-4 h-4" /><span>{isLoading ? 'Saving...' : isEditing ? 'Update Article' : 'Publish Article'}</span></>
+              <>
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>{isLoading ? 'Saving...' : isEditing ? 'Update Article' : 'Publish Article'}</span>
+              </>
             )}
           </button>
         </div>
